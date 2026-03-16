@@ -1,12 +1,12 @@
 ---
 name: notebooklm-paper-to-ppt
-description: Create a NotebookLM-generated slide deck from a local paper PDF or paper URL, download the raw deck as PowerPoint (.pptx), then generate Chinese speaker notes from exported slide images and write them back into the final PPT. Use when the user mentions NotebookLM slides, paper-to-PPT, generating a presentation from a research paper via NotebookLM, or wants NotebookLM to create a deck from any document. Not for locally generated slides.
+description: Create a NotebookLM-generated slide deck from a local paper PDF or paper URL, download the raw deck as PowerPoint (.pptx), then build source-aware detailed speaker notes from the raw deck plus the original paper text/PDF and write them back into the final PPT. Use when the user mentions NotebookLM slides, paper-to-PPT, generating a presentation from a research paper via NotebookLM, or wants NotebookLM to create a deck from any document. Not for locally generated slides.
 disable-model-invocation: true
 context: fork
 agent: general-purpose
 ---
 
-Create a NotebookLM-authored slide deck and deliver a final `.pptx` with Chinese speaker notes in PowerPoint speaker-notes fields.
+Create a NotebookLM-authored slide deck and deliver a final `.pptx` with source-aware detailed speaker notes in PowerPoint speaker-notes fields.
 
 This skill is manual-only on purpose. It uploads sources, triggers background generation, downloads files, and then performs a second pass over the downloaded deck. Do not silently replace NotebookLM with a local slide generator.
 
@@ -32,8 +32,16 @@ Default final output path: `~/Documents/ppt_source/notebooklm_output/<slug>_<YYY
 Derived companion artifacts for a final output like `./out/deck.pptx`:
 
 - raw deck: `./out/deck.raw.pptx`
-- slide images: `./out/deck.slide-images/`
-- generated notes: `./out/deck.notes.json`
+- notes artifacts dir: `./out/deck.notes-artifacts/`
+  - `context.json`
+  - `notes.heuristic.json`
+  - `preview.md`
+  - `slide-images/`
+  - `slide-images/manifest.json`
+  - `tmp/source_full.txt`
+  - `tmp/claude_notes_input.json`
+  - `tmp/claude_notes_prompt.md`
+  - `notes.json` (final Claude-generated result, not created by `prepare-context`)
 
 If `$ARGUMENTS` and the current user request contain no usable source at all, stop and ask for one missing item only: a local PDF path or a paper URL.
 
@@ -98,51 +106,89 @@ If `$ARGUMENTS` and the current user request contain no usable source at all, st
      - `nlm download slide-deck <notebook> <artifact-id> --format pptx --output <output>.raw.pptx`
    - If the installed community tool is older than v0.3.5 and lacks PPTX slide-deck download, stop and report the version mismatch.
 
-8. Export slide images for notes generation.
+8. Build a Claude-readable notes context pack.
    - Run:
-     - `python3 scripts/postprocess_downloaded_pptx.py export-assets --input <output>.raw.pptx --assets-dir <output>.slide-images`
-   - Use the exported slide images in slide order.
-   - Read `<output>.slide-images/manifest.json`.
-   - Do not OCR the deck and do not fall back to text extraction.
+     - `python3 scripts/postprocess_downloaded_pptx.py prepare-context --input <output>.raw.pptx --source-pdf <paper.pdf>`
+     - or `python3 scripts/postprocess_downloaded_pptx.py prepare-context --input <output>.raw.pptx --source-text <paper.txt>`
+   - This writes a nested artifacts directory with both structural context and helper artifacts:
+     - `<output>.notes-artifacts/context.json`
+     - `<output>.notes-artifacts/notes.heuristic.json`
+     - `<output>.notes-artifacts/preview.md`
+     - `<output>.notes-artifacts/slide-images/`
+     - `<output>.notes-artifacts/tmp/source_full.txt`
+     - `<output>.notes-artifacts/tmp/claude_notes_input.json`
+     - `<output>.notes-artifacts/tmp/claude_notes_prompt.md`
+   - `prepare-context` uses slide images, visible slide text, and the original source text together.
+   - `prepare-context` always writes the full source text into `tmp/source_full.txt`.
+   - The prompt defaults to inlining the full source text when it fits safely; otherwise it tells Claude to read `tmp/source_full.txt`.
+   - PDF parsing requires the optional `pypdf` package.
 
-9. Generate Chinese speaker notes.
-   - Create `<output>.notes.json` with this shape:
+9. Generate the final detailed notes with Claude.
+   - Read `<output>.notes-artifacts/tmp/claude_notes_prompt.md`.
+   - Read `<output>.notes-artifacts/tmp/claude_notes_input.json`.
+   - If the prompt says the source text is file-based, read `<output>.notes-artifacts/tmp/source_full.txt` before writing any note.
+   - Write the final result to `<output>.notes-artifacts/notes.json`.
+   - `notes.heuristic.json` is only a hint source. Do not silently treat it as the final result.
+   - The required final JSON shape is:
      ```json
      {
        "language": "zh-CN",
-       "style": "speaker_notes",
+       "style": "structured_detailed_notes",
+       "raw_pptx": "...",
+       "source_kind": "pdf",
+       "source_path": "...",
        "slides": [
-         {"index": 1, "image": "slide-001.png", "note": "2-4句中文备注"},
+         {
+           "index": 1,
+           "image": "slide-001.png",
+           "slide_text": "visible slide text",
+           "mapping_confidence": "high",
+           "source_chunks": [{"chunk_id": "chunk-001", "section_title": "Introduction", "text": "..."}],
+           "note_blocks": {
+             "page_topic": "...",
+             "source_mapping": ["..."],
+             "supplemental_details": ["..."],
+             "page_summary": "..."
+           },
+           "note": "本页主题\n..."
+         },
          {"index": 2, "image": "slide-002.png", "error": "generation_failed"}
        ]
      }
      ```
-   - Generate notes slide by slide from the exported images only.
-   - Do not use the paper text, grounding-query output, or external knowledge to embellish notes.
-   - Each note must be 2-4 short Chinese sentences in a presenter-script style.
-   - If an image is ambiguous, stay conservative and describe the slide role rather than inventing details.
-   - Allowed framing:
-     - “这一页主要在引出问题。”
-     - “这里更像是在概括方法流程。”
-     - “这一页重点展示结果趋势。”
-   - Disallowed behavior:
-     - inventing exact numbers
-     - inventing experiment settings
-     - inventing unsupported conclusions
+   - Default note structure is:
+     - `本页主题`
+     - `对应原文分块`
+     - `补充细节`
+     - `本页小结`
+   - Treat the full source text as the first authority and `source_chunks` as hints only.
+   - Many slides have only images. Always inspect `image_path` from `claude_notes_input.json` when it exists.
+   - When `mapping_confidence` is low, keep the note conservative and avoid unsupported details.
+   - If a page cannot be grounded reliably, output `error` instead of `note`.
 
-10. Write notes back into the final PPT.
+10. Validate the generated notes before touching the PPT.
    - Run:
-     - `python3 scripts/postprocess_downloaded_pptx.py apply-notes --input <output>.raw.pptx --notes-json <output>.notes.json --output <output>.pptx`
+     - `python3 scripts/postprocess_downloaded_pptx.py validate-notes --notes-json <output>.notes-artifacts/notes.json --context-json <output>.notes-artifacts/context.json`
+   - Do not call `apply-notes` when validation fails.
+
+11. Write notes back into the final PPT.
+   - Run:
+     - `python3 scripts/postprocess_downloaded_pptx.py apply-notes --input <output>.raw.pptx --notes-json <output>.notes-artifacts/notes.json --output <output>.pptx`
    - This writes notes into PowerPoint speaker-notes fields only. Do not edit visible slide content.
    - If some slides fail notes generation, still write the successful ones and report a partial result.
 
-11. Return:
+12. Return:
    - notebook id
    - artifact id
    - final output path
    - raw PPTX path
+   - notes artifacts directory
    - notes JSON path
+   - heuristic notes JSON path
+   - preview path
    - slide-images directory
+   - Claude prompt path
+   - source full text path
    - `notes_status`
    - `notes_artifacts`
    - `notes_summary`
@@ -158,7 +204,9 @@ If `$ARGUMENTS` and the current user request contain no usable source at all, st
 - `notes_artifacts`
   - final PPT path
   - raw PPT path
+  - notes artifacts directory
   - notes JSON path
+  - preview path
   - slide-images directory
 - `notes_summary`
   - short Chinese summary with total slide count, successful note count, and failed slide indexes
@@ -170,6 +218,7 @@ If `$ARGUMENTS` and the current user request contain no usable source at all, st
 - Be explicit when the result depends on community-tool version drift or MCP schema drift.
 - Do not inject `assets/styles/Artifact_Deck.md` unless the user explicitly asks for that file or another style file.
 - Do not treat post-download QA as the default success condition. The default value-add is Chinese speaker notes in the final PPT.
+- Do not let image-only slides fall back to page-order guesses without first reading the slide image and the full source text.
 
 ## Resources
 
@@ -183,5 +232,6 @@ Use these files when needed:
 - `scripts/check_env.sh`
 - `scripts/cli_flow_template.sh`
 - `scripts/export_pptx_slide_images.py`
+- `scripts/prepare_notes_context.py`
 - `scripts/postprocess_downloaded_pptx.py`
 - `scripts/inject_pptx_speaker_notes.py`

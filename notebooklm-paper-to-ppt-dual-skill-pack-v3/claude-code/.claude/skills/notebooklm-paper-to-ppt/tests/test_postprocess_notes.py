@@ -24,6 +24,7 @@ CLI_SCRIPT = SCRIPT_DIR / "cli_flow_template.sh"
 
 sys.path.insert(0, str(SCRIPT_DIR))
 
+from export_pptx_slide_images import default_artifacts_dir  # noqa: E402
 from inject_pptx_speaker_notes import apply_notes_to_pptx  # noqa: E402
 
 
@@ -277,6 +278,58 @@ def write_notes_json(path: Path, slides: list[dict[str, object]]) -> None:
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def write_valid_notes_from_context(
+    context_path: Path,
+    target_path: Path,
+    *,
+    error_indexes: set[int] | None = None,
+) -> dict[str, object]:
+    context = json.loads(context_path.read_text(encoding="utf-8"))
+    error_indexes = error_indexes or set()
+    slides = []
+    for slide in context["slides"]:
+        entry = {
+            "index": slide["index"],
+            "image": slide["image"],
+            "slide_text": slide["slide_text"],
+            "mapping_confidence": slide["mapping_confidence"],
+            "source_chunks": slide["source_chunks"],
+        }
+        if slide["index"] in error_indexes:
+            entry["error"] = "unable_to_ground_slide_content"
+        else:
+            note_blocks = {
+                "page_topic": f"第 {slide['index']} 页围绕该页核心图示展开。",
+                "source_mapping": [f"参考 {chunk['chunk_id']} / {chunk['section_title']}" for chunk in slide["source_chunks"]] or ["参考全文对应部分"],
+                "supplemental_details": ["结合全文补足页面未写出的背景信息。"],
+                "page_summary": "这一页需要结合全文和图片一起理解。",
+            }
+            entry["note_blocks"] = note_blocks
+            entry["note"] = "\n".join(
+                [
+                    "本页主题",
+                    note_blocks["page_topic"],
+                    "对应原文分块",
+                    *[f"- {item}" for item in note_blocks["source_mapping"]],
+                    "补充细节",
+                    *[f"- {item}" for item in note_blocks["supplemental_details"]],
+                    "本页小结",
+                    note_blocks["page_summary"],
+                ]
+            )
+        slides.append(entry)
+    payload = {
+        "language": "zh-CN",
+        "style": "structured_detailed_notes",
+        "raw_pptx": context["raw_pptx"],
+        "source_kind": context["source_kind"],
+        "source_path": context["source_path"],
+        "slides": slides,
+    }
+    target_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return payload
+
+
 def load_zip_map(path: Path) -> dict[str, bytes]:
     with zipfile.ZipFile(path) as zf:
         return {name: zf.read(name) for name in zf.namelist()}
@@ -309,6 +362,20 @@ def ordered_slide_paths(file_map: dict[str, bytes]) -> list[str]:
 def notes_parts(path: Path) -> list[str]:
     with zipfile.ZipFile(path) as zf:
         return sorted(name for name in zf.namelist() if "/notes" in name)
+
+
+def presentation_notes_size(path: Path) -> tuple[str, str] | None:
+    file_map = load_zip_map(path)
+    root = ET.fromstring(file_map["ppt/presentation.xml"])
+    node = root.find("p:notesSz", NS)
+    if node is None:
+        return None
+    return (node.attrib.get("cx", ""), node.attrib.get("cy", ""))
+
+
+def notes_theme_parts(path: Path) -> list[str]:
+    with zipfile.ZipFile(path) as zf:
+        return sorted(name for name in zf.namelist() if "notesTheme" in name)
 
 
 def slide_notes_map(path: Path) -> dict[int, str]:
@@ -484,7 +551,7 @@ class ApplyNotesTest(unittest.TestCase):
                 ["ppt/notesSlides/notesSlide1.xml"],
             )
 
-    def test_apply_notes_requires_theme_part(self) -> None:
+    def test_apply_notes_creates_notes_theme_and_notes_size_when_theme_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp_path = Path(tmp_dir)
             raw_pptx = tmp_path / "deck.raw.pptx"
@@ -507,8 +574,248 @@ class ApplyNotesTest(unittest.TestCase):
                 [{"index": 1, "image": "slide-001.png", "note": "这一页说明背景。"}],
             )
 
-            with self.assertRaisesRegex(ValueError, "No theme part exists"):
-                apply_notes_to_pptx(raw_pptx, notes_json, output_pptx)
+            summary = apply_notes_to_pptx(raw_pptx, notes_json, output_pptx)
+            self.assertEqual(summary["notes_status"], "completed")
+            self.assertEqual(presentation_notes_size(output_pptx), ("6858000", "9144000"))
+            self.assertEqual(notes_theme_parts(output_pptx), ["ppt/theme/notesTheme1.xml"])
+
+    def test_apply_notes_sanitizes_invalid_control_characters(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            raw_pptx = tmp_path / "deck.raw.pptx"
+            output_pptx = tmp_path / "deck.pptx"
+            notes_json = tmp_path / "deck.notes.json"
+            write_pptx_fixture(
+                raw_pptx,
+                [
+                    {
+                        "pictures": [
+                            {"rid": "rId1", "media_name": "image1.png", "target": "../media/image1.png", "bytes": png_bytes(100, 50, "blue"), "cx": 9144000, "cy": 5143500}
+                        ],
+                        "texts": ["Overview"],
+                    }
+                ],
+            )
+            write_notes_json(
+                notes_json,
+                [{"index": 1, "image": "slide-001.png", "note": "第一段\x01\n第二段\x0b"}],
+            )
+
+            summary = apply_notes_to_pptx(raw_pptx, notes_json, output_pptx)
+            self.assertEqual(summary["notes_status"], "completed")
+            self.assertEqual(slide_notes_map(output_pptx), {1: "第一段\n第二段"})
+
+
+class PrepareContextTest(unittest.TestCase):
+    def test_prepare_context_with_text_source_writes_nested_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            raw_pptx = tmp_path / "deck.raw.pptx"
+            source_text = tmp_path / "paper.txt"
+            write_pptx_fixture(
+                raw_pptx,
+                [
+                    {
+                        "pictures": [
+                            {"rid": "rId1", "media_name": "image1.png", "target": "../media/image1.png", "bytes": png_bytes(100, 50, "blue"), "cx": 9144000, "cy": 5143500}
+                        ],
+                        "texts": ["Introduction", "Problem Setup"],
+                    },
+                    {
+                        "pictures": [
+                            {"rid": "rId1", "media_name": "image2.png", "target": "../media/image2.png", "bytes": png_bytes(80, 40, "green"), "cx": 9144000, "cy": 5143500}
+                        ],
+                        "texts": ["Method", "Iterative Refinement"],
+                    },
+                    {
+                        "pictures": [
+                            {"rid": "rId1", "media_name": "image3.png", "target": "../media/image3.png", "bytes": png_bytes(60, 30, "orange"), "cx": 9144000, "cy": 5143500}
+                        ],
+                        "texts": [],
+                    },
+                ],
+            )
+            source_text.write_text(
+                textwrap.dedent(
+                    """\
+                    Abstract
+                    This paper studies a compact benchmark and motivates the task.
+
+                    Introduction
+                    We define the problem setup and the evaluation target for the benchmark.
+
+                    Methods
+                    The method uses iterative refinement and a compact model backbone.
+
+                    Results
+                    Accuracy improves over strong baselines while training remains stable.
+                    """
+                ),
+                encoding="utf-8",
+            )
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(POSTPROCESS_SCRIPT),
+                    "prepare-context",
+                    "--input",
+                    str(raw_pptx),
+                    "--source-text",
+                    str(source_text),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            summary = json.loads(completed.stdout)
+            artifacts_dir = default_artifacts_dir(raw_pptx)
+            context_path = artifacts_dir / "context.json"
+            notes_json_path = artifacts_dir / "notes.json"
+            heuristic_notes_path = artifacts_dir / "notes.heuristic.json"
+            preview_path = artifacts_dir / "preview.md"
+            manifest_path = artifacts_dir / "slide-images" / "manifest.json"
+            source_full_text_path = artifacts_dir / "tmp" / "source_full.txt"
+            claude_notes_input_path = artifacts_dir / "tmp" / "claude_notes_input.json"
+            claude_notes_prompt_path = artifacts_dir / "tmp" / "claude_notes_prompt.md"
+
+            self.assertEqual(summary["artifacts_dir"], str(artifacts_dir))
+            self.assertTrue(context_path.is_file())
+            self.assertFalse(notes_json_path.exists())
+            self.assertTrue(heuristic_notes_path.is_file())
+            self.assertTrue(preview_path.is_file())
+            self.assertTrue(manifest_path.is_file())
+            self.assertTrue(source_full_text_path.is_file())
+            self.assertTrue(claude_notes_input_path.is_file())
+            self.assertTrue(claude_notes_prompt_path.is_file())
+
+            context = json.loads(context_path.read_text(encoding="utf-8"))
+            notes_payload = json.loads(heuristic_notes_path.read_text(encoding="utf-8"))
+            claude_input = json.loads(claude_notes_input_path.read_text(encoding="utf-8"))
+            claude_prompt = claude_notes_prompt_path.read_text(encoding="utf-8")
+            preview_text = preview_path.read_text(encoding="utf-8")
+
+            self.assertEqual(context["slide_images_dir"], str(artifacts_dir / "slide-images"))
+            self.assertEqual(context["notes_json_path"], str(notes_json_path))
+            self.assertEqual(context["heuristic_notes_json_path"], str(heuristic_notes_path))
+            self.assertEqual(context["source_prompt_mode"], "inline")
+            self.assertEqual(notes_payload["style"], "structured_detailed_notes")
+            self.assertEqual(notes_payload["slides"][0]["mapping_confidence"], "high")
+            self.assertEqual(notes_payload["slides"][2]["mapping_confidence"], "low")
+            self.assertIn("note_blocks", notes_payload["slides"][0])
+            self.assertIn("本页主题", notes_payload["slides"][0]["note"])
+            self.assertIn("对应原文分块", notes_payload["slides"][0]["note"])
+            self.assertTrue(claude_input["slides"][0]["image_path"].endswith("slide-001.png"))
+            self.assertIn("heuristic_note", claude_input["slides"][0])
+            self.assertIn("## 原文全文（权威输入）", claude_prompt)
+            self.assertIn("compact benchmark", claude_prompt)
+            self.assertIn("## Slide 1", preview_text)
+            self.assertIn("Heuristic Draft Notes", preview_text)
+
+    def test_prepare_context_with_pdf_source_uses_pypdf_stub(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            raw_pptx = tmp_path / "deck.raw.pptx"
+            source_pdf = tmp_path / "paper.pdf"
+            stub_dir = tmp_path / "stub"
+            stub_dir.mkdir()
+            (stub_dir / "pypdf.py").write_text(
+                textwrap.dedent(
+                    """\
+                    class _Page:
+                        def __init__(self, text):
+                            self._text = text
+
+                        def extract_text(self):
+                            return self._text
+
+                    class PdfReader:
+                        def __init__(self, path):
+                            self.pages = [
+                                _Page("Introduction\\nWe define the task and benchmark."),
+                                _Page("Results\\nAccuracy improves over baselines."),
+                            ]
+                    """
+                ),
+                encoding="utf-8",
+            )
+            source_pdf.write_bytes(b"%PDF-1.4\n")
+            write_pptx_fixture(
+                raw_pptx,
+                [
+                    {
+                        "pictures": [
+                            {"rid": "rId1", "media_name": "image1.png", "target": "../media/image1.png", "bytes": png_bytes(100, 50, "blue"), "cx": 9144000, "cy": 5143500}
+                        ],
+                        "texts": ["Results", "Accuracy improves"],
+                    }
+                ],
+            )
+            env = os.environ.copy()
+            env["PYTHONPATH"] = f"{stub_dir}:{env.get('PYTHONPATH', '')}"
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(POSTPROCESS_SCRIPT),
+                    "prepare-context",
+                    "--input",
+                    str(raw_pptx),
+                    "--source-pdf",
+                    str(source_pdf),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+            summary = json.loads(completed.stdout)
+            notes_payload = json.loads((default_artifacts_dir(raw_pptx) / "notes.heuristic.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["source_kind"], "pdf")
+            self.assertGreater(summary["chunk_count"], 0)
+            self.assertEqual(notes_payload["source_kind"], "pdf")
+            self.assertIn("本页小结", notes_payload["slides"][0]["note"])
+
+    def test_prepare_context_uses_file_reference_prompt_for_long_source_text(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            raw_pptx = tmp_path / "deck.raw.pptx"
+            source_text = tmp_path / "paper.txt"
+            write_pptx_fixture(
+                raw_pptx,
+                [
+                    {
+                        "pictures": [
+                            {"rid": "rId1", "media_name": "image1.png", "target": "../media/image1.png", "bytes": png_bytes(100, 50, "blue"), "cx": 9144000, "cy": 5143500}
+                        ],
+                        "texts": [],
+                    }
+                ],
+            )
+            source_text.write_text("A" * 81_000, encoding="utf-8")
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(POSTPROCESS_SCRIPT),
+                    "prepare-context",
+                    "--input",
+                    str(raw_pptx),
+                    "--source-text",
+                    str(source_text),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            summary = json.loads(completed.stdout)
+            prompt_text = Path(summary["claude_notes_prompt"]).read_text(encoding="utf-8")
+            self.assertEqual(summary["source_prompt_mode"], "file_reference")
+            self.assertIn("必须先读取", prompt_text)
+            self.assertNotIn("## 原文全文（权威输入）", prompt_text)
 
 
 class PostprocessIntegrationTest(unittest.TestCase):
@@ -587,6 +894,163 @@ class PostprocessIntegrationTest(unittest.TestCase):
                 slide_notes_map(final_pptx),
                 {1: "第一页先概括背景。", 2: "第二页强调结果趋势和意义。"},
             )
+
+    def test_prepare_context_then_apply_notes_via_cli_subcommands(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            raw_pptx = tmp_path / "deck.raw.pptx"
+            source_text = tmp_path / "paper.txt"
+            final_pptx = tmp_path / "deck.pptx"
+            write_pptx_fixture(
+                raw_pptx,
+                [
+                    {
+                        "pictures": [
+                            {"rid": "rId1", "media_name": "image1.png", "target": "../media/image1.png", "bytes": png_bytes(100, 50, "blue"), "cx": 9144000, "cy": 5143500}
+                        ],
+                        "texts": ["Introduction", "Problem Setup"],
+                    },
+                    {
+                        "pictures": [
+                            {"rid": "rId1", "media_name": "image2.png", "target": "../media/image2.png", "bytes": png_bytes(80, 40, "green"), "cx": 9144000, "cy": 5143500}
+                        ],
+                        "texts": ["Results", "Accuracy improves"],
+                    },
+                ],
+            )
+            source_text.write_text(
+                textwrap.dedent(
+                    """\
+                    Introduction
+                    We define the problem setup and the evaluation target.
+
+                    Results
+                    Accuracy improves over strong baselines and training is stable.
+                    """
+                ),
+                encoding="utf-8",
+            )
+
+            prepare_completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(POSTPROCESS_SCRIPT),
+                    "prepare-context",
+                    "--input",
+                    str(raw_pptx),
+                    "--source-text",
+                    str(source_text),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            prepare_summary = json.loads(prepare_completed.stdout)
+            notes_json_path = Path(prepare_summary["notes_json"])
+            context_path = Path(prepare_summary["context"])
+            notes_payload = write_valid_notes_from_context(context_path, notes_json_path)
+
+            validate_completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(POSTPROCESS_SCRIPT),
+                    "validate-notes",
+                    "--notes-json",
+                    str(notes_json_path),
+                    "--context-json",
+                    str(context_path),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            validate_summary = json.loads(validate_completed.stdout)
+            self.assertEqual(validate_summary["notes_status"], "completed")
+
+            apply_completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(POSTPROCESS_SCRIPT),
+                    "apply-notes",
+                    "--input",
+                    str(raw_pptx),
+                    "--notes-json",
+                    str(notes_json_path),
+                    "--output",
+                    str(final_pptx),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            apply_summary = json.loads(apply_completed.stdout)
+            self.assertEqual(apply_summary["notes_status"], "completed")
+            self.assertEqual(slide_notes_map(final_pptx)[1], notes_payload["slides"][0]["note"])
+            self.assertEqual(slide_notes_map(final_pptx)[2], notes_payload["slides"][1]["note"])
+            self.assertEqual(presentation_notes_size(final_pptx), ("6858000", "9144000"))
+
+    def test_apply_notes_rejects_invalid_claude_notes_when_context_exists(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            raw_pptx = tmp_path / "deck.raw.pptx"
+            source_text = tmp_path / "paper.txt"
+            final_pptx = tmp_path / "deck.pptx"
+            write_pptx_fixture(
+                raw_pptx,
+                [
+                    {
+                        "pictures": [
+                            {"rid": "rId1", "media_name": "image1.png", "target": "../media/image1.png", "bytes": png_bytes(100, 50, "blue"), "cx": 9144000, "cy": 5143500}
+                        ],
+                        "texts": [],
+                    }
+                ],
+            )
+            source_text.write_text("Introduction\nImportant source text.\n", encoding="utf-8")
+
+            prepare_completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(POSTPROCESS_SCRIPT),
+                    "prepare-context",
+                    "--input",
+                    str(raw_pptx),
+                    "--source-text",
+                    str(source_text),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            prepare_summary = json.loads(prepare_completed.stdout)
+            notes_json_path = Path(prepare_summary["notes_json"])
+            context_path = Path(prepare_summary["context"])
+            invalid_payload = write_valid_notes_from_context(context_path, notes_json_path)
+            invalid_payload["slides"][0]["note"] = "没有四段标题"
+            notes_json_path.write_text(
+                json.dumps(invalid_payload, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+
+            apply_completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(POSTPROCESS_SCRIPT),
+                    "apply-notes",
+                    "--input",
+                    str(raw_pptx),
+                    "--notes-json",
+                    str(notes_json_path),
+                    "--output",
+                    str(final_pptx),
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertNotEqual(apply_completed.returncode, 0)
+            self.assertIn("missing heading", apply_completed.stderr)
 
 
 class CliDownloadOnlySmokeTest(unittest.TestCase):

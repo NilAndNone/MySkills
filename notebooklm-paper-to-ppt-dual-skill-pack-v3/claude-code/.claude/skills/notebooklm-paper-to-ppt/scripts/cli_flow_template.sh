@@ -374,6 +374,6 @@ echo "Notebook alias    : $ALIAS"
 echo "Notebook id       : $NOTEBOOK_ID"
 echo "Artifact id       : $ARTIFACT_ID"
 echo "Downloaded deck   : $OUTPUT"
-echo "Postprocess step  : python3 \"$SCRIPT_DIR/postprocess_downloaded_pptx.py\" export-assets --input \"$OUTPUT\""
+echo "Postprocess step  : python3 \"$SCRIPT_DIR/postprocess_downloaded_pptx.py\" prepare-context --input \"$OUTPUT\" --source-pdf <paper.pdf>"
 echo
-echo "This CLI template only downloads the PPTX. The Claude skill performs Chinese speaker-note generation separately."
+echo "This CLI template only downloads the PPTX. The Claude skill performs source-aware notes generation separately."

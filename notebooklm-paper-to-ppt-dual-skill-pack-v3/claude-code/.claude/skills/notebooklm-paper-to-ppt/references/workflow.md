@@ -27,10 +27,11 @@ Do not report success until all of these are true:
 3. A grounding query returns a coherent answer
 4. A slide deck artifact completed
 5. The raw `.pptx` file exists at the promised `<output>.raw.pptx` path
-6. Slide images were exported to `<output>.slide-images/`
-7. A `<output>.notes.json` payload was created
-8. The final `.pptx` file exists at the promised `<output>.pptx` path
-9. The response includes `notes_status`, `notes_artifacts`, and `notes_summary`
+6. A `<output>.notes-artifacts/` directory exists
+7. `<output>.notes-artifacts/context.json`, `notes.heuristic.json`, `tmp/claude_notes_input.json`, `tmp/claude_notes_prompt.md`, and `slide-images/manifest.json` were created
+8. Claude generated a valid `<output>.notes-artifacts/notes.json`
+9. The final `.pptx` file exists at the promised `<output>.pptx` path
+10. The response includes `notes_status`, `notes_artifacts`, and `notes_summary`
 
 ## Timeouts and retries
 

@@ -50,10 +50,11 @@ skill 内新增：
 它会从 `.pptx` 里按页导出代表性图片和 `manifest.json`，供后续逐页生成中文 speaker notes。默认目录名是：
 
 ```text
-<output>.slide-images/
+<output>.notes-artifacts/slide-images/
 ```
 
-例如 `deck.slide-images/`。
+例如 `deck.notes-artifacts/slide-images/`。  
+现在 `prepare-context` 还会把 `context.json`、`preview.md`、`notes.json` 一起写到同级的 `deck.notes-artifacts/` 目录里。
 
 ## 3. skill 为什么这样写
 
@@ -196,11 +197,19 @@ Claude Code skills 支持 `$ARGUMENTS`。
 默认流程不是下载后 QA，而是：
 
 1. 先把 NotebookLM 产物下载成 `<output>.raw.pptx`
-2. 导出 `<output>.slide-images/`
-3. 逐页基于图片生成中文 speaker notes
-4. 写回最终 `<output>.pptx`
+2. 运行 `prepare-context`，产出 Claude 可读的 `<output>.notes-artifacts/`
+3. 让 Claude 读取 `tmp/claude_notes_prompt.md`、全文和每页图片，生成最终 `notes.json`
+4. 运行 `validate-notes`
+5. 写回最终 `<output>.pptx`
 
 这些中文备注只写到 PowerPoint speaker notes，不改幻灯片可见内容。  
+默认详注结构是：
+
+- 本页主题
+- 对应原文分块
+- 补充细节
+- 本页小结
+
 生成 notes 时默认不注入任何 style 文件，让 NotebookLM 自己决定 deck 的视觉风格。只有你显式指定 style 文件时，skill 才会把那个文件的内容注入生成 prompt。
 
 ## 8. CLI fallback 模板
@@ -211,18 +220,56 @@ CLI 模板现在只负责下载 raw `.pptx`，不直接调模型生成 notes。
 
 ```bash
 python3 .claude/skills/notebooklm-paper-to-ppt/scripts/postprocess_downloaded_pptx.py \
-  export-assets \
+  prepare-context \
   --input ./out/paper.raw.pptx \
-  --assets-dir ./out/paper.slide-images
+  --source-pdf ./papers/paper.pdf
 ```
 
-再准备一个符合约定的 `notes.json`，然后执行：
+如果你已经有现成的原文文本，也可以改成：
+
+```bash
+python3 .claude/skills/notebooklm-paper-to-ppt/scripts/postprocess_downloaded_pptx.py \
+  prepare-context \
+  --input ./out/paper.raw.pptx \
+  --source-text ./papers/paper.txt
+```
+
+这一步会生成：
+
+```text
+./out/paper.notes-artifacts/context.json
+./out/paper.notes-artifacts/notes.heuristic.json
+./out/paper.notes-artifacts/preview.md
+./out/paper.notes-artifacts/slide-images/
+./out/paper.notes-artifacts/tmp/source_full.txt
+./out/paper.notes-artifacts/tmp/claude_notes_input.json
+./out/paper.notes-artifacts/tmp/claude_notes_prompt.md
+```
+
+如果原文输入是 PDF，需要环境里有 `pypdf`。
+
+然后先让 Claude 按 `claude_notes_prompt.md` 的要求生成：
+
+```text
+./out/paper.notes-artifacts/notes.json
+```
+
+再执行校验：
+
+```bash
+python3 .claude/skills/notebooklm-paper-to-ppt/scripts/postprocess_downloaded_pptx.py \
+  validate-notes \
+  --notes-json ./out/paper.notes-artifacts/notes.json \
+  --context-json ./out/paper.notes-artifacts/context.json
+```
+
+然后执行：
 
 ```bash
 python3 .claude/skills/notebooklm-paper-to-ppt/scripts/postprocess_downloaded_pptx.py \
   apply-notes \
   --input ./out/paper.raw.pptx \
-  --notes-json ./out/paper.notes.json \
+  --notes-json ./out/paper.notes-artifacts/notes.json \
   --output ./out/paper.pptx
 ```
 

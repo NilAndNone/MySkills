@@ -29,15 +29,21 @@ HREF_ATTR = f"{{{R_NS}}}link"
 DEFAULT_COVERAGE_THRESHOLD = 0.55
 
 
-def default_assets_dir(pptx_path: Path) -> Path:
+def deck_stem(pptx_path: Path) -> str:
     text = str(pptx_path)
     if text.endswith(".raw.pptx"):
-        base = text[: -len(".raw.pptx")]
-    elif text.endswith(".pptx"):
-        base = text[: -len(".pptx")]
-    else:
-        base = text
-    return Path(f"{base}.slide-images")
+        return text[: -len(".raw.pptx")]
+    if text.endswith(".pptx"):
+        return text[: -len(".pptx")]
+    return text
+
+
+def default_artifacts_dir(pptx_path: Path) -> Path:
+    return Path(f"{deck_stem(pptx_path)}.notes-artifacts")
+
+
+def default_assets_dir(pptx_path: Path) -> Path:
+    return default_artifacts_dir(pptx_path) / "slide-images"
 
 
 @dataclass

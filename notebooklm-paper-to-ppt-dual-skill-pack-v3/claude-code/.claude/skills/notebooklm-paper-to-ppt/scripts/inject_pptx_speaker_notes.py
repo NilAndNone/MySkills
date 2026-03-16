@@ -25,6 +25,10 @@ RELTYPE_THEME = "http://schemas.openxmlformats.org/officeDocument/2006/relations
 
 CONTENTTYPE_NOTES_MASTER = "application/vnd.openxmlformats-officedocument.presentationml.notesMaster+xml"
 CONTENTTYPE_NOTES_SLIDE = "application/vnd.openxmlformats-officedocument.presentationml.notesSlide+xml"
+CONTENTTYPE_THEME = "application/vnd.openxmlformats-officedocument.theme+xml"
+
+DEFAULT_NOTES_CX = "6858000"
+DEFAULT_NOTES_CY = "9144000"
 
 NS = {"p": P_NS, "a": A_NS, "r": R_NS, "ct": CT_NS}
 
@@ -34,6 +38,16 @@ ET.register_namespace("a", A_NS)
 ET.register_namespace("p", P_NS)
 ET.register_namespace("r", R_NS)
 ET.register_namespace("", REL_NS)
+
+INVALID_XML_PATTERN = re.compile(
+    "["
+    "\x00-\x08"
+    "\x0B\x0C"
+    "\x0E-\x1F"
+    "\uD800-\uDFFF"
+    "\uFFFE\uFFFF"
+    "]"
+)
 
 
 def qname(namespace: str, tag: str) -> str:
@@ -148,6 +162,13 @@ def first_theme_part(file_map: dict[str, bytes]) -> str | None:
     return candidates[0] if candidates else None
 
 
+def sanitize_note_text(note_text: str) -> str:
+    sanitized = note_text.replace("\r\n", "\n").replace("\r", "\n")
+    sanitized = INVALID_XML_PATTERN.sub("", sanitized)
+    paragraphs = [line.strip() for line in sanitized.splitlines()]
+    return "\n".join(paragraphs).strip()
+
+
 def ensure_content_type_override(
     content_types_root: ET.Element,
     part_name: str,
@@ -179,10 +200,186 @@ def create_group_shape_tree() -> ET.Element:
     return sp_tree
 
 
+def minimal_theme_xml() -> ET.Element:
+    root = ET.Element(qname(A_NS, "theme"), {"name": "Codex Notes Theme"})
+    theme_elements = ET.SubElement(root, qname(A_NS, "themeElements"))
+    clr_scheme = ET.SubElement(theme_elements, qname(A_NS, "clrScheme"), {"name": "Office"})
+    for name, value in (
+        ("dk1", "000000"),
+        ("lt1", "FFFFFF"),
+        ("dk2", "1F1F1F"),
+        ("lt2", "F3F3F3"),
+        ("accent1", "4472C4"),
+        ("accent2", "70AD47"),
+        ("accent3", "ED7D31"),
+        ("accent4", "A5A5A5"),
+        ("accent5", "FFC000"),
+        ("accent6", "5B9BD5"),
+        ("hlink", "0563C1"),
+        ("folHlink", "954F72"),
+    ):
+        color = ET.SubElement(clr_scheme, qname(A_NS, name))
+        ET.SubElement(color, qname(A_NS, "srgbClr"), {"val": value})
+    font_scheme = ET.SubElement(theme_elements, qname(A_NS, "fontScheme"), {"name": "Office"})
+    ET.SubElement(font_scheme, qname(A_NS, "majorFont"))
+    ET.SubElement(font_scheme, qname(A_NS, "minorFont"))
+    fmt_scheme = ET.SubElement(theme_elements, qname(A_NS, "fmtScheme"), {"name": "Office"})
+    ET.SubElement(fmt_scheme, qname(A_NS, "fillStyleLst"))
+    ET.SubElement(fmt_scheme, qname(A_NS, "lnStyleLst"))
+    ET.SubElement(fmt_scheme, qname(A_NS, "effectStyleLst"))
+    ET.SubElement(fmt_scheme, qname(A_NS, "bgFillStyleLst"))
+    ET.SubElement(root, qname(A_NS, "objectDefaults"))
+    ET.SubElement(root, qname(A_NS, "extraClrSchemeLst"))
+    return root
+
+
+def add_shape_transform(shape_pr: ET.Element, x: str, y: str, cx: str, cy: str) -> None:
+    xfrm = ET.SubElement(shape_pr, qname(A_NS, "xfrm"))
+    ET.SubElement(xfrm, qname(A_NS, "off"), {"x": x, "y": y})
+    ET.SubElement(xfrm, qname(A_NS, "ext"), {"cx": cx, "cy": cy})
+    ET.SubElement(shape_pr, qname(A_NS, "prstGeom"), {"prst": "rect"})
+    shape_pr[-1].append(ET.Element(qname(A_NS, "avLst")))
+
+
+def append_empty_paragraph(tx_body: ET.Element) -> None:
+    paragraph = ET.SubElement(tx_body, qname(A_NS, "p"))
+    ET.SubElement(paragraph, qname(A_NS, "endParaRPr"), {"lang": "zh-CN"})
+
+
+def populate_text_body(tx_body: ET.Element, note_text: str) -> None:
+    tx_body.clear()
+    ET.SubElement(tx_body, qname(A_NS, "bodyPr"), {"wrap": "square"})
+    ET.SubElement(tx_body, qname(A_NS, "lstStyle"))
+    sanitized = sanitize_note_text(note_text)
+    lines = [line for line in sanitized.splitlines() if line.strip()]
+    if not lines:
+        append_empty_paragraph(tx_body)
+        return
+    for line in lines:
+        paragraph = ET.SubElement(tx_body, qname(A_NS, "p"))
+        run = ET.SubElement(paragraph, qname(A_NS, "r"))
+        ET.SubElement(run, qname(A_NS, "rPr"), {"lang": "zh-CN", "dirty": "0"})
+        ET.SubElement(run, qname(A_NS, "t")).text = line
+        ET.SubElement(paragraph, qname(A_NS, "endParaRPr"), {"lang": "zh-CN"})
+
+
+def build_placeholder_shape(
+    *,
+    shape_id: str,
+    name: str,
+    ph_type: str,
+    ph_idx: str | None,
+    x: str,
+    y: str,
+    cx: str,
+    cy: str,
+    text: str = "",
+) -> ET.Element:
+    shape = ET.Element(qname(P_NS, "sp"))
+    nv_sp_pr = ET.SubElement(shape, qname(P_NS, "nvSpPr"))
+    ET.SubElement(nv_sp_pr, qname(P_NS, "cNvPr"), {"id": shape_id, "name": name})
+    ET.SubElement(nv_sp_pr, qname(P_NS, "cNvSpPr"), {"txBox": "1"})
+    nv_pr = ET.SubElement(nv_sp_pr, qname(P_NS, "nvPr"))
+    ph_attrs = {"type": ph_type}
+    if ph_idx is not None:
+        ph_attrs["idx"] = ph_idx
+    ET.SubElement(nv_pr, qname(P_NS, "ph"), ph_attrs)
+    sp_pr = ET.SubElement(shape, qname(P_NS, "spPr"))
+    add_shape_transform(sp_pr, x, y, cx, cy)
+    tx_body = ET.SubElement(shape, qname(P_NS, "txBody"))
+    populate_text_body(tx_body, text)
+    return shape
+
+
+def create_notes_style() -> ET.Element:
+    notes_style = ET.Element(qname(P_NS, "notesStyle"))
+    for level in range(1, 4):
+        paragraph = ET.SubElement(
+            notes_style,
+            qname(A_NS, f"lvl{level}pPr"),
+            {"marL": str((level - 1) * 228600), "indent": "0"},
+        )
+        ET.SubElement(paragraph, qname(A_NS, "defRPr"), {"sz": "1200", "lang": "zh-CN"})
+    return notes_style
+
+
 def create_notes_master_xml() -> ET.Element:
     root = ET.Element(qname(P_NS, "notesMaster"))
     c_sld = ET.SubElement(root, qname(P_NS, "cSld"), {"name": ""})
-    c_sld.append(create_group_shape_tree())
+    sp_tree = create_group_shape_tree()
+    c_sld.append(sp_tree)
+    sp_tree.append(
+        build_placeholder_shape(
+            shape_id="2",
+            name="Header Placeholder 1",
+            ph_type="hdr",
+            ph_idx="2",
+            x="457200",
+            y="228600",
+            cx="5943600",
+            cy="342900",
+        )
+    )
+    sp_tree.append(
+        build_placeholder_shape(
+            shape_id="3",
+            name="Date Placeholder 2",
+            ph_type="dt",
+            ph_idx="3",
+            x="457200",
+            y="8229600",
+            cx="1828800",
+            cy="320040",
+        )
+    )
+    sp_tree.append(
+        build_placeholder_shape(
+            shape_id="4",
+            name="Footer Placeholder 3",
+            ph_type="ftr",
+            ph_idx="4",
+            x="2286000",
+            y="8229600",
+            cx="2286000",
+            cy="320040",
+        )
+    )
+    sp_tree.append(
+        build_placeholder_shape(
+            shape_id="5",
+            name="Slide Image Placeholder 4",
+            ph_type="sldImg",
+            ph_idx="5",
+            x="457200",
+            y="685800",
+            cx="5943600",
+            cy="3429000",
+        )
+    )
+    sp_tree.append(
+        build_placeholder_shape(
+            shape_id="6",
+            name="Notes Placeholder 5",
+            ph_type="body",
+            ph_idx="1",
+            x="457200",
+            y="4343400",
+            cx="5943600",
+            cy="3429000",
+        )
+    )
+    sp_tree.append(
+        build_placeholder_shape(
+            shape_id="7",
+            name="Slide Number Placeholder 6",
+            ph_type="sldNum",
+            ph_idx="6",
+            x="5029200",
+            y="8229600",
+            cx="914400",
+            cy="320040",
+        )
+    )
     ET.SubElement(
         root,
         qname(P_NS, "clrMap"),
@@ -201,67 +398,65 @@ def create_notes_master_xml() -> ET.Element:
             "folHlink": "folHlink",
         },
     )
+    ET.SubElement(root, qname(P_NS, "hf"), {"dt": "1", "ftr": "1", "hdr": "1", "sldNum": "1"})
+    root.append(create_notes_style())
     return root
 
 
 def create_notes_slide_xml(note_text: str) -> ET.Element:
-    root = ET.Element(qname(P_NS, "notes"))
+    root = ET.Element(qname(P_NS, "notes"), {"showMasterSp": "1", "showMasterPhAnim": "1"})
     c_sld = ET.SubElement(root, qname(P_NS, "cSld"), {"name": ""})
     sp_tree = create_group_shape_tree()
     c_sld.append(sp_tree)
-    sp_tree.append(build_notes_shape(note_text))
+    sp_tree.append(
+        build_placeholder_shape(
+            shape_id="2",
+            name="Slide Image Placeholder 1",
+            ph_type="sldImg",
+            ph_idx="5",
+            x="457200",
+            y="685800",
+            cx="5943600",
+            cy="3429000",
+        )
+    )
+    sp_tree.append(
+        build_placeholder_shape(
+            shape_id="3",
+            name="Notes Placeholder 2",
+            ph_type="body",
+            ph_idx="1",
+            x="457200",
+            y="4343400",
+            cx="5943600",
+            cy="3429000",
+            text=note_text,
+        )
+    )
+    sp_tree.append(
+        build_placeholder_shape(
+            shape_id="4",
+            name="Slide Number Placeholder 3",
+            ph_type="sldNum",
+            ph_idx="6",
+            x="5029200",
+            y="8229600",
+            cx="914400",
+            cy="320040",
+        )
+    )
     clr_map_ovr = ET.SubElement(root, qname(P_NS, "clrMapOvr"))
     ET.SubElement(clr_map_ovr, qname(A_NS, "masterClrMapping"))
     return root
 
 
-def build_notes_shape(note_text: str) -> ET.Element:
-    shape = ET.Element(qname(P_NS, "sp"))
-    nv_sp_pr = ET.SubElement(shape, qname(P_NS, "nvSpPr"))
-    ET.SubElement(nv_sp_pr, qname(P_NS, "cNvPr"), {"id": "3", "name": "Speaker Notes"})
-    ET.SubElement(nv_sp_pr, qname(P_NS, "cNvSpPr"))
-    nv_pr = ET.SubElement(nv_sp_pr, qname(P_NS, "nvPr"))
-    ET.SubElement(nv_pr, qname(P_NS, "ph"), {"type": "body", "idx": "1"})
-    ET.SubElement(shape, qname(P_NS, "spPr"))
-    tx_body = ET.SubElement(shape, qname(P_NS, "txBody"))
-    populate_text_body(tx_body, note_text)
-    return shape
-
-
-def populate_text_body(tx_body: ET.Element, note_text: str) -> None:
-    tx_body.clear()
-    ET.SubElement(tx_body, qname(A_NS, "bodyPr"))
-    ET.SubElement(tx_body, qname(A_NS, "lstStyle"))
-    lines = [line.strip() for line in note_text.splitlines() if line.strip()]
-    if not lines:
-        lines = [note_text.strip()] if note_text.strip() else [""]
-    for line in lines:
-        paragraph = ET.SubElement(tx_body, qname(A_NS, "p"))
-        run = ET.SubElement(paragraph, qname(A_NS, "r"))
-        ET.SubElement(run, qname(A_NS, "t")).text = line
-
-
 def ensure_notes_shape(root: ET.Element, note_text: str) -> None:
-    shape_tree = root.find("p:cSld/p:spTree", NS)
-    if shape_tree is None:
-        c_sld = root.find("p:cSld", NS)
-        if c_sld is None:
-            c_sld = ET.SubElement(root, qname(P_NS, "cSld"), {"name": ""})
-        shape_tree = create_group_shape_tree()
-        c_sld.append(shape_tree)
-    target_shape = None
-    for shape in shape_tree.findall("p:sp", NS):
-        ph = shape.find("p:nvSpPr/p:nvPr/p:ph", NS)
-        if ph is not None and ph.attrib.get("type") == "body":
-            target_shape = shape
-            break
-    if target_shape is None:
-        shape_tree.append(build_notes_shape(note_text))
-        return
-    tx_body = target_shape.find("p:txBody", NS)
-    if tx_body is None:
-        tx_body = ET.SubElement(target_shape, qname(P_NS, "txBody"))
-    populate_text_body(tx_body, note_text)
+    root.clear()
+    replacement = create_notes_slide_xml(note_text)
+    root.tag = replacement.tag
+    root.attrib.update(replacement.attrib)
+    for child in list(replacement):
+        root.append(child)
 
 
 def create_notes_master_id_list(rel_id: str) -> ET.Element:
@@ -270,16 +465,65 @@ def create_notes_master_id_list(rel_id: str) -> ET.Element:
     return notes_master_id_lst
 
 
+def ensure_notes_size(presentation_root: ET.Element) -> None:
+    notes_size = presentation_root.find("p:notesSz", NS)
+    if notes_size is None:
+        notes_size = ET.Element(qname(P_NS, "notesSz"), {"cx": DEFAULT_NOTES_CX, "cy": DEFAULT_NOTES_CY})
+        children = list(presentation_root)
+        insert_at = len(children)
+        for idx, child in enumerate(children):
+            if child.tag == qname(P_NS, "defaultTextStyle"):
+                insert_at = idx
+                break
+        presentation_root.insert(insert_at, notes_size)
+        return
+    notes_size.attrib["cx"] = notes_size.attrib.get("cx", DEFAULT_NOTES_CX) or DEFAULT_NOTES_CX
+    notes_size.attrib["cy"] = notes_size.attrib.get("cy", DEFAULT_NOTES_CY) or DEFAULT_NOTES_CY
+
+
+def next_theme_path(file_map: dict[str, bytes]) -> str:
+    existing_indexes = [
+        int(match.group(1))
+        for name in file_map
+        if (match := re.search(r"notesTheme(\d+)\.xml$", name))
+    ]
+    return f"ppt/theme/notesTheme{max(existing_indexes, default=0) + 1}.xml"
+
+
+def ensure_notes_theme(
+    file_map: dict[str, bytes],
+    notes_master_path: str,
+    content_types_root: ET.Element,
+) -> str:
+    notes_master_rels_path = rels_path(notes_master_path)
+    notes_master_rels = parse_rels(file_map, notes_master_rels_path)
+    existing_theme_rel = find_rel(notes_master_rels, RELTYPE_THEME)
+    theme_path = ""
+    if existing_theme_rel is not None:
+        existing_path = resolve_target(notes_master_path, existing_theme_rel["Target"])
+        if posixpath.basename(existing_path).startswith("notesTheme"):
+            theme_path = existing_path
+    if not theme_path:
+        theme_path = next_theme_path(file_map)
+    source_theme = first_theme_part(file_map)
+    if theme_path not in file_map:
+        if source_theme and source_theme in file_map:
+            file_map[theme_path] = file_map[source_theme]
+        else:
+            file_map[theme_path] = xml_bytes(minimal_theme_xml())
+    ensure_content_type_override(content_types_root, theme_path, CONTENTTYPE_THEME)
+    ensure_rel(notes_master_rels, RELTYPE_THEME, relative_target(notes_master_path, theme_path))
+    write_rels(file_map, notes_master_rels_path, notes_master_rels)
+    return theme_path
+
+
 def ensure_notes_master(
     file_map: dict[str, bytes],
     presentation_root: ET.Element,
     presentation_rels: list[dict[str, str]],
     content_types_root: ET.Element,
 ) -> str:
-    theme_part = first_theme_part(file_map)
-    if theme_part is None:
-        raise ValueError("No theme part exists in the PPTX; cannot create notesMaster.")
-
+    ensure_notes_size(presentation_root)
     notes_master_rel = find_rel(presentation_rels, RELTYPE_NOTES_MASTER)
     if notes_master_rel is not None:
         notes_master_path = resolve_target("ppt/presentation.xml", notes_master_rel["Target"])
@@ -317,17 +561,8 @@ def ensure_notes_master(
                 notes_master_id = ET.SubElement(notes_master_id_lst, qname(P_NS, "notesMasterId"))
             notes_master_id.attrib[REL_ID_ATTR] = rel_id
 
-    notes_master_rels_path = rels_path(notes_master_path)
-    notes_master_rels = parse_rels(file_map, notes_master_rels_path)
-    ensure_rel(
-        notes_master_rels,
-        RELTYPE_THEME,
-        relative_target(notes_master_path, theme_part),
-    )
-    write_rels(file_map, notes_master_rels_path, notes_master_rels)
-
-    if notes_master_path not in file_map:
-        file_map[notes_master_path] = xml_bytes(create_notes_master_xml())
+    file_map[notes_master_path] = xml_bytes(create_notes_master_xml())
+    ensure_notes_theme(file_map, notes_master_path, content_types_root)
     ensure_content_type_override(content_types_root, notes_master_path, CONTENTTYPE_NOTES_MASTER)
     return notes_master_path
 
@@ -364,12 +599,9 @@ def ensure_notes_slide_for_slide(
 
     if notes_slide_path in file_map:
         notes_root = parse_xml(file_map, notes_slide_path)
+        ensure_notes_shape(notes_root, note_text)
     else:
         notes_root = create_notes_slide_xml(note_text)
-    ensure_notes_shape(notes_root, note_text)
-    if notes_root.find("p:clrMapOvr", NS) is None:
-        clr_map_ovr = ET.SubElement(notes_root, qname(P_NS, "clrMapOvr"))
-        ET.SubElement(clr_map_ovr, qname(A_NS, "masterClrMapping"))
     file_map[notes_slide_path] = xml_bytes(notes_root)
 
     notes_slide_rels_path = rels_path(notes_slide_path)
