@@ -35,6 +35,6 @@ Default operational policy:
 
 - source add: retry once after checking auth
 - grounding query timeout: 120 seconds
-- studio poll interval: 15 seconds
-- studio poll timeout: 300 seconds
+- studio poll interval: 60 seconds
+- studio poll timeout: 900 seconds (15 minutes)
 - on timeout: report the last known artifact status and stop

@@ -35,7 +35,7 @@ But the CLI guide does **not** currently document named slide flags for format /
 The API reference for the underlying reverse-engineered slide RPC records raw option mappings:
 
 - format codes:
-  - `1` = Detailed Deck
+  - `1` = Detailed Deck (default)
   - `2` = Presenter Slides
 - length codes:
   - `1` = Short

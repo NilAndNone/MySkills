@@ -1,6 +1,6 @@
 ---
 name: notebooklm-paper-to-ppt
-description: Create a NotebookLM-generated slide deck from a local paper PDF or paper URL and download it as a PowerPoint (.pptx). Use for NotebookLM paper-to-slides or NotebookLM PowerPoint requests, not a locally generated deck.
+description: Create a NotebookLM-generated slide deck from a local paper PDF or paper URL and download it as PowerPoint (.pptx). Use when the user mentions NotebookLM slides, paper-to-PPT, generating a presentation from a research paper via NotebookLM, or wants NotebookLM to create a deck from any document. Not for locally generated slides.
 disable-model-invocation: true
 context: fork
 agent: general-purpose
@@ -21,11 +21,13 @@ Use `$ARGUMENTS` plus the user’s request to resolve:
 - optional notebook title
 - optional language
 - optional deck style:
+  - detailed (default)
   - presenter
-  - detailed
-- optional length preference
+- optional length preference (default: `3`)
+- optional PPT visual style (default: `assets/styles/Artifact_Deck.md`)
 
-Default output path: `./out/<slug>.pptx`
+Default output path: `~/Documents/ppt_source/notebooklm_output/<slug>_<YYYYMMDDHHmm>.pptx`
+  - Timestamp is minute-level, e.g. `openclaw_make_money_202603161241.pptx`
 
 If `$ARGUMENTS` and the current user request contain no usable source at all, stop and ask for **one** missing item only: a local PDF path or a paper URL.
 
@@ -55,17 +57,17 @@ If `$ARGUMENTS` and the current user request contain no usable source at all, st
    If the answer is empty or clearly off-topic, stop and report ingestion failure instead of continuing into slide generation.
 
 5. Create a slide deck artifact.
-   - Prefer presenter-style slides when the user wants speaking support.
-   - Prefer a detailed deck when the user wants a standalone read-ahead artifact.
+   - Default to **detailed deck** (format code `1`) unless the user explicitly requests presenter style.
+   - Use presenter-style slides (format code `2`) only when the user explicitly asks for speaking support.
+   - Default length code: **`3`** (Default). Override with the user’s requested length when provided.
    - Use the user’s requested language when the installed tool exposes it.
+   - **PPT visual style**: Read `assets/styles/Artifact_Deck.md` (relative to this skill directory) and include its style instructions when creating the deck. If the user specifies a different style file, use that instead.
    - Do **not** hard-code tool parameter names unless the installed schema shows them.
    - Current documented reality:
      - official NotebookLM UI confirms slide format, language, and length concepts
      - reverse-engineered raw slide options confirm:
-       - Detailed Deck = `1`
+       - Detailed Deck = `1` (default)
        - Presenter Slides = `2`
-       - Short = `1`
-       - Default = `3`
        - language uses BCP-47 codes such as `en`, `zh-CN`, `ja`
      - the public CLI guide currently documents `nlm slides create <notebook> --confirm` without documenting named slide flags for format/language/length
    - Therefore:
@@ -75,8 +77,8 @@ If `$ARGUMENTS` and the current user request contain no usable source at all, st
    - See `references/mcp-parameter-notes.md`
 
 6. Poll artifact status until the slide deck completes.
-   - Poll every 15 seconds.
-   - Default timeout: 300 seconds.
+   - Poll every 60 seconds.
+   - Default timeout: 900 seconds (15 minutes).
    - On timeout:
      - run one final `nlm studio status <notebook> --json` if available
      - report the last known status and any visible artifacts
@@ -133,7 +135,7 @@ Use these files when needed:
 - `references/qa-checklist.md`
 - `references/mcp-parameter-notes.md`
 - `references/evaluation-applied.md`
+- `assets/styles/Artifact_Deck.md` (default PPT visual style)
 - `scripts/check_env.sh`
 - `scripts/cli_flow_template.sh`
-- `scripts/extract_pptx_text.py`
 - `scripts/extract_pptx_text.py`
