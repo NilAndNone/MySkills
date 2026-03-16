@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PACK_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SRC="$PACK_ROOT/.claude/skills/notebooklm-paper-to-ppt"
+DST_ROOT="${1:-$(pwd)/.claude/skills}"
+DST="$DST_ROOT/notebooklm-paper-to-ppt"
+TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
+
+mkdir -p "$DST_ROOT"
+if [ -e "$DST" ]; then
+  BACKUP="${DST}.bak.${TIMESTAMP}"
+  echo "[WARN] Existing Claude Code skill found. Backing it up to:"
+  echo "  $BACKUP"
+  mv "$DST" "$BACKUP"
+fi
+cp -R "$SRC" "$DST"
+
+echo "[OK] Installed Claude Code project-level skill to:"
+echo "  $DST"
+echo
+echo "Next:"
+echo "  bash .claude/skills/notebooklm-paper-to-ppt/scripts/install_notebooklm_mcp_for_claude_code.sh"
