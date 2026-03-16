@@ -11,25 +11,21 @@ Usage:
 
 Options:
   --title <name>            Explicit notebook title
-  --timeout <sec>           Poll timeout for slide generation (default: 300)
-  --interval <sec>          Poll interval seconds (default: 15)
+  --timeout <sec>           Poll timeout for slide generation (default: 900)
+  --interval <sec>          Poll interval seconds (default: 60)
   --query-timeout <sec>     Grounding query timeout seconds (default: 120)
   --non-interactive         Never prompt; fail instead of hanging
   --skip-grounding-query    Skip the readiness sanity-check query
-  --skip-text-dump          Do not emit <output>.slides.txt after download
   -h, --help                Show this help
 
 Environment overrides:
   NLM_POLL_TIMEOUT_SEC      Same as --timeout
   NLM_POLL_INTERVAL_SEC     Same as --interval
   NLM_QUERY_TIMEOUT_SEC     Same as --query-timeout
-  NLM_SKIP_TEXT_DUMP        Set to 1 to skip the slide-text dump
 
 Examples:
-  cli_flow_template.sh ./papers/paper.pdf ./out/paper.pptx
-  cli_flow_template.sh --timeout 420 \
-    https://arxiv.org/abs/1706.03762 ./out/paper.pptx "Attention Is All You Need"
-  cli_flow_template.sh --non-interactive ./paper.pdf ./out/paper.pptx
+  cli_flow_template.sh ./papers/paper.pdf ./out/raw-deck.pptx
+  cli_flow_template.sh --non-interactive ./paper.pdf ./out/raw-deck.pptx
 EOF
 }
 
@@ -51,18 +47,18 @@ PY
 }
 
 extract_uuid() {
-  python3 - <<'PY'
+  python3 - "$1" <<'PY'
 import re, sys
-text = sys.stdin.read()
+text = sys.argv[1]
 m = re.search(r'\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b', text, re.I)
 print(m.group(0) if m else '')
 PY
 }
 
 extract_semver() {
-  python3 - <<'PY'
+  python3 - "$1" <<'PY'
 import re, sys
-text = sys.stdin.read()
+text = sys.argv[1]
 m = re.search(r'(\d+\.\d+\.\d+)', text)
 print(m.group(1) if m else '')
 PY
@@ -99,7 +95,7 @@ ensure_min_nlm_version() {
     echo "[WARN] 'nlm --version' returned non-zero; skipping version gate." >&2
     return 0
   fi
-  ver="$(printf '%s' "$raw" | extract_semver)"
+  ver="$(extract_semver "$raw")"
   if [ -z "$ver" ]; then
     echo "[WARN] Could not parse an nlm version from: $raw" >&2
     return 0
@@ -114,9 +110,9 @@ ensure_min_nlm_version() {
 }
 
 extract_slide_artifact_from_json() {
-  python3 - <<'PY'
+  python3 - "$1" <<'PY'
 import json, sys
-raw = sys.stdin.read().strip()
+raw = sys.argv[1].strip()
 if not raw:
     print('')
     raise SystemExit
@@ -170,11 +166,9 @@ OUTPUT=""
 TITLE=""
 NON_INTERACTIVE=0
 SKIP_GROUNDING_QUERY=0
-SKIP_TEXT_DUMP="${NLM_SKIP_TEXT_DUMP:-0}"
-POLL_TIMEOUT_SEC="${NLM_POLL_TIMEOUT_SEC:-300}"
-POLL_INTERVAL_SEC="${NLM_POLL_INTERVAL_SEC:-15}"
+POLL_TIMEOUT_SEC="${NLM_POLL_TIMEOUT_SEC:-900}"
+POLL_INTERVAL_SEC="${NLM_POLL_INTERVAL_SEC:-60}"
 QUERY_TIMEOUT_SEC="${NLM_QUERY_TIMEOUT_SEC:-120}"
-TEXT_DUMP_PATH=""
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -200,10 +194,6 @@ while [ "$#" -gt 0 ]; do
       ;;
     --skip-grounding-query)
       SKIP_GROUNDING_QUERY=1
-      shift
-      ;;
-    --skip-text-dump)
-      SKIP_TEXT_DUMP=1
       shift
       ;;
     -h|--help)
@@ -269,14 +259,6 @@ case "$QUERY_TIMEOUT_SEC" in
     exit 1
     ;;
 esac
-case "$SKIP_TEXT_DUMP" in
-  0|1)
-    ;;
-  *)
-    echo "[ERROR] NLM_SKIP_TEXT_DUMP must be 0 or 1" >&2
-    exit 1
-    ;;
-esac
 
 MAX_ATTEMPTS=$(( (POLL_TIMEOUT_SEC + POLL_INTERVAL_SEC - 1) / POLL_INTERVAL_SEC ))
 if [ "$MAX_ATTEMPTS" -lt 1 ]; then
@@ -285,7 +267,6 @@ fi
 
 SLUG="$(slugify "$TITLE")"
 ALIAS="ppt_${SLUG}_$RANDOM"
-TEXT_DUMP_PATH="${OUTPUT%.pptx}.slides.txt"
 
 echo "[1/7] Checking NotebookLM auth..."
 if ! nlm login --check >/dev/null 2>&1; then
@@ -295,7 +276,7 @@ fi
 
 echo "[2/7] Creating notebook..."
 create_output="$( (nlm notebook create "$TITLE" --quiet 2>/dev/null || nlm notebook create "$TITLE") 2>&1 )"
-NOTEBOOK_ID="$(printf '%s' "$create_output" | extract_uuid)"
+NOTEBOOK_ID="$(extract_uuid "$create_output")"
 
 if [ -z "$NOTEBOOK_ID" ]; then
   echo "[WARN] Could not auto-parse notebook id from create output."
@@ -363,7 +344,7 @@ LAST_STATUS_OUT=""
 for i in $(seq 1 "$MAX_ATTEMPTS"); do
   echo "  Poll attempt $i/$MAX_ATTEMPTS ..."
   LAST_STATUS_OUT="$( (nlm studio status "$ALIAS" --json 2>/dev/null || nlm studio status "$ALIAS") 2>&1 )"
-  ARTIFACT_ID="$(printf '%s' "$LAST_STATUS_OUT" | extract_slide_artifact_from_json)"
+  ARTIFACT_ID="$(extract_slide_artifact_from_json "$LAST_STATUS_OUT")"
   if [ -n "$ARTIFACT_ID" ]; then
     break
   fi
@@ -387,26 +368,12 @@ if [ ! -f "$OUTPUT" ]; then
   exit 1
 fi
 
-if [ "$SKIP_TEXT_DUMP" -eq 0 ] && [ -f "$SCRIPT_DIR/extract_pptx_text.py" ]; then
-  echo "[INFO] Extracting slide text for QA..."
-  set +e
-  python3 "$SCRIPT_DIR/extract_pptx_text.py" "$OUTPUT" --output "$TEXT_DUMP_PATH"
-  text_dump_status=$?
-  set -e
-  if [ "$text_dump_status" -ne 0 ]; then
-    echo "[WARN] PPTX text extraction failed. Automated content QA is limited; open the deck manually." >&2
-    TEXT_DUMP_PATH=""
-  fi
-fi
-
 echo
 echo "[OK] Finished."
-echo "Notebook alias : $ALIAS"
-echo "Notebook id    : $NOTEBOOK_ID"
-echo "Artifact id    : $ARTIFACT_ID"
-echo "Output         : $OUTPUT"
-if [ -n "$TEXT_DUMP_PATH" ] && [ -f "$TEXT_DUMP_PATH" ]; then
-  echo "Slide text     : $TEXT_DUMP_PATH"
-fi
+echo "Notebook alias    : $ALIAS"
+echo "Notebook id       : $NOTEBOOK_ID"
+echo "Artifact id       : $ARTIFACT_ID"
+echo "Downloaded deck   : $OUTPUT"
+echo "Postprocess step  : python3 \"$SCRIPT_DIR/postprocess_downloaded_pptx.py\" export-assets --input \"$OUTPUT\""
 echo
-echo "Automated QA should read the slide-text dump when available. Manual visual QA is still recommended."
+echo "This CLI template only downloads the PPTX. The Claude skill performs Chinese speaker-note generation separately."

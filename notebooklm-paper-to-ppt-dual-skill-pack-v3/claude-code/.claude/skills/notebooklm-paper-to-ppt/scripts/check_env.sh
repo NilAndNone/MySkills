@@ -16,9 +16,9 @@ check_cmd() {
 }
 
 extract_semver() {
-  python3 - <<'PY'
+  python3 - "$1" <<'PY'
 import re, sys
-text = sys.stdin.read()
+text = sys.argv[1]
 m = re.search(r'(\d+\.\d+\.\d+)', text)
 print(m.group(1) if m else '')
 PY
@@ -69,7 +69,7 @@ if [ "$version_status" -ne 0 ]; then
   echo "[WARN] 'nlm --version' returned non-zero."
   exit "$version_status"
 fi
-version_parsed="$(printf '%s' "$version_raw" | extract_semver)"
+version_parsed="$(extract_semver "$version_raw")"
 if [ -z "$version_parsed" ]; then
   echo "[WARN] Could not parse a semantic version from nlm output."
   exit 1
@@ -102,12 +102,26 @@ if [ "$doctor_status" -ne 0 ]; then
 fi
 
 echo
-echo "== PPTX QA helper =="
-if [ -f "$SCRIPT_DIR/extract_pptx_text.py" ]; then
-  python3 "$SCRIPT_DIR/extract_pptx_text.py" --help >/dev/null
-  echo "[OK] extract_pptx_text.py is present and runnable"
+echo "== PPTX postprocess helpers =="
+if [ -f "$SCRIPT_DIR/export_pptx_slide_images.py" ]; then
+  python3 "$SCRIPT_DIR/export_pptx_slide_images.py" --help >/dev/null
+  echo "[OK] export_pptx_slide_images.py is present and runnable"
 else
-  echo "[WARN] extract_pptx_text.py is missing"
+  echo "[WARN] export_pptx_slide_images.py is missing"
+  exit 1
+fi
+if [ -f "$SCRIPT_DIR/inject_pptx_speaker_notes.py" ]; then
+  python3 "$SCRIPT_DIR/inject_pptx_speaker_notes.py" --help >/dev/null
+  echo "[OK] inject_pptx_speaker_notes.py is present and runnable"
+else
+  echo "[WARN] inject_pptx_speaker_notes.py is missing"
+  exit 1
+fi
+if [ -f "$SCRIPT_DIR/postprocess_downloaded_pptx.py" ]; then
+  python3 "$SCRIPT_DIR/postprocess_downloaded_pptx.py" --help >/dev/null
+  echo "[OK] postprocess_downloaded_pptx.py is present and runnable"
+else
+  echo "[WARN] postprocess_downloaded_pptx.py is missing"
   exit 1
 fi
 

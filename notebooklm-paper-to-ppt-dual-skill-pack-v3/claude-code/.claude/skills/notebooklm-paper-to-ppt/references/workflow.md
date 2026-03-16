@@ -1,12 +1,12 @@
 # Workflow notes
 
-Use this skill only when the user explicitly wants a **NotebookLM-generated** deck.
+Use this skill only when the user explicitly wants a NotebookLM-generated deck.
 
 ## Decision rules
 
-- Prefer a **local PDF** over a URL when both are available.
-- Prefer **manual invocation** for this workflow. It has external side effects: upload, generation, and download.
-- Prefer **MCP tools first** because they avoid brittle shell parsing.
+- Prefer a local PDF over a URL when both are available.
+- Prefer manual invocation for this workflow. It has external side effects: upload, generation, download, and postprocessing.
+- Prefer MCP tools first because they avoid brittle shell parsing.
 - Fall back to the CLI only when the MCP schema is missing, incompatible, or failing.
 
 ## Why regeneration beats endless revision
@@ -20,14 +20,17 @@ So when the structure is wrong, regenerate. Do not build a Franken-deck from rev
 
 ## What counts as success
 
-Do **not** report success until all of these are true:
+Do not report success until all of these are true:
 
 1. Notebook was created
 2. Source ingestion completed
 3. A grounding query returns a coherent answer
 4. A slide deck artifact completed
-5. The `.pptx` file exists at the promised path
-6. A QA pass over extracted slide text did not find obvious hallucinated claims, or the run explicitly disclosed that only limited automated QA was possible
+5. The raw `.pptx` file exists at the promised `<output>.raw.pptx` path
+6. Slide images were exported to `<output>.slide-images/`
+7. A `<output>.notes.json` payload was created
+8. The final `.pptx` file exists at the promised `<output>.pptx` path
+9. The response includes `notes_status`, `notes_artifacts`, and `notes_summary`
 
 ## Timeouts and retries
 

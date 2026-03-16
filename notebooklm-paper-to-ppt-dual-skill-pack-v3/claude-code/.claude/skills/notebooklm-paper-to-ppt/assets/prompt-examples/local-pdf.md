@@ -1,1 +1,1 @@
-/notebooklm-paper-to-ppt ./papers/attention-is-all-you-need.pdf 输出到 ./out/attention-is-all-you-need.pptx 语言中文 使用 presenter 风格，并返回 notebook id、artifact id 和 QA 摘要
+/notebooklm-paper-to-ppt ./papers/attention-is-all-you-need.pdf 输出到 ./out/attention-is-all-you-need.pptx 语言中文 使用 presenter slides 格式，下载 raw deck 到同名 `.raw.pptx`，再按页导出图片、生成中文 speaker notes 并写回最终 PPT，返回 notebook id、artifact id、notes_status、notes_artifacts 和 notes_summary

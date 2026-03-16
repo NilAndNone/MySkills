@@ -37,23 +37,23 @@ bash ~/.claude/skills/notebooklm-paper-to-ppt/scripts/check_env.sh
 `check_env.sh` 现在除了命令、登录态和 MCP 可见性外，还会额外检查：
 
 - `nlm --version` 是否满足最低版本要求
-- `scripts/extract_pptx_text.py` 是否可运行
+- `scripts/export_pptx_slide_images.py` 是否可运行
 
-### PPTX 文本导出
+### PPTX 图片导出与备注写回
 
 skill 内新增：
 
 ```text
-.claude/skills/notebooklm-paper-to-ppt/scripts/extract_pptx_text.py
+.claude/skills/notebooklm-paper-to-ppt/scripts/export_pptx_slide_images.py
 ```
 
-它会从 `.pptx` 里抽取每页文字，供 agent 做自动 QA。`cli_flow_template.sh` 默认也会额外产出一个 sidecar 文本文件：
+它会从 `.pptx` 里按页导出代表性图片和 `manifest.json`，供后续逐页生成中文 speaker notes。默认目录名是：
 
 ```text
-<output>.slides.txt
+<output>.slide-images/
 ```
 
-你可以把它当成“机器能读的 deck 摘要”。
+例如 `deck.slide-images/`。
 
 ## 3. skill 为什么这样写
 
@@ -86,14 +86,14 @@ Claude Code 文档里，`general-purpose` 是适合：
 - multi-step operations
 - code modifications
 
-这正好匹配这种“解析输入 -> 上传 -> 检查 -> 生成 -> 下载 -> QA”的工作流。用 Explore 反而不合适，因为 Explore 是偏只读探索型。
+这正好匹配这种“解析输入 -> 上传 -> 检查 -> 生成 -> 下载 -> 导出图片 -> 写回备注”的工作流。用 Explore 反而不合适，因为 Explore 是偏只读探索型。
 
 ## 4. 调用方式
 
 ### 本地 PDF
 
 ```text
-/notebooklm-paper-to-ppt ./papers/attention-is-all-you-need.pdf 输出到 ./out/attention-is-all-you-need.pptx 语言中文 使用 presenter 风格
+/notebooklm-paper-to-ppt ./papers/attention-is-all-you-need.pdf 输出到 ./out/attention-is-all-you-need.pptx 语言中文 使用 presenter 风格，并写入中文 speaker notes
 ```
 
 ### URL
@@ -107,7 +107,7 @@ Claude Code 文档里，`general-purpose` 是适合：
 如果你只给 source，不给 output path，默认：
 
 ```text
-./out/<slug>.pptx
+~/Documents/ppt_source/notebooklm_output/<slug>_<YYYYMMDDHHmm>.pptx
 ```
 
 ## 5. MCP 安装逻辑
@@ -177,31 +177,54 @@ Claude Code skills 支持 `$ARGUMENTS`。
 2. 如果 schema 暴露了 slide format / language / length，就用
 3. 否则退回默认设置，并在结果里明确说明
 
-### 7.6 下载与 QA
+### 7.6 下载与中文备注
 
 完成后会输出：
 
 - notebook id
 - artifact id
-- path
-- QA note
+- final ppt path
+- raw ppt path
+- notes json path
+- slide-images dir
+- notes_status
+- notes_artifacts
+- notes_summary
 - caveat
 - MCP / CLI fallback 标记
 
+默认流程不是下载后 QA，而是：
+
+1. 先把 NotebookLM 产物下载成 `<output>.raw.pptx`
+2. 导出 `<output>.slide-images/`
+3. 逐页基于图片生成中文 speaker notes
+4. 写回最终 `<output>.pptx`
+
+这些中文备注只写到 PowerPoint speaker notes，不改幻灯片可见内容。  
+生成 notes 时默认不注入任何 style 文件，让 NotebookLM 自己决定 deck 的视觉风格。只有你显式指定 style 文件时，skill 才会把那个文件的内容注入生成 prompt。
+
 ## 8. CLI fallback 模板
 
-默认会尝试生成：
+CLI 模板现在只负责下载 raw `.pptx`，不直接调模型生成 notes。
 
-```text
-<output>.slides.txt
-```
-
-如果你就是不想要这个 sidecar 文本，可以加：
+如果你想单独测试“下载之后”的流程，直接运行：
 
 ```bash
---skip-text-dump
+python3 .claude/skills/notebooklm-paper-to-ppt/scripts/postprocess_downloaded_pptx.py \
+  export-assets \
+  --input ./out/paper.raw.pptx \
+  --assets-dir ./out/paper.slide-images
 ```
 
+再准备一个符合约定的 `notes.json`，然后执行：
+
+```bash
+python3 .claude/skills/notebooklm-paper-to-ppt/scripts/postprocess_downloaded_pptx.py \
+  apply-notes \
+  --input ./out/paper.raw.pptx \
+  --notes-json ./out/paper.notes.json \
+  --output ./out/paper.pptx
+```
 
 路径：
 
@@ -212,13 +235,13 @@ Claude Code skills 支持 `$ARGUMENTS`。
 ### 基本运行
 
 ```bash
-bash .claude/skills/notebooklm-paper-to-ppt/scripts/cli_flow_template.sh   ./papers/paper.pdf   ./out/paper.pptx
+bash .claude/skills/notebooklm-paper-to-ppt/scripts/cli_flow_template.sh   ./papers/paper.pdf   ./out/paper.raw.pptx
 ```
 
 ### 非交互运行
 
 ```bash
-bash .claude/skills/notebooklm-paper-to-ppt/scripts/cli_flow_template.sh   --non-interactive   --timeout 420   --query-timeout 150   ./papers/paper.pdf   ./out/paper.pptx
+bash .claude/skills/notebooklm-paper-to-ppt/scripts/cli_flow_template.sh   --non-interactive   --timeout 420   --query-timeout 150   ./papers/paper.pdf   ./out/paper.raw.pptx
 ```
 
 ## 9. 常见问题
@@ -276,6 +299,6 @@ nlm login
 ## 11. 相关文件
 
 - `references/workflow.md`
-- `references/qa-checklist.md`
+- `references/notes-checklist.md`
 - `references/mcp-parameter-notes.md`
 - `references/evaluation-applied.md`

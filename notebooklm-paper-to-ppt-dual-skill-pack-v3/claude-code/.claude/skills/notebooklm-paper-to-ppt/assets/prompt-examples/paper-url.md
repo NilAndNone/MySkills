@@ -1,1 +1,1 @@
-/notebooklm-paper-to-ppt https://arxiv.org/abs/1706.03762 output ./out/aiyn-detailed.pptx language en detailed deck，并告诉我这份 deck 更适合 regenerate 还是只做 revision
+/notebooklm-paper-to-ppt https://arxiv.org/abs/1706.03762 output ./out/aiyn-detailed.pptx language en detailed deck，不注入任何 style 文件，先下载 raw deck，再按页图片生成中文 speaker notes 并写回最终 PPT，返回 notebook id、artifact id、notes_status、notes_artifacts 和 notes_summary
