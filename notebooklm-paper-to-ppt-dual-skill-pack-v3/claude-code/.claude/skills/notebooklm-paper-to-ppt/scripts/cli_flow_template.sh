@@ -7,7 +7,7 @@ MIN_NLM_VERSION="0.3.5"
 usage() {
   cat <<'EOF'
 Usage:
-  cli_flow_template.sh [options] <paper.pdf|paper_url> <output.pptx> [notebook_title]
+  cli_flow_template.sh [options] <source.pdf|source_url> <output.pptx> [notebook_title]
 
 Options:
   --title <name>            Explicit notebook title
@@ -24,8 +24,8 @@ Environment overrides:
   NLM_QUERY_TIMEOUT_SEC     Same as --query-timeout
 
 Examples:
-  cli_flow_template.sh ./papers/paper.pdf ./out/raw-deck.pptx
-  cli_flow_template.sh --non-interactive ./paper.pdf ./out/raw-deck.pptx
+  cli_flow_template.sh ./papers/source.pdf ./out/raw-deck.pptx
+  cli_flow_template.sh --non-interactive ./source.pdf ./out/raw-deck.pptx
 EOF
 }
 
@@ -320,7 +320,7 @@ fi
 if [ "$SKIP_GROUNDING_QUERY" -eq 0 ]; then
   echo "[4/7] Running grounding query..."
   set +e
-  query_out="$(nlm notebook query "$ALIAS" "What is the paper's main contribution in one sentence?" --timeout "$QUERY_TIMEOUT_SEC" 2>&1)"
+  query_out="$(nlm notebook query "$ALIAS" "What is the source's main contribution or takeaway in one sentence?" --timeout "$QUERY_TIMEOUT_SEC" 2>&1)"
   query_status=$?
   set -e
   if [ "$query_status" -ne 0 ]; then

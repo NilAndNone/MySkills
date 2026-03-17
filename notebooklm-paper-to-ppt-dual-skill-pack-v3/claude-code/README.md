@@ -5,12 +5,6 @@ Install into:
 - project: `.claude/skills/notebooklm-paper-to-ppt/`
 - user: `~/.claude/skills/notebooklm-paper-to-ppt/`
 
-Manual invocation:
-
-```text
-/notebooklm-paper-to-ppt ./papers/your-paper.pdf 输出到 ./out/your-paper.pptx 语言中文
-```
-
 This skill is configured as **manual-only** via frontmatter:
 
 ```yaml
@@ -19,18 +13,104 @@ context: fork
 agent: general-purpose
 ```
 
-That is intentional. This workflow uploads sources, triggers background generation, downloads the raw deck, builds a Claude-readable notes context pack from the raw deck plus the original paper, then has Claude generate the final `notes.json` before writing speaker notes back into the final PPT.
+That is intentional. Uploading sources, generating NotebookLM artifacts, downloading `.pptx` files, crawling web pages, and writing speaker notes are side effects.
 
-This revision adds:
+## Supported modes
 
-- a real `nlm` minimum-version check in `scripts/check_env.sh`
-- `scripts/export_pptx_slide_images.py` for per-slide image export after download
-- `scripts/prepare_notes_context.py` for source parsing, chunking, slide-to-source mapping, heuristic note drafting, and Claude prompt bundle generation
-- `scripts/postprocess_downloaded_pptx.py` for standalone `export-assets`, `prepare-context`, `validate-notes`, and `apply-notes`
-- `scripts/inject_pptx_speaker_notes.py` for writing robust notes pages into PPTX with only the Python standard library
-- `notes_status`, `notes_artifacts`, and `notes_summary` as the new Claude return contract
-- timestamped backups in the install scripts instead of silent deletion
+One command entrypoint, three workflows:
 
-Default deck generation does not inject any style file. `assets/styles/Artifact_Deck.md` remains available, but only when the user explicitly asks for it.
+- `mode=full`
+  - default
+  - create a NotebookLM deck, download `<output>.raw.pptx`, generate notes, and write the final `<output>.pptx`
+- `mode=deck-only`
+  - create and download the NotebookLM raw deck only
+- `mode=notes-only`
+  - start from an existing `raw_pptx=...` and only run the notes flow
 
-`prepare-context` writes all intermediate outputs into `<deck>.notes-artifacts/`, including `context.json`, `notes.heuristic.json`, `preview.md`, `slide-images/`, `tmp/source_full.txt`, `tmp/claude_notes_input.json`, and `tmp/claude_notes_prompt.md`. The final `notes.json` is expected to be written by Claude after reading the generated prompt and context files. PDF sources use the optional `pypdf` package.
+If `mode` is omitted and the request already includes `raw_pptx=...` plus one of `source_pdf=...`, `source_text=...`, or `source_url=...`, the skill auto-resolves to `notes-only`. Otherwise it defaults to `full`.
+
+## Supported source inputs
+
+- local PDF
+- crawlable single-page web URL
+- local text or markdown file for notes generation
+
+Web URLs are supported in two places:
+
+- `source=https://...` for `full` and `deck-only`
+- `source_url=https://...` for `notes-only`
+
+Single-page means the skill fetches only the exact page you provided. It does not recurse into child links or crawl the whole site.
+
+## Canonical invocation examples
+
+Default `full` with local PDF:
+
+```text
+/notebooklm-paper-to-ppt source=./papers/your-paper.pdf output=./out/your-paper.pptx language=zh-CN deck_format=presenter
+```
+
+Default `full` with webpage URL:
+
+```text
+/notebooklm-paper-to-ppt source=https://example.com/article output=./out/article-deck.pptx language=zh-CN
+```
+
+Explicit `deck-only` with webpage URL:
+
+```text
+/notebooklm-paper-to-ppt mode=deck-only source=https://example.com/article output=./out/article-deck.pptx
+```
+
+Explicit `notes-only` with `source_url`:
+
+```text
+/notebooklm-paper-to-ppt mode=notes-only raw_pptx=./out/article-deck.raw.pptx source_url=https://example.com/article output=./out/article-deck.pptx
+```
+
+Explicit `notes-only` with local text:
+
+```text
+/notebooklm-paper-to-ppt mode=notes-only raw_pptx=./out/article-deck.raw.pptx source_text=./papers/article.txt output=./out/article-deck.pptx
+```
+
+## Output conventions
+
+For a final output like `./out/deck.pptx`:
+
+- raw deck: `./out/deck.raw.pptx`
+- notes artifacts dir: `./out/deck.notes-artifacts/`
+- crawled webpage text when used: `./out/deck.notes-artifacts/tmp/source_webpage.txt`
+
+`prepare-context` writes all intermediate outputs into `<deck>.notes-artifacts/`, including:
+
+- `context.json`
+- `notes.heuristic.json`
+- `preview.md`
+- `slide-images/`
+- `tmp/source_full.txt`
+- `tmp/claude_notes_input.json`
+- `tmp/claude_notes_prompt.md`
+
+The final `notes.json` is written by Claude after reading the generated prompt and context files.
+
+## New helper
+
+This revision adds `scripts/fetch_web_source.py`.
+
+- input: `--url` and `--output`
+- output: UTF-8 text file for `prepare-context --source-text`
+- extraction strategy:
+  - use `trafilatura` when available
+  - otherwise fall back to standard-library HTML text extraction
+
+The helper is used only when notes generation needs a webpage as its grounding source.
+
+## Existing postprocess utilities
+
+- `scripts/export_pptx_slide_images.py`
+- `scripts/prepare_notes_context.py`
+- `scripts/postprocess_downloaded_pptx.py`
+- `scripts/inject_pptx_speaker_notes.py`
+
+Default deck generation still does not inject any style file. `assets/styles/Artifact_Deck.md` remains available only on explicit request.

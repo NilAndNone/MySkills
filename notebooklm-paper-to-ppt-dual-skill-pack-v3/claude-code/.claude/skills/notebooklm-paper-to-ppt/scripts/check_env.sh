@@ -124,6 +124,13 @@ else
   echo "[WARN] postprocess_downloaded_pptx.py is missing"
   exit 1
 fi
+if [ -f "$SCRIPT_DIR/fetch_web_source.py" ]; then
+  python3 "$SCRIPT_DIR/fetch_web_source.py" --help >/dev/null
+  echo "[OK] fetch_web_source.py is present and runnable"
+else
+  echo "[WARN] fetch_web_source.py is missing"
+  exit 1
+fi
 
 echo
 echo "== Claude Code MCP visibility =="

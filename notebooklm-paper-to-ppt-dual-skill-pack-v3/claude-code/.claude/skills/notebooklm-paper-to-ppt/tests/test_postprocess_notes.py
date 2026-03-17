@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import functools
+import http.server
 import json
 import os
 import stat
@@ -8,10 +10,13 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import threading
 import unittest
 import zlib
 import zipfile
 import posixpath
+import socketserver
+from contextlib import contextmanager
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -19,12 +24,13 @@ from xml.etree import ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_DIR = ROOT / "scripts"
 EXPORT_SCRIPT = SCRIPT_DIR / "export_pptx_slide_images.py"
+FETCH_WEB_SOURCE_SCRIPT = SCRIPT_DIR / "fetch_web_source.py"
 POSTPROCESS_SCRIPT = SCRIPT_DIR / "postprocess_downloaded_pptx.py"
 CLI_SCRIPT = SCRIPT_DIR / "cli_flow_template.sh"
 
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from export_pptx_slide_images import default_artifacts_dir  # noqa: E402
+from export_pptx_slide_images import deck_stem, default_artifacts_dir  # noqa: E402
 from inject_pptx_speaker_notes import apply_notes_to_pptx  # noqa: E402
 
 
@@ -394,6 +400,45 @@ def slide_notes_map(path: Path) -> dict[int, str]:
         texts = [node.text for node in notes_root.findall(".//a:t", NS) if node.text]
         notes_by_index[index] = "\n".join(texts)
     return notes_by_index
+
+
+def env_with_trafilatura_stub(tmp_path: Path) -> dict[str, str]:
+    stub_dir = tmp_path / "stub"
+    stub_dir.mkdir()
+    (stub_dir / "trafilatura.py").write_text(
+        textwrap.dedent(
+            """\
+            def extract(*args, **kwargs):
+                return None
+            """
+        ),
+        encoding="utf-8",
+    )
+    env = os.environ.copy()
+    pythonpath_parts = [str(stub_dir)]
+    existing = env.get("PYTHONPATH")
+    if existing:
+        pythonpath_parts.append(existing)
+    env["PYTHONPATH"] = ":".join(pythonpath_parts)
+    return env
+
+
+@contextmanager
+def serve_fixture_directory(directory: Path) -> str:
+    class QuietHandler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A003
+            return
+
+    handler = functools.partial(QuietHandler, directory=str(directory))
+    with socketserver.TCPServer(("127.0.0.1", 0), handler) as server:
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            yield f"http://127.0.0.1:{port}"
+        finally:
+            server.shutdown()
+            thread.join()
 
 
 class ExportAssetsTest(unittest.TestCase):
@@ -1051,6 +1096,222 @@ class PostprocessIntegrationTest(unittest.TestCase):
 
             self.assertNotEqual(apply_completed.returncode, 0)
             self.assertIn("missing heading", apply_completed.stderr)
+
+
+class FetchWebSourceTest(unittest.TestCase):
+    def test_fetch_web_source_extracts_visible_text_and_skips_noise(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            html_path = tmp_path / "page.html"
+            output_path = tmp_path / "source_webpage.txt"
+            html_path.write_text(
+                textwrap.dedent(
+                    """\
+                    <!doctype html>
+                    <html>
+                      <head>
+                        <title>Demo Page</title>
+                        <style>.hidden { display:none; }</style>
+                        <script>console.log("tracking");</script>
+                      </head>
+                      <body>
+                        <header>Header Noise</header>
+                        <nav>Top Navigation</nav>
+                        <main>
+                          <article>
+                            <h1>Main Claim</h1>
+                            <p>This page explains the benchmark setup.</p>
+                            <p>It also summarizes the key reported results.</p>
+                          </article>
+                        </main>
+                        <footer>Footer Noise</footer>
+                      </body>
+                    </html>
+                    """
+                ),
+                encoding="utf-8",
+            )
+
+            with serve_fixture_directory(tmp_path) as base_url:
+                completed = subprocess.run(
+                    [
+                        sys.executable,
+                        str(FETCH_WEB_SOURCE_SCRIPT),
+                        "--url",
+                        f"{base_url}/page.html",
+                        "--output",
+                        str(output_path),
+                    ],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    env=env_with_trafilatura_stub(tmp_path),
+                )
+
+            extracted = output_path.read_text(encoding="utf-8")
+            self.assertEqual(completed.stdout.strip(), str(output_path))
+            self.assertIn("Source URL:", extracted)
+            self.assertIn("Page Title: Demo Page", extracted)
+            self.assertIn("Main Claim", extracted)
+            self.assertIn("benchmark setup", extracted)
+            self.assertIn("key reported results", extracted)
+            self.assertNotIn("Top Navigation", extracted)
+            self.assertNotIn("Header Noise", extracted)
+            self.assertNotIn("Footer Noise", extracted)
+            self.assertNotIn("console.log", extracted)
+
+    def test_fetch_web_source_fails_on_empty_body(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            html_path = tmp_path / "empty.html"
+            output_path = tmp_path / "source_webpage.txt"
+            html_path.write_text(
+                textwrap.dedent(
+                    """\
+                    <!doctype html>
+                    <html>
+                      <head><title>Please log in</title></head>
+                      <body>
+                        <header>Only navigation</header>
+                        <nav>Only links</nav>
+                        <script>console.log("x")</script>
+                        <style>body { color: red; }</style>
+                      </body>
+                    </html>
+                    """
+                ),
+                encoding="utf-8",
+            )
+
+            with serve_fixture_directory(tmp_path) as base_url:
+                completed = subprocess.run(
+                    [
+                        sys.executable,
+                        str(FETCH_WEB_SOURCE_SCRIPT),
+                        "--url",
+                        f"{base_url}/empty.html",
+                        "--output",
+                        str(output_path),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    env=env_with_trafilatura_stub(tmp_path),
+                )
+
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIn("did not obtain usable body text", completed.stderr)
+            self.assertFalse(output_path.exists())
+
+    def test_fetch_web_source_rejects_unsupported_scheme(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            output_path = tmp_path / "source_webpage.txt"
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(FETCH_WEB_SOURCE_SCRIPT),
+                    "--url",
+                    "ftp://example.com/article",
+                    "--output",
+                    str(output_path),
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertNotEqual(completed.returncode, 0)
+            self.assertIn("Unsupported URL scheme", completed.stderr)
+            self.assertFalse(output_path.exists())
+
+    def test_raw_pptx_path_derives_expected_artifacts_and_final_output(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            raw_pptx = tmp_path / "out" / "deck.raw.pptx"
+            expected_artifacts = tmp_path / "out" / "deck.notes-artifacts"
+            expected_final_pptx = tmp_path / "out" / "deck.pptx"
+
+            self.assertEqual(default_artifacts_dir(raw_pptx), expected_artifacts)
+            self.assertEqual(Path(f"{deck_stem(raw_pptx)}.pptx"), expected_final_pptx)
+
+    def test_fetch_web_source_then_prepare_context_via_source_text_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            raw_pptx = tmp_path / "deck.raw.pptx"
+            html_path = tmp_path / "paper.html"
+            source_text_path = tmp_path / "source_webpage.txt"
+
+            write_pptx_fixture(
+                raw_pptx,
+                [
+                    {
+                        "pictures": [
+                            {"rid": "rId1", "media_name": "image1.png", "target": "../media/image1.png", "bytes": png_bytes(100, 50, "blue"), "cx": 9144000, "cy": 5143500}
+                        ],
+                        "texts": ["Introduction", "Method"],
+                    }
+                ],
+            )
+            html_path.write_text(
+                textwrap.dedent(
+                    """\
+                    <!doctype html>
+                    <html>
+                      <head><title>Paper Summary</title></head>
+                      <body>
+                        <main>
+                          <h1>Introduction</h1>
+                          <p>This document introduces the task setup.</p>
+                          <h2>Method</h2>
+                          <p>The method uses iterative refinement over two stages.</p>
+                        </main>
+                      </body>
+                    </html>
+                    """
+                ),
+                encoding="utf-8",
+            )
+
+            with serve_fixture_directory(tmp_path) as base_url:
+                fetch_completed = subprocess.run(
+                    [
+                        sys.executable,
+                        str(FETCH_WEB_SOURCE_SCRIPT),
+                        "--url",
+                        f"{base_url}/paper.html",
+                        "--output",
+                        str(source_text_path),
+                    ],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    env=env_with_trafilatura_stub(tmp_path),
+                )
+            self.assertEqual(fetch_completed.stdout.strip(), str(source_text_path))
+            self.assertTrue(source_text_path.is_file())
+
+            prepare_completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(POSTPROCESS_SCRIPT),
+                    "prepare-context",
+                    "--input",
+                    str(raw_pptx),
+                    "--source-text",
+                    str(source_text_path),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            summary = json.loads(prepare_completed.stdout)
+            context = json.loads(Path(summary["context"]).read_text(encoding="utf-8"))
+            self.assertEqual(summary["source_kind"], "text")
+            self.assertEqual(summary["source_path"], str(source_text_path))
+            self.assertEqual(context["source_kind"], "text")
+            self.assertEqual(context["source_path"], str(source_text_path))
+            self.assertGreater(summary["chunk_count"], 0)
 
 
 class CliDownloadOnlySmokeTest(unittest.TestCase):

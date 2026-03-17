@@ -1,7 +1,13 @@
-# English direct invocation example
+# English invocation examples
 
-Use NotebookLM with `./papers/your-paper.pdf`.
-Generate an English detailed deck.
-Do not inject any style file unless I explicitly provide one.
-Save the final deck to `./out/your-paper.pptx`, keep the raw download at `./out/your-paper.raw.pptx`, and add source-aware Chinese speaker notes using the raw deck plus the original paper text/PDF.
-Return the notebook id, artifact id, final output path, raw output path, `notes_status`, `notes_artifacts`, and `notes_summary`.
+Full workflow from a web page:
+
+```text
+/notebooklm-paper-to-ppt source=https://example.com/article output=./out/article-deck.pptx language=en
+```
+
+Notes-only from an existing raw deck plus a source URL:
+
+```text
+/notebooklm-paper-to-ppt mode=notes-only raw_pptx=./out/article-deck.raw.pptx source_url=https://example.com/article output=./out/article-deck.pptx
+```

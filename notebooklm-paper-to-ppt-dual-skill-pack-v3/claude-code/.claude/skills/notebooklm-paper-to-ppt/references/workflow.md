@@ -5,9 +5,11 @@ Use this skill only when the user explicitly wants a NotebookLM-generated deck.
 ## Decision rules
 
 - Prefer a local PDF over a URL when both are available.
+- If `mode` is omitted but `raw_pptx` plus one of `source_pdf`, `source_text`, or `source_url` are already present, resolve to `notes-only`.
 - Prefer manual invocation for this workflow. It has external side effects: upload, generation, download, and postprocessing.
 - Prefer MCP tools first because they avoid brittle shell parsing.
 - Fall back to the CLI only when the MCP schema is missing, incompatible, or failing.
+- A crawlable single-page web URL is a valid source. Do not recurse into linked pages.
 
 ## Why regeneration beats endless revision
 
@@ -20,7 +22,7 @@ So when the structure is wrong, regenerate. Do not build a Franken-deck from rev
 
 ## What counts as success
 
-Do not report success until all of these are true:
+Do not report `full` success until all of these are true:
 
 1. Notebook was created
 2. Source ingestion completed
@@ -32,6 +34,10 @@ Do not report success until all of these are true:
 8. Claude generated a valid `<output>.notes-artifacts/notes.json`
 9. The final `.pptx` file exists at the promised `<output>.pptx` path
 10. The response includes `notes_status`, `notes_artifacts`, and `notes_summary`
+
+For `deck-only`, success stops at step 5.
+
+For `notes-only`, steps 1 to 5 are already satisfied by the provided raw deck, and the run starts from notes-artifact generation.
 
 ## Timeouts and retries
 

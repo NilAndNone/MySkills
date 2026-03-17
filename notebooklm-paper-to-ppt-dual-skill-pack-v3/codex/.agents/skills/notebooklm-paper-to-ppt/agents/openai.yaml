@@ -1,6 +1,0 @@
-interface:
-  display_name: "NotebookLM Paper → PPTX"
-  short_description: "Upload a paper to NotebookLM, generate a deck, download .pptx."
-  default_prompt: "Use $notebooklm-paper-to-ppt to turn a paper PDF or URL into a NotebookLM-authored PowerPoint deck."
-policy:
-  allow_implicit_invocation: false

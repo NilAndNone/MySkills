@@ -1,1 +1,1 @@
-/notebooklm-paper-to-ppt https://arxiv.org/abs/1706.03762 output ./out/aiyn-detailed.pptx language en detailed deck，不注入任何 style 文件，先下载 raw deck，再基于 raw deck 和原文生成 `notes-artifacts/` 里的复杂中文 notes 并写回最终 PPT，返回 notebook id、artifact id、notes_status、notes_artifacts 和 notes_summary
+/notebooklm-paper-to-ppt source=https://example.com/article output=./out/article-deck.pptx language=zh-CN

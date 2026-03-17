@@ -1,12 +1,13 @@
-# Notes generation checklist for a NotebookLM-generated paper deck
+# Notes generation checklist for a NotebookLM-generated source deck
 
-Use this checklist for the default Claude post-download flow after the raw `.pptx` is downloaded.
+Use this checklist for any notes flow that starts from an existing raw `.pptx`.
 
 ## Export assets
 
 1. Build the nested notes artifacts:
    - `python3 scripts/postprocess_downloaded_pptx.py prepare-context --input <output>.raw.pptx --source-pdf <paper.pdf>`
    - or `python3 scripts/postprocess_downloaded_pptx.py prepare-context --input <output>.raw.pptx --source-text <paper.txt>`
+   - or first `python3 scripts/fetch_web_source.py --url <url> --output <output>.notes-artifacts/tmp/source_webpage.txt`, then `prepare-context --source-text <output>.notes-artifacts/tmp/source_webpage.txt`
 2. Read `<output>.notes-artifacts/context.json`.
 3. Read `<output>.notes-artifacts/slide-images/manifest.json`.
 4. Read `<output>.notes-artifacts/tmp/claude_notes_input.json`.
@@ -21,7 +22,7 @@ Use this checklist for the default Claude post-download flow after the raw `.ppt
 - [ ] Full source text is treated as the primary evidence
 - [ ] Every successful slide has a structured note with topic, source mapping, supplemental details, and summary
 - [ ] Notes use the current slide image, visible slide text, and source chunks together
-- [ ] Pure-image slides are grounded in the image plus the full paper, not page order alone
+- [ ] Pure-image slides are grounded in the image plus the full source text, not page order alone
 - [ ] Ambiguous slides use conservative phrasing instead of fabricated details
 - [ ] Failed slides are represented with an `error` field instead of invented notes
 
