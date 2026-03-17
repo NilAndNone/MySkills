@@ -1,0 +1,31 @@
+model = "gpt-5.4"
+model_reasoning_effort = "medium"
+review_model = "gpt-5.4"
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+allow_login_shell = false
+
+[sandbox_workspace_write]
+network_access = false
+writable_roots = []
+
+[agents]
+max_threads = 4
+max_depth = 1
+job_max_runtime_seconds = 1800
+
+[agents.codegen]
+description = "单 writer，实现当前 milestone 的最小变更。"
+config_file = "./agents/codegen.toml"
+nickname_candidates = ["Forge", "Curie"]
+
+[agents.integration_tester]
+description = "根据本次 diff 中的单元测试，在 client 下生成/运行集成测试。"
+config_file = "./agents/integration_tester.toml"
+nickname_candidates = ["Probe", "Mill"]
+
+[agents.cr]
+description = "严格 CR，重点抓 fallback、dead code、缺失测试和过度复杂度。"
+config_file = "./agents/cr.toml"
+nickname_candidates = ["Scalpel", "Ansc"]
