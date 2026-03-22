@@ -89,10 +89,14 @@ $worldview-panel-codex 分析：婚育、职业和移民怎么权衡？
 
 ## 推荐默认策略
 
-- 普通分析：4–6 个 agents + 1 个唱反调 agent
-- 用户指名：按用户点名走
-- 用户要求完整光谱：24 agents 全开
+- 默认：spawn 全部 24 个 worldview agents in parallel
+- 用户指定分组（正选或排除）：按指示筛选
+- 用户点名个人：严格按点名名单执行
 - 默认 synthesize 输出：TL;DR → 问题拆解 → 人格面板 → 交叉裁决 → 主推建议 → 可执行下一步
+
+## sandbox_mode 设计说明
+
+24 个 worldview persona agents 设置了 `sandbox_mode = "read-only"`，因为它们只做分析输出，不需要写文件。`default`、`worker`、`explorer` 三个通用 agents 没有设置此限制，因为它们可能被用于需要写文件的通用任务。
 
 ## 想降本
 

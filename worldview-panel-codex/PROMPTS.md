@@ -1,10 +1,10 @@
 # PROMPTS
 
-## 1) 默认 5 人格并行
+## 1) 默认全量并行
 
 ```text
 $worldview-panel-codex 分析这个问题：大模型创业还有没有意义？
-必须使用 subagents。默认路由 5 个最 relevant agents，并行执行，等全部返回后再裁决。
+必须使用 subagents，并行执行，等全部返回后再裁决。
 ```
 
 ## 2) 手动点名 6 个人格
@@ -19,14 +19,14 @@ $worldview-panel-codex 分析这个问题：大模型创业还有没有意义？
 
 ```text
 $worldview-panel-codex 分析：结婚到底图什么？
-必须使用 subagents。默认路由 5 个 agents，但一定要包含 humanist_therapist 和 existentialist。
+必须使用 subagents，并行执行，等全部返回后再裁决。
 ```
 
 ## 4) 政治 / 制度问题
 
 ```text
 $worldview-panel-codex 分析：为什么年轻人越来越不相信机构？
-必须使用 subagents。默认路由 6 个 agents，并且至少包含 collapse_prophet, institutionalist, red_leftist, online_rightist。
+必须使用 subagents，并行执行，等全部返回后再裁决。
 ```
 
 ## 5) 全量人格大会

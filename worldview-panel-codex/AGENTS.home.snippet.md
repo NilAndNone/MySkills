@@ -13,10 +13,9 @@
 ## worldview 任务的硬规则
 
 - 如果用户明确要求 **subagents**、**parallel agents**、**panel**、**多人格**，不要单线程糊弄过去。
-- 默认选 **4–6 个最 relevant 的 custom agents** 并行回答。
-- 如果用户说 **full panel / all personas / 完整光谱 / 全员到齐**，就开 **24 agents 全量并行**。
+- **默认 spawn 全部 24 个 worldview agents in parallel。**
+- 如果用户指定分组（正选 "只用建设派和批判派" 或排除 "跳过旁观派"），按指示筛选。
 - 如果用户点名了 agents，严格按点名名单执行。
-- 除非用户禁止，默认加 **1 个唱反调 / 纠偏 agent**，避免 panel 全员串味。
 - worldview 任务里优先用 `.codex/agents/` 里的 custom agents，不要偷懒退回 generic built-ins。
 - 等所有 subagents 返回后再汇总；不要边收边写导致前后打架。
 - 汇总时保留分歧，不要把不同人格平均成一锅温吞水。
