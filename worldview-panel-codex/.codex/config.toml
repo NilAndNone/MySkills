@@ -1,0 +1,10 @@
+# Project-scoped Codex defaults for the worldview panel.
+# Delete the next two lines if you only want subagents pinned, but not the main thread.
+model = "gpt-5.4"
+model_reasoning_effort = "xhigh"
+model_verbosity = "medium"
+
+[agents]
+max_threads = 24
+max_depth = 1
+job_max_runtime_seconds = 1800
