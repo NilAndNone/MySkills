@@ -7,11 +7,21 @@
 - 发现了 project-level `AGENTS.md`
 - 发现了 `.codex/config.toml`
 - 发现了 `.codex/agents/*.toml`
-- 发现了 `.agents/skills/worldview-panel-codex`
+- 发现了 `~/.codex/skills/worldview-panel-codex`
 - 在显式要求 subagents 时，真的 spawn 了多个 agent thread
 - 汇总输出没有被平均成一锅粥
 
 ## 检查步骤
+
+### Smoke test 0：远程安装是否成功
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/main/worldview-panel-codex/scripts/install_bundle.sh | sh -s -- --dry-run
+```
+
+预期：
+- 会打印将写入 `~/.codex/skills/`、`~/.codex/agents/` 和 `~/.codex/AGENTS.override.md`
+- 明确提示**不会**安装项目级 `.codex/config.toml`
 
 ### Smoke test 1：技能是否可见
 
@@ -76,6 +86,7 @@ $worldview-panel-codex 分析：婚育、职业、移民怎么一起权衡？
 ## 失败模式
 
 - 没 spawn subagents：通常是你没有明确要求 subagents，或者没有启用 skill。
-- skill 看不到：通常是 `.agents/skills` 放错位置，或 Codex 没重启。
+- skill 看不到：通常是 `~/.codex/skills` 放错位置，或 Codex 没重启。
 - config 没生效：通常是 repo 没被 trust，所以 `.codex/config.toml` 被忽略。
+- 全局安装后主线程没钉到 `gpt-5.4 xhigh`：这是预期行为，因为远程一键安装默认不装项目级 `.codex/config.toml`。
 - agent 没命中 `gpt-5.4 xhigh`：通常是你手动切了模型 / 显式点了别的 agent / 运行环境覆盖了默认设置。

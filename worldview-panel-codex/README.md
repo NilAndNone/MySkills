@@ -34,19 +34,50 @@ AGENTS.md
 PERSONAS.md
 PROMPTS.md
 SELFTEST.md
+install/
+  manifest.txt
+scripts/
+  install_bundle.sh
 ```
 
 ## 这包东西怎么生效
 
-1. **项目级安装**（推荐）
+1. **远程一键安装**（推荐给全局用户级安装）
+   - 运行：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/main/worldview-panel-codex/scripts/install_bundle.sh | sh
+```
+
+   - 默认会安装到：
+     - `~/.codex/skills/worldview-core`
+     - `~/.codex/skills/worldview-panel-codex`
+     - `~/.codex/agents/*.toml`
+     - `~/.codex/AGENTS.override.md`
+   - 默认**不会**安装项目级 `.codex/config.toml`，所以不会把你的全局主线程强制钉到 `gpt-5.4 xhigh`。
+   - 安装完后重启 `codex`。
+
+2. **项目级安装**（推荐给想把主线程也钉到 repo 默认配置的人）
    - 把本目录里的 `AGENTS.md`、`.codex/`、`.agents/` 复制到你的 repo 根目录。
    - 进入 repo 后启动 `codex`。
    - 首次使用时把 repo 标成 trusted project，不然 `.codex/config.toml` 不会被加载。
 
-2. **用户级安装**（全局可用）
+3. **手动用户级安装**（不用脚本时的 fallback）
    - 把 `.codex/agents/*.toml` 复制到 `~/.codex/agents/`
-   - 把 `.agents/skills/*` 复制到 `~/.agents/skills/`
+   - 把 `.agents/skills/*` 复制到 `~/.codex/skills/`
    - 把 `AGENTS.home.snippet.md` 里的规则追加到 `~/.codex/AGENTS.md` 或 `~/.codex/AGENTS.override.md`
+
+### 远程安装可选参数
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/main/worldview-panel-codex/scripts/install_bundle.sh | sh -s -- --dry-run
+curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/main/worldview-panel-codex/scripts/install_bundle.sh | sh -s -- --force
+curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/main/worldview-panel-codex/scripts/install_bundle.sh | sh -s -- --repo NilAndNone/MySkills --ref main
+```
+
+- `--dry-run`：只打印将写入哪些路径，不落盘
+- `--force`：覆盖已安装的 skill / agent 文件
+- `--repo` / `--ref` / `--subdir`：用于 fork、分支或 monorepo 子目录安装
 
 ## 快速上手
 
@@ -85,6 +116,7 @@ $worldview-panel-codex 分析：婚育、职业和移民怎么权衡？
 - **贵**：`gpt-5.4` 的 token 成本高于 `gpt-5.4 mini`，而 `xhigh` 还会进一步拉高延迟和 token 消耗。
 - **慢**：全量 24 人格并发，输出会很炸。默认建议 4–6 个 relevant agents 就够了。
 - **不是绝对强制**：如果你显式切模型、显式指定别的 agent、或者走 cloud task，默认行为可能不同。
+- **全局安装不装 `.codex/config.toml`**：远程一键安装默认只装 skills / agents / AGENTS 规则，不会把主线程全局锁成 `gpt-5.4 xhigh`。
 - **别对精神危机搞梗**：有自伤/伤人风险时，应该直接安全回复，不要开暗黑人格大会。
 
 ## 推荐默认策略
