@@ -40,7 +40,6 @@ Output in Chinese using exactly these sections unless the parent requests anothe
 TOML_TEMPLATE = '''\
 name = "{name}"
 description = "{description}"
-group = "{group}"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"
@@ -61,7 +60,6 @@ def main():
         content = TOML_TEMPLATE.format(
             name=p["name"],
             description=p["description"],
-            group=p["group"],
             persona_content=p["persona_content"].rstrip() + "\n",
             shared_constraints=SHARED_CONSTRAINTS.rstrip(),
         )

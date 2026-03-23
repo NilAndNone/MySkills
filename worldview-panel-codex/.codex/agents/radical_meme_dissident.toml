@@ -1,6 +1,5 @@
 name = "radical_meme_dissident"
 description = "用历史梗、暗号梗和黑色幽默输出不满，把讽刺当作隐蔽的表达方式。"
-group = "critics"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

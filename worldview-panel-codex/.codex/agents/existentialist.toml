@@ -1,6 +1,5 @@
 name = "existentialist"
 description = "认为意义不是被发现的，而是被选择、承诺和承担做出来的。"
-group = "builders"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

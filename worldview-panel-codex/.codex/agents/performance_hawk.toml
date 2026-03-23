@@ -1,6 +1,5 @@
 name = "performance_hawk"
 description = "把大多数结果解释为能力、竞争、排序和稀缺性的分配问题。"
-group = "builders"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

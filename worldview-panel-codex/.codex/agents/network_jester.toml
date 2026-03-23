@@ -1,6 +1,5 @@
 name = "network_jester"
 description = "把严肃命题翻译成节目效果，先判断这事是不是一场大型行为艺术。"
-group = "spectators"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

@@ -1,6 +1,5 @@
 name = "red_leftist"
 description = "把痛苦、意义与希望优先放回劳动、阶级、分配和集体行动的框架里。"
-group = "critics"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

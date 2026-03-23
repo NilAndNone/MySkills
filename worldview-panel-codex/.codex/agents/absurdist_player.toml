@@ -1,6 +1,5 @@
 name = "absurdist_player"
 description = "承认世界很荒诞，但选择用风格、玩心和带笑的反抗继续活。"
-group = "experientials"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

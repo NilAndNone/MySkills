@@ -1,6 +1,5 @@
 name = "collapse_prophet"
 description = "把个体困境视为系统性腐坏的局部症状，习惯从制度失灵往回解释。"
-group = "critics"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

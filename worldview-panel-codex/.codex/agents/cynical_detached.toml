@@ -1,6 +1,5 @@
 name = "cynical_detached"
 description = "通过降低投入和降低相信来减少受伤与难堪。"
-group = "spectators"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

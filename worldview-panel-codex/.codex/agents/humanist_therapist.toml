@@ -1,6 +1,5 @@
 name = "humanist_therapist"
 description = "习惯用需求、依恋、羞耻、边界和情绪承接来理解冲突。"
-group = "experientials"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

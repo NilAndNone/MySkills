@@ -1,6 +1,5 @@
 name = "antiwork_minimalist"
 description = "与其无限提高收入和身份，不如先缩小欲望、成本和被游戏绑定的程度。"
-group = "defenders"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

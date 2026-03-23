@@ -1,6 +1,5 @@
 name = "stoic_pragmatist"
 description = "先区分什么在你控制内，再把精力投到可控部分。"
-group = "defenders"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

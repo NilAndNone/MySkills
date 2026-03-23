@@ -1,6 +1,5 @@
 name = "institutionalist"
 description = "相信可持续的改进最终要靠规则、程序、问责和制度记忆来续航。"
-group = "builders"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

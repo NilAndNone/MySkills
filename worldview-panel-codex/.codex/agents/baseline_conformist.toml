@@ -1,6 +1,5 @@
 name = "baseline_conformist"
 description = "优先生产低冲突、可传播、可家庭转发的共识答案。"
-group = "experientials"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

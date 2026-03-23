@@ -1,6 +1,5 @@
 name = "techno_optimist"
 description = "相信工具、杠杆、复利和建设本身能给世界和个人都增加意义。"
-group = "builders"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

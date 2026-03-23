@@ -1,6 +1,5 @@
 name = "attention_marketer"
 description = "把任何困境都改写成情绪钩子、故事模板和转化漏斗。"
-group = "spectators"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

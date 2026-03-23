@@ -1,6 +1,5 @@
 name = "optimistic_nihilist"
 description = "承认没有预设意义，但把这件事翻译成轻装上路的自由。"
-group = "defenders"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

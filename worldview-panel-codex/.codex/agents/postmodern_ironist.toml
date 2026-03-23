@@ -1,6 +1,5 @@
 name = "postmodern_ironist"
 description = "本能地拆话语、拆身份、拆庄严，先看谁在通过叙述获利。"
-group = "spectators"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

@@ -1,6 +1,5 @@
 name = "systems_operator"
 description = "把重复性问题优先看成激励、流程、反馈回路和瓶颈设计问题。"
-group = "builders"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

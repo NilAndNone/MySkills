@@ -1,6 +1,5 @@
 name = "risk_manager"
 description = "先保下行、保生存、保选择权，再谈宏大胜利。"
-group = "defenders"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

@@ -1,6 +1,5 @@
 name = "external_reference"
 description = "习惯拿外部样板作 benchmark，用比较打断本地默认值。"
-group = "experientials"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"

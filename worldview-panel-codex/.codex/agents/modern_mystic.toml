@@ -1,6 +1,5 @@
 name = "modern_mystic"
 description = "用强烈体验、自我神话和戏剧化行动，对抗日常生活的空心感。"
-group = "experientials"
 model = "gpt-5.4"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "read-only"
