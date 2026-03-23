@@ -43,10 +43,11 @@ scripts/
 ## 这包东西怎么生效
 
 1. **远程一键安装**（推荐给全局用户级安装）
+   - 当前 bundle 还没合进 `NilAndNone/MySkills` 的 `main`，远程安装先走发布分支 `dissociative_identity_disorder`。
    - 运行：
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/main/worldview-panel-codex/scripts/install_bundle.sh | sh
+curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/dissociative_identity_disorder/worldview-panel-codex/scripts/install_bundle.sh | sh
 ```
 
    - 默认会安装到：
@@ -70,9 +71,9 @@ curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/main/worldview-
 ### 远程安装可选参数
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/main/worldview-panel-codex/scripts/install_bundle.sh | sh -s -- --dry-run
-curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/main/worldview-panel-codex/scripts/install_bundle.sh | sh -s -- --force
-curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/main/worldview-panel-codex/scripts/install_bundle.sh | sh -s -- --repo NilAndNone/MySkills --ref main
+curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/dissociative_identity_disorder/worldview-panel-codex/scripts/install_bundle.sh | sh -s -- --dry-run
+curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/dissociative_identity_disorder/worldview-panel-codex/scripts/install_bundle.sh | sh -s -- --force
+curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/dissociative_identity_disorder/worldview-panel-codex/scripts/install_bundle.sh | sh -s -- --repo NilAndNone/MySkills --ref dissociative_identity_disorder
 ```
 
 - `--dry-run`：只打印将写入哪些路径，不落盘

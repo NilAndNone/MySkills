@@ -3,7 +3,8 @@ set -eu
 
 SCRIPT_NAME="install_bundle.sh"
 DEFAULT_REPO="NilAndNone/MySkills"
-DEFAULT_REF="main"
+# This bundle currently ships from a feature branch. Switch back to main after merge.
+DEFAULT_REF="dissociative_identity_disorder"
 DEFAULT_SUBDIR="worldview-panel-codex"
 START_MARKER="# >>> worldview-panel-codex managed block >>>"
 END_MARKER="# <<< worldview-panel-codex managed block <<<"
@@ -19,7 +20,7 @@ Options:
   --source-dir PATH   Install from a local checkout instead of GitHub.
   --dest-home PATH    Destination home directory. Defaults to $HOME.
   --repo OWNER/REPO   GitHub repo for remote installs. Default: NilAndNone/MySkills
-  --ref REF           Git ref for remote installs. Default: main
+  --ref REF           Git ref for remote installs. Default: dissociative_identity_disorder
   --subdir PATH       Repo subdirectory containing this bundle. Default: worldview-panel-codex
   --force             Overwrite existing installed skill and agent files.
   --dry-run           Print actions without writing files.

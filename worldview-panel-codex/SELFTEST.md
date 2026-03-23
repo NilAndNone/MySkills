@@ -16,7 +16,7 @@
 ### Smoke test 0：远程安装是否成功
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/main/worldview-panel-codex/scripts/install_bundle.sh | sh -s -- --dry-run
+curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/dissociative_identity_disorder/worldview-panel-codex/scripts/install_bundle.sh | sh -s -- --dry-run
 ```
 
 预期：
