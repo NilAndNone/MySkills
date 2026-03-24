@@ -6,8 +6,6 @@ DEFAULT_REPO="NilAndNone/MySkills"
 # This bundle currently ships from a feature branch. Switch back to main after merge.
 DEFAULT_REF="dissociative_identity_disorder"
 DEFAULT_SUBDIR="worldview-panel-codex"
-START_MARKER="# >>> worldview-panel-codex managed block >>>"
-END_MARKER="# <<< worldview-panel-codex managed block <<<"
 
 log() {
   echo "[$SCRIPT_NAME] $*" >&2
@@ -104,57 +102,6 @@ prepare_source_file() {
   cached_path="$TMP_DIR/cache/$rel_path"
   fetch_remote_to_file "$rel_path" "$cached_path"
   printf '%s\n' "$cached_path"
-}
-
-managed_block_content() {
-  snippet_file=$1
-  printf '%s\n' "$START_MARKER"
-  cat "$snippet_file"
-  printf '\n%s\n' "$END_MARKER"
-}
-
-update_managed_snippet() {
-  snippet_file=$1
-  target_file=$2
-  target_dir=$(dirname "$target_file")
-
-  log "updating managed block in $target_file"
-
-  if [ "$DRY_RUN" -eq 1 ]; then
-    echo "update managed block in $target_file from $snippet_file"
-    return
-  fi
-
-  ensure_dir_writable "$target_dir"
-  new_block="$TMP_DIR/managed_block.txt"
-  managed_block_content "$snippet_file" >"$new_block"
-
-  if [ ! -f "$target_file" ]; then
-    cp "$new_block" "$target_file"
-    return
-  fi
-
-  awk -v start="$START_MARKER" -v end="$END_MARKER" '
-    BEGIN { skip = 0; replaced = 0 }
-    $0 == start {
-      skip = 1
-      replaced = 1
-      next
-    }
-    $0 == end {
-      skip = 0
-      next
-    }
-    skip == 0 { print }
-    END { exit 0 }
-  ' "$target_file" >"$TMP_DIR/original_without_block.txt"
-
-  cp "$TMP_DIR/original_without_block.txt" "$TMP_DIR/merged_override.txt"
-  if [ -s "$TMP_DIR/merged_override.txt" ]; then
-    printf '\n' >>"$TMP_DIR/merged_override.txt"
-  fi
-  cat "$new_block" >>"$TMP_DIR/merged_override.txt"
-  cp "$TMP_DIR/merged_override.txt" "$target_file"
 }
 
 SOURCE_DIR=""
@@ -263,7 +210,6 @@ log "loaded manifest $MANIFEST_FILE"
 
 SKILL_COUNT=0
 AGENT_COUNT=0
-SNIPPET_PRESENT=0
 LEGACY_WORLDVIEW_CORE_PRESENT=0
 
 if [ -e "$DEST_HOME/.codex/skills/worldview-core" ]; then
@@ -291,11 +237,6 @@ while IFS='|' read -r entry_kind source_rel dest_rel; do
           ;;
       esac
       ;;
-    managed_snippet)
-      SNIPPET_PRESENT=1
-      target_path="$DEST_HOME/$dest_rel"
-      log "validated managed block target $target_path"
-      ;;
     *)
       die "unknown manifest entry kind: $entry_kind"
       ;;
@@ -314,9 +255,6 @@ while IFS='|' read -r entry_kind source_rel dest_rel; do
     copy)
       copy_file "$source_path" "$target_path"
       ;;
-    managed_snippet)
-      update_managed_snippet "$source_path" "$target_path"
-      ;;
   esac
 done <"$MANIFEST_FILE"
 
@@ -326,13 +264,11 @@ if [ "$SKILL_COUNT" -eq 1 ]; then
   SKILL_LABEL="skill"
 fi
 echo "Installed $SKILL_COUNT $SKILL_LABEL into $DEST_HOME/.codex/skills"
-echo "Installed $AGENT_COUNT agents into $DEST_HOME/.codex/agents"
-if [ "$SNIPPET_PRESENT" -eq 1 ]; then
-  echo "Updated $DEST_HOME/.codex/AGENTS.override.md"
-fi
+echo "Installed $AGENT_COUNT persona agents into $DEST_HOME/.codex/agents"
 if [ "$LEGACY_WORLDVIEW_CORE_PRESENT" -eq 1 ]; then
   echo "Legacy $DEST_HOME/.codex/skills/worldview-core was not modified."
   echo "Remove it manually if you want a clean single-skill install."
 fi
+echo "The installer does not modify generic built-in agents or ~/.codex/AGENTS.override.md."
 echo "Project-level .codex/config.toml was not installed."
 echo "Restart Codex to pick up new skills."

@@ -13,9 +13,8 @@
 ## worldview 任务的硬规则
 
 - 如果用户明确要求 **subagents**、**parallel agents**、**panel**、**多人格**，不要单线程糊弄过去。
-- **默认覆盖全部 24 个 worldview agents，默认并发上限是 4 个 subagents。**
-- 如果用户显式要求别的并发数（例如“同时启用 12 个 subagents”），按用户要求覆盖默认值，但不要超过当前运行环境允许的 `agents.max_threads`。
-- 如果目标 agents 超过当前并发上限，按批次串行调度；每批最多等于当前并发上限，等前一批返回后再拉下一批。
+- **默认覆盖全部 24 个 worldview agents，但任一时刻最多只拉起 3 个 subagents。**
+- 如果目标 agents 超过 3 个，按批次串行调度；每批最多 3 个，等前一批返回后再拉下一批。
 - worldview persona subagent 是 **packet-only answerer**：只负责按人格回答，不负责找资料、读文件、补上下文。
 - 主线程必须先准备好 subagent 所需的**全部上下文任务包**，严格控制输入变量，再分发给 subagents。
 - 调用 worldview persona subagent 时，默认使用 `fork_context = false`；不要把整段历史对话直接 fork 进去。

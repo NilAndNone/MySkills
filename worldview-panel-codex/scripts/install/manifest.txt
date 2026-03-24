@@ -9,10 +9,8 @@ copy|.codex/agents/attention_marketer.toml|.codex/agents/attention_marketer.toml
 copy|.codex/agents/baseline_conformist.toml|.codex/agents/baseline_conformist.toml
 copy|.codex/agents/collapse_prophet.toml|.codex/agents/collapse_prophet.toml
 copy|.codex/agents/cynical_detached.toml|.codex/agents/cynical_detached.toml
-copy|.codex/agents/default.toml|.codex/agents/default.toml
 copy|.codex/agents/depressive_nihilist.toml|.codex/agents/depressive_nihilist.toml
 copy|.codex/agents/existentialist.toml|.codex/agents/existentialist.toml
-copy|.codex/agents/explorer.toml|.codex/agents/explorer.toml
 copy|.codex/agents/external_reference.toml|.codex/agents/external_reference.toml
 copy|.codex/agents/humanist_therapist.toml|.codex/agents/humanist_therapist.toml
 copy|.codex/agents/institutionalist.toml|.codex/agents/institutionalist.toml
@@ -29,5 +27,3 @@ copy|.codex/agents/stoic_pragmatist.toml|.codex/agents/stoic_pragmatist.toml
 copy|.codex/agents/systems_operator.toml|.codex/agents/systems_operator.toml
 copy|.codex/agents/techno_optimist.toml|.codex/agents/techno_optimist.toml
 copy|.codex/agents/terminal_jester.toml|.codex/agents/terminal_jester.toml
-copy|.codex/agents/worker.toml|.codex/agents/worker.toml
-managed_snippet|scripts/install/AGENTS.home.snippet.md|.codex/AGENTS.override.md

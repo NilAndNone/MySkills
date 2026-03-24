@@ -2,13 +2,13 @@
 
 ## 目标
 
-确认这套 bundle 在 Codex 里真的按预期：
+确认这套 skill 在 Codex 里真的按预期：
 
-- 发现了 project-level `AGENTS.md`
-- 发现了 `.codex/config.toml`
-- 发现了 `.codex/agents/*.toml`
 - 发现了 `~/.codex/skills/worldview-panel-codex`
-- 在显式要求 subagents 时，真的 spawn 了多个 agent thread
+- 安装了 24 个 worldview persona agents
+- 默认安装不会写入 `~/.codex/AGENTS.override.md`
+- 显式要求 subagents 时，真的 spawn 了多个 agent thread
+- 隐式触发也能命中 worldview panel
 - 汇总输出没有被平均成一锅粥
 
 ## 检查步骤
@@ -20,7 +20,9 @@ curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/dissociative_id
 ```
 
 预期：
-- 会打印将写入 `~/.codex/skills/`、`~/.codex/agents/` 和 `~/.codex/AGENTS.override.md`
+- 会打印将写入 `~/.codex/skills/` 和 `~/.codex/agents/`
+- 不应提到 `~/.codex/AGENTS.override.md`
+- 不应提到 `default.toml` / `worker.toml` / `explorer.toml`
 - 明确提示**不会**安装项目级 `.codex/config.toml`
 
 ### Smoke test 1：技能是否可见
@@ -32,27 +34,30 @@ curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/dissociative_id
 应该能看到 `worldview-panel-codex`。
 如果还看到 `worldview-core`，通常是旧版本残留；新安装不再需要它。
 
-### Smoke test 2：project guidance 是否加载
+### Smoke test 2：隐式路由是否可用
 
 ```text
-Summarize the instructions you loaded for this repo.
+不同人怎么看：大模型创业还有没有意义？
+必须使用 subagents。
 ```
 
-应该能提到 worldview panel / subagents / 4–6 agents / full panel 等规则。
+预期：
+- 能命中 `worldview-panel-codex`
+- 不需要依赖 `~/.codex/AGENTS.override.md`
 
 ### Smoke test 3：subagents 是否真的被启用
 
 ```text
 $worldview-panel-codex 分析：大模型创业还有没有意义？
-必须使用 subagents。默认路由 5 个最 relevant agents，默认并发 4 个，分批等全部返回后再裁决。
+必须使用 subagents。默认覆盖全部 24 个 worldview agents，任一时刻最多只开 3 个，分批等全部返回后再裁决。
 ```
 
 预期：
-- 你能看到 spawned subagent threads。
-- `/agent` 里能切到子线程。
-- 最终汇总里至少有 5 个 agent 观点。
-- 任一时刻活跃的 subagent 不超过 4 个。
-- 如果能看到执行轨迹，worldview persona subagent 不应出现 tool call。
+- 你能看到 spawned subagent threads
+- `/agent` 里能切到子线程
+- 最终汇总里能看到多个人格观点
+- 任一时刻活跃的 subagent 不超过 3 个
+- 如果能看到执行轨迹，worldview persona subagent 不应出现 tool call
 
 ### Smoke test 4：路由是否像个正常人
 
@@ -79,27 +84,14 @@ $worldview-panel-codex 分析：大模型创业还有没有意义？必须使用
 ```text
 $worldview-panel-codex 分析：婚育、职业、移民怎么一起权衡？
 启用 full panel，覆盖全部 24 个 worldview agents。
-默认并发 4 个，分批跑完再汇总。
+任一时刻最多只开 3 个，分批跑完再汇总。
 ```
 
 预期：
 - 最终覆盖到 24 个 worldview agents
-- 任一时刻活跃的 subagent 不超过 4 个
+- 任一时刻活跃的 subagent 不超过 3 个
 - 汇总明确区分共同点 / 分歧点 / 主推建议
 - 不会把 24 个视角平均成“看你自己”这种废话
-
-### Smoke test 5b：显式覆盖并发
-
-```text
-$worldview-panel-codex 分析：AI 时代普通软件工程师该怎么自处？
-必须使用 subagents。
-同时启用 12 个 subagents，等全部返回后再汇总。
-```
-
-预期：
-- 如果当前运行环境的 `agents.max_threads` 至少是 12，活跃 subagent 可以到 12 个。
-- 如果当前运行环境的线程预算低于 12，应降到可用上限运行，而不是继续套用默认 4 个。
-- 最终仍然要等全部结果返回后再汇总。
 
 ### Smoke test 6：任务包纪律
 
@@ -110,15 +102,25 @@ subagent 不得调用工具，只能基于任务包作答。
 ```
 
 预期：
-- subagent 只基于主线程整理后的任务包回答。
-- 如果执行轨迹可见，不应出现读文件、搜索、浏览等 tool call。
-- 如果材料里缺关键变量，subagent 会指出缺失，而不是自己去找。
+- subagent 只基于主线程整理后的任务包回答
+- 如果执行轨迹可见，不应出现读文件、搜索、浏览等 tool call
+- 如果材料里缺关键变量，subagent 会指出缺失，而不是自己去找
+
+### Smoke test 7：persona 模型钉法
+
+```sh
+sed -n '1,6p' ~/.codex/agents/risk_manager.toml
+```
+
+预期：
+- 能看到 `model = "gpt-5.4"`
+- 能看到 `model_reasoning_effort = "xhigh"`
 
 ## 失败模式
 
-- 没 spawn subagents：通常是你没有明确要求 subagents，或者没有启用 skill。
-- skill 看不到：通常是 `~/.codex/skills` 放错位置，或 Codex 没重启。
-- config 没生效：通常是 repo 没被 trust，所以 `.codex/config.toml` 被忽略。
-- 全局安装后主线程没钉到 `gpt-5.4 xhigh`：这是预期行为，因为远程一键安装默认不装项目级 `.codex/config.toml`。
-- agent 没命中 `gpt-5.4 xhigh`：通常是你手动切了模型 / 显式点了别的 agent / 运行环境覆盖了默认设置。
-- subagent 调了工具：通常是主线程没把任务包准备完整，或者 persona 约束没有更新到最新安装版本。
+- 没 spawn subagents：通常是你没有明确要求 subagents，或者没有启用 skill
+- skill 看不到：通常是 `~/.codex/skills` 放错位置，或 Codex 没重启
+- 隐式路由没命中：通常是提示词不够明显，没有明确表达多视角 / 多人格 / subagents 诉求
+- 安装输出里还出现 `AGENTS.override.md` 或 generic override：通常是你还在跑旧版本脚本
+- agent 没命中 `gpt-5.4 xhigh`：通常是本地安装残留旧版 persona 文件，或运行环境显式覆盖了 agent 默认值
+- subagent 调了工具：通常是主线程没把任务包准备完整，或者 persona 约束没有更新到最新安装版本

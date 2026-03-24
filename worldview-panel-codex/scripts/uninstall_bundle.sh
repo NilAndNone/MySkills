@@ -5,8 +5,6 @@ SCRIPT_NAME="uninstall_bundle.sh"
 DEFAULT_REPO="NilAndNone/MySkills"
 DEFAULT_REF="dissociative_identity_disorder"
 DEFAULT_SUBDIR="worldview-panel-codex"
-START_MARKER="# >>> worldview-panel-codex managed block >>>"
-END_MARKER="# <<< worldview-panel-codex managed block <<<"
 
 log() {
   echo "[$SCRIPT_NAME] $*" >&2
@@ -137,91 +135,6 @@ remove_bundle_file() {
   return 0
 }
 
-remove_managed_snippet() {
-  target_path=$1
-  stripped_path="$TMP_DIR/AGENTS.override.stripped.md"
-
-  log "checking managed block target $target_path"
-
-  [ -f "$target_path" ] || return 1
-
-  if [ "$DRY_RUN" -eq 1 ]; then
-    if grep -Fq "$START_MARKER" "$target_path"; then
-      echo "remove managed block from $target_path"
-      return 0
-    fi
-    return 1
-  fi
-
-  ensure_parent_writable "$target_path"
-
-  if awk -v start="$START_MARKER" -v end="$END_MARKER" '
-    BEGIN { skip = 0; removed = 0; malformed = 0 }
-    $0 == start {
-      if (skip == 1) {
-        malformed = 1
-      }
-      skip = 1
-      removed = 1
-      next
-    }
-    $0 == end {
-      if (skip == 0) {
-        malformed = 1
-        next
-      }
-      skip = 0
-      next
-    }
-    skip == 0 { print }
-    END {
-      if (skip == 1) {
-        malformed = 1
-      }
-      if (malformed == 1) {
-        exit 2
-      }
-      if (removed == 1) {
-        exit 0
-      }
-      exit 1
-    }
-  ' "$target_path" >"$stripped_path"; then
-    awk_status=0
-  else
-    awk_status=$?
-  fi
-  case "$awk_status" in
-    0)
-      ;;
-    1)
-      rm -f "$stripped_path"
-      return 1
-      ;;
-    2)
-      rm -f "$stripped_path"
-      die "malformed managed block markers in $target_path"
-      ;;
-    *)
-      rm -f "$stripped_path"
-      die "failed to rewrite $target_path"
-      ;;
-  esac
-
-  if grep -q '[^[:space:]]' "$stripped_path"; then
-    log "writing stripped managed block back to $target_path"
-    mv "$stripped_path" "$target_path"
-  else
-    log "managed block was the only content in $target_path; removing file"
-    rm -f "$stripped_path"
-    rm -f "$target_path"
-    prune_empty_parent_dirs "$(dirname "$target_path")"
-    REMOVED_OVERRIDE_FILE=1
-  fi
-
-  return 0
-}
-
 SOURCE_DIR=""
 DEST_HOME=${HOME:-}
 REPO=$DEFAULT_REPO
@@ -321,9 +234,7 @@ log "loaded manifest $MANIFEST_FILE"
 
 SKILL_FILE_COUNT=0
 AGENT_COUNT=0
-SNIPPET_UPDATED=0
 SKIPPED_MODIFIED=0
-REMOVED_OVERRIDE_FILE=0
 
 log "starting uninstall pass"
 
@@ -345,11 +256,6 @@ while IFS='|' read -r entry_kind source_rel dest_rel; do
         esac
       fi
       ;;
-    managed_snippet)
-      if remove_managed_snippet "$target_path"; then
-        SNIPPET_UPDATED=1
-      fi
-      ;;
     *)
       die "unknown manifest entry kind: $entry_kind"
       ;;
@@ -358,16 +264,10 @@ done <"$MANIFEST_FILE"
 
 echo
 echo "Removed $SKILL_FILE_COUNT skill files from $DEST_HOME/.codex/skills/worldview-panel-codex"
-echo "Removed $AGENT_COUNT agents from $DEST_HOME/.codex/agents"
-if [ "$SNIPPET_UPDATED" -eq 1 ]; then
-  if [ "$REMOVED_OVERRIDE_FILE" -eq 1 ]; then
-    echo "Removed empty $DEST_HOME/.codex/AGENTS.override.md"
-  else
-    echo "Updated $DEST_HOME/.codex/AGENTS.override.md"
-  fi
-fi
+echo "Removed $AGENT_COUNT persona agents from $DEST_HOME/.codex/agents"
 if [ "$SKIPPED_MODIFIED" -gt 0 ]; then
   echo "Skipped $SKIPPED_MODIFIED modified files. Rerun with --force to remove them."
 fi
+echo "Uninstall does not modify generic built-in agents or ~/.codex/AGENTS.override.md."
 echo "Uninstall does not restore files that were overwritten during install."
 echo "Restart Codex to pick up removed skills and agents."

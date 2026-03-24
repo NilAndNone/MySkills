@@ -5,9 +5,8 @@ model_reasoning_effort = "xhigh"
 model_verbosity = "medium"
 
 [agents]
-# Keep the project thread budget above the worldview panel default so
-# explicit user overrides like "同时启用 12 个 subagents" work without
-# editing config again.
+# Keep some headroom for non-panel work. The worldview panel skill itself
+# still caps active persona subagents at 3.
 max_threads = 12
 max_depth = 1
 job_max_runtime_seconds = 1800

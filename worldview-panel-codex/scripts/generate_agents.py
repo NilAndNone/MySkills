@@ -7,8 +7,6 @@ Usage:
 
 Reads:  src/personas.json  (persona-specific data)
 Writes: .codex/agents/<name>.toml  (one per persona)
-
-Does NOT touch default.toml, worker.toml, or explorer.toml.
 """
 
 import json

@@ -3,4 +3,4 @@ interface:
   short_description: "Spawn worldview subagents to answer from multiple internet-archetype perspectives."
   default_prompt: "Analyze this with a worldview panel. Prepare a closed task packet first, dispatch worldview subagents with fork_context=false, keep at most 3 active at a time, do not let persona subagents use tools, and require the built-in 8-section persona output contract."
 policy:
-  allow_implicit_invocation: false
+  allow_implicit_invocation: true
