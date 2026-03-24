@@ -2,7 +2,7 @@
 
 ## 默认行为
 
-**所有 24 个 worldview agents 全部参与回答。** 不做筛选。
+**默认选择所有 24 个 worldview agents 参与回答。** 但任一时刻最多只拉起 3 个，按批次跑完。
 
 ## 用户指定分组
 
@@ -24,6 +24,14 @@
 > "只用 existentialist 和 risk_manager"
 
 → 严格按点名名单 spawn，不受分组限制。
+
+## 调度约束
+
+- 任一时刻最多只运行 3 个 subagents。
+- 当目标名单超过 3 个时，按原定名单顺序拆成多个批次，每批最多 3 个。
+- 必须等所有批次结束后再做总汇总，不要边到边写。
+- 对 worldview persona subagents，默认 `fork_context = false`，只下发主线程整理好的任务包。
+- 不要把 routing、汇总草稿、整段历史对话一起传给 subagents。
 
 ## 汇总权重
 

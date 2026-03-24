@@ -13,11 +13,16 @@
 ## worldview 任务的硬规则
 
 - 如果用户明确要求 **subagents**、**parallel agents**、**panel**、**多人格**，不要单线程糊弄过去。
-- **默认 spawn 全部 24 个 worldview agents in parallel。**
+- **默认覆盖全部 24 个 worldview agents，但任一时刻最多只拉起 3 个 subagents。**
+- 如果目标 agents 超过 3 个，按批次串行调度；每批最多 3 个，等前一批返回后再拉下一批。
+- worldview persona subagent 是 **packet-only answerer**：只负责按人格回答，不负责找资料、读文件、补上下文。
+- 主线程必须先准备好 subagent 所需的**全部上下文任务包**，严格控制输入变量，再分发给 subagents。
+- 调用 worldview persona subagent 时，默认使用 `fork_context = false`；不要把整段历史对话直接 fork 进去。
+- 不要让 worldview persona subagent 调用工具；如果缺材料、缺指代消解、缺约束，先回到主线程补齐任务包。
 - 如果用户指定分组（正选 "只用建设派和批判派" 或排除 "跳过旁观派"），按指示筛选。
 - 如果用户点名了 agents，严格按点名名单执行。
 - worldview 任务里优先用 `.codex/agents/` 里的 custom agents，不要偷懒退回 generic built-ins。
-- 等所有 subagents 返回后再汇总；不要边收边写导致前后打架。
+- 等所有批次的 subagents 都返回后再汇总；不要边收边写导致前后打架。
 - 汇总时保留分歧，不要把不同人格平均成一锅温吞水。
 
 ## 输出骨架

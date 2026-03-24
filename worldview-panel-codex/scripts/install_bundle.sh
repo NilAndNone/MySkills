@@ -221,17 +221,21 @@ if [ "$DRY_RUN" -ne 1 ]; then
 fi
 
 if [ -n "$SOURCE_DIR" ]; then
-  MANIFEST_FILE="$SOURCE_DIR/install/manifest.txt"
+  MANIFEST_FILE="$SOURCE_DIR/scripts/install/manifest.txt"
   [ -f "$MANIFEST_FILE" ] || die "missing manifest: $MANIFEST_FILE"
 else
   MANIFEST_FILE="$TMP_DIR/manifest.txt"
-  fetch_remote_to_file "install/manifest.txt" "$MANIFEST_FILE"
+  fetch_remote_to_file "scripts/install/manifest.txt" "$MANIFEST_FILE"
 fi
 
-SKILL_WORLDVIEW_CORE=0
-SKILL_WORLDVIEW_PANEL=0
+SKILL_COUNT=0
 AGENT_COUNT=0
 SNIPPET_PRESENT=0
+LEGACY_WORLDVIEW_CORE_PRESENT=0
+
+if [ -e "$DEST_HOME/.codex/skills/worldview-core" ]; then
+  LEGACY_WORLDVIEW_CORE_PRESENT=1
+fi
 
 while IFS='|' read -r entry_kind source_rel dest_rel; do
   [ -n "$entry_kind" ] || continue
@@ -243,11 +247,8 @@ while IFS='|' read -r entry_kind source_rel dest_rel; do
         die "target already exists: $target_path (rerun with --force to overwrite)"
       fi
       case "$dest_rel" in
-        .codex/skills/worldview-core/*)
-          SKILL_WORLDVIEW_CORE=1
-          ;;
         .codex/skills/worldview-panel-codex/*)
-          SKILL_WORLDVIEW_PANEL=1
+          SKILL_COUNT=1
           ;;
         .codex/agents/*.toml)
           AGENT_COUNT=$((AGENT_COUNT + 1))
@@ -279,13 +280,19 @@ while IFS='|' read -r entry_kind source_rel dest_rel; do
   esac
 done <"$MANIFEST_FILE"
 
-SKILL_COUNT=$((SKILL_WORLDVIEW_CORE + SKILL_WORLDVIEW_PANEL))
-
 echo
-echo "Installed $SKILL_COUNT skills into $DEST_HOME/.codex/skills"
+SKILL_LABEL="skills"
+if [ "$SKILL_COUNT" -eq 1 ]; then
+  SKILL_LABEL="skill"
+fi
+echo "Installed $SKILL_COUNT $SKILL_LABEL into $DEST_HOME/.codex/skills"
 echo "Installed $AGENT_COUNT agents into $DEST_HOME/.codex/agents"
 if [ "$SNIPPET_PRESENT" -eq 1 ]; then
   echo "Updated $DEST_HOME/.codex/AGENTS.override.md"
+fi
+if [ "$LEGACY_WORLDVIEW_CORE_PRESENT" -eq 1 ]; then
+  echo "Legacy $DEST_HOME/.codex/skills/worldview-core was not modified."
+  echo "Remove it manually if you want a clean single-skill install."
 fi
 echo "Project-level .codex/config.toml was not installed."
 echo "Restart Codex to pick up new skills."

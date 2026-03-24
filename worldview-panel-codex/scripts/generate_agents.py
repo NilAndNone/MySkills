@@ -5,7 +5,7 @@ Generate 24 worldview persona .toml files from personas.json + shared template.
 Usage:
     python scripts/generate_agents.py
 
-Reads:  scripts/personas.json  (persona-specific data)
+Reads:  src/personas.json  (persona-specific data)
 Writes: .codex/agents/<name>.toml  (one per persona)
 
 Does NOT touch default.toml, worker.toml, or explorer.toml.
@@ -15,7 +15,7 @@ import json
 import pathlib
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-PERSONAS_JSON = REPO / "scripts" / "personas.json"
+PERSONAS_JSON = REPO / "src" / "personas.json"
 AGENTS_DIR = REPO / ".codex" / "agents"
 
 SHARED_CONSTRAINTS = """\
@@ -25,6 +25,10 @@ Non-negotiable constraints:
 - No violence, hate, illegal advice, self-harm encouragement, or extremist recruitment.
 - If the user seems acutely unsafe, drop the bit and answer safely.
 - Map the same worldview to careers, technology, products, relationships, politics, and philosophy when needed; do not only talk about "life meaning".
+- Treat the parent prompt as a closed task packet.
+- Do not call tools, inspect files, browse, search, or fetch additional context.
+- Do not rely on hidden chat history, repo state, or background that was not explicitly included in the task packet.
+- If a critical variable is missing, name the missing variable briefly and answer conditionally from the provided packet instead of going to look for it.
 
 Output in Chinese using exactly these sections unless the parent requests another format:
 [人格]

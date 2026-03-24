@@ -1,9 +1,8 @@
-copy|.agents/skills/worldview-core/SKILL.md|.codex/skills/worldview-core/SKILL.md
-copy|.agents/skills/worldview-core/agents/openai.yaml|.codex/skills/worldview-core/agents/openai.yaml
-copy|.agents/skills/worldview-panel-codex/SKILL.md|.codex/skills/worldview-panel-codex/SKILL.md
-copy|.agents/skills/worldview-panel-codex/agents/openai.yaml|.codex/skills/worldview-panel-codex/agents/openai.yaml
-copy|.agents/skills/worldview-panel-codex/references/roster.md|.codex/skills/worldview-panel-codex/references/roster.md
-copy|.agents/skills/worldview-panel-codex/references/routing-matrix.md|.codex/skills/worldview-panel-codex/references/routing-matrix.md
+copy|src/skills/worldview-panel-codex/SKILL.md|.codex/skills/worldview-panel-codex/SKILL.md
+copy|src/skills/worldview-panel-codex/agents/openai.yaml|.codex/skills/worldview-panel-codex/agents/openai.yaml
+copy|src/skills/worldview-panel-codex/references/roster.md|.codex/skills/worldview-panel-codex/references/roster.md
+copy|src/skills/worldview-panel-codex/references/routing-matrix.md|.codex/skills/worldview-panel-codex/references/routing-matrix.md
+copy|src/skills/worldview-panel-codex/references/task-packet.md|.codex/skills/worldview-panel-codex/references/task-packet.md
 copy|.codex/agents/absurdist_player.toml|.codex/agents/absurdist_player.toml
 copy|.codex/agents/antiwork_minimalist.toml|.codex/agents/antiwork_minimalist.toml
 copy|.codex/agents/attention_marketer.toml|.codex/agents/attention_marketer.toml
@@ -31,4 +30,4 @@ copy|.codex/agents/systems_operator.toml|.codex/agents/systems_operator.toml
 copy|.codex/agents/techno_optimist.toml|.codex/agents/techno_optimist.toml
 copy|.codex/agents/terminal_jester.toml|.codex/agents/terminal_jester.toml
 copy|.codex/agents/worker.toml|.codex/agents/worker.toml
-managed_snippet|AGENTS.home.snippet.md|.codex/AGENTS.override.md
+managed_snippet|scripts/install/AGENTS.home.snippet.md|.codex/AGENTS.override.md

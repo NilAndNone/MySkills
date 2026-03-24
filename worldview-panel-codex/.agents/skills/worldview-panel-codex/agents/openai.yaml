@@ -1,6 +1,0 @@
-interface:
-  display_name: "Worldview Panel (Codex)"
-  short_description: "Spawn worldview subagents to answer from multiple internet-archetype perspectives."
-  default_prompt: "Analyze this with a worldview panel. Use subagents and wait for all results before synthesizing."
-policy:
-  allow_implicit_invocation: false
