@@ -95,14 +95,14 @@ curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/dissociative_id
 
 ```text
 $worldview-panel-codex 分析这个问题：大模型创业还有没有意义？
-必须使用 subagents。默认路由 5 个最相关 agents，任一时刻最多只开 3 个，分批等全部返回后再裁决。
+必须使用 subagents。默认路由 5 个最相关 agents，默认并发 4 个，分批等全部返回后再裁决。
 ```
 
 ### 方式 B：直接点名 agents
 
 ```text
 必须使用 subagents，只用 existentialist, systems_operator, risk_manager, red_leftist, network_jester 这 5 个 agent 回答：
-任一时刻最多只开 3 个，分批跑完再综合裁决。
+默认并发 4 个，分批跑完再综合裁决。
 大模型创业还有没有意义？
 等全部返回后再给综合裁决。
 ```
@@ -112,7 +112,15 @@ $worldview-panel-codex 分析这个问题：大模型创业还有没有意义？
 ```text
 $worldview-panel-codex 分析：婚育、职业和移民怎么权衡？
 启用 full panel，覆盖全部 24 个 worldview agents。
-任一时刻最多只拉起 3 个，分批跑完再汇总。
+默认并发 4 个，分批跑完再汇总。
+```
+
+### 方式 D：显式覆盖并发
+
+```text
+$worldview-panel-codex 分析：AI 时代普通软件工程师该怎么自处？
+必须使用 subagents。
+同时启用 12 个 subagents，等全部返回后再汇总。
 ```
 
 ## packet-only 协议
@@ -126,6 +134,7 @@ $worldview-panel-codex 分析：婚育、职业和移民怎么权衡？
 ## “强制 gpt-5.4 xhigh” 是怎么做的
 
 - `.codex/config.toml` 把这个 repo 的默认 `model` 设成 `gpt-5.4`，`model_reasoning_effort` 设成 `xhigh`。
+- 同一个 `.codex/config.toml` 把项目线程预算设成 `max_threads = 12`，这样 skill 默认按 4 个并发跑时，用户仍可显式要求更高并发。
 - 每个 worldview 自定义 agent 都再次显式声明：
   - `model = "gpt-5.4"`
   - `model_reasoning_effort = "xhigh"`
@@ -142,7 +151,7 @@ $worldview-panel-codex 分析：婚育、职业和移民怎么权衡？
 
 ## 推荐默认策略
 
-- 默认：覆盖全部 24 个 worldview agents，但任一时刻最多只拉起 3 个，按批次跑完
+- 默认：覆盖全部 24 个 worldview agents，默认并发 4 个；如果用户显式要求别的并发数，按要求执行，但不超过当前 `agents.max_threads`
 - 用户指定分组（正选或排除）：按指示筛选
 - 用户点名个人：严格按点名名单执行
 - 默认 synthesize 输出：TL;DR → 问题拆解 → 人格面板 → 交叉裁决 → 主推建议 → 可执行下一步
