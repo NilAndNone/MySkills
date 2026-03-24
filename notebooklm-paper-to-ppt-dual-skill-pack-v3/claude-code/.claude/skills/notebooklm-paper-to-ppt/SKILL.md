@@ -54,6 +54,21 @@ Mode requirements:
 
 If something required is missing, stop and ask for the single missing item only.
 
+## Language resolution
+
+Resolve `language` in this order:
+
+1. Explicit `language=...`
+2. Clear natural-language request:
+   - Chinese / Simplified Chinese -> `zh-CN`
+   - English -> `en`
+3. If the user request is primarily Chinese and does not ask for another output language, default to `zh-CN`
+4. Otherwise leave it unset
+
+If `language` is unset for `full` or `deck-only`, warn in the preflight summary that NotebookLM may fall back to `NOTEBOOKLM_HL` or `en`.
+
+Never treat "generate it in Chinese" as a soft preference. Normalize it to `zh-CN` unless the user explicitly asked for another language.
+
 ## Path rules
 
 Default final output path for `full` and `deck-only`:
@@ -84,6 +99,9 @@ Before doing any side-effectful work, print a short resolved-input summary that 
 - `resolved_source_value`
 - `resolved_raw_pptx`
 - `resolved_final_output`
+- `resolved_language`
+- `resolved_deck_format`
+- `resolved_length`
 - `will_generate_deck`
 - `will_generate_notes`
 
@@ -99,6 +117,9 @@ If `source_url` is used in a notes flow, also mention that it will be crawled in
 - Do not inject any visual style by default.
 - Only read and inject `style_file` when the user explicitly asks for one.
 - Do not hard-code slide-generation parameter names unless the installed schema shows them.
+- If the user explicitly requested Chinese deck text, do not silently create a deck with an unset language. Resolve it to `zh-CN` first.
+- When using CLI fallback and the installed `nlm slides create --help` exposes `--language`, `--format`, or `--length`, pass the resolved values explicitly instead of relying on defaults.
+- If the user explicitly requested Chinese output and the active MCP or CLI path cannot set deck language programmatically, stop and report that limitation before creating the deck.
 
 ### `mode=full`
 
@@ -118,9 +139,18 @@ If `source_url` is used in a notes flow, also mention that it will be crawled in
 5. Run one short grounding query.
    - stop if the answer is empty or clearly off-topic
 6. Create the slide deck artifact.
+   - resolve deck language before creation
+   - if the request is primarily Chinese and no other language was requested, use `zh-CN`
    - default format: `detailed`
    - use `presenter` only when explicitly requested
-   - default length code: `3`
+   - default length: `default` (code `3`)
+   - when using MCP:
+     - inspect the installed tool schema at runtime
+     - pass language / format / length when the schema exposes them
+   - when using CLI fallback:
+     - pass `--language <resolved_language>` when non-empty
+     - pass `--format detailed_deck|presenter_slides`
+     - pass `--length short|default`
 7. Poll for completion.
    - poll interval: 60 seconds
    - timeout: 900 seconds
@@ -236,6 +266,7 @@ Always return:
 
 - `workflow_mode`
 - `resolved_source_kind`
+- `resolved_language`
 
 For `full`, also return:
 

@@ -61,8 +61,14 @@ Canonical examples:
 ```
 
 ```text
+/notebooklm-paper-to-ppt mode=deck-only source=https://example.com/article output=./out/article-deck.pptx language=zh-CN
+```
+
+```text
 /notebooklm-paper-to-ppt mode=notes-only raw_pptx=./out/article.raw.pptx source_url=https://example.com/article output=./out/article.pptx
 ```
+
+If you want the raw NotebookLM deck text in Chinese, pass `language=zh-CN` explicitly for `full` or `deck-only`. Otherwise NotebookLM may fall back to `NOTEBOOKLM_HL` or `en`.
 
 ## Documentation map
 

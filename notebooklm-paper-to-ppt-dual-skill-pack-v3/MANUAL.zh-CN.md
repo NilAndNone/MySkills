@@ -142,8 +142,14 @@ agent: general-purpose
 ```
 
 ```text
+/notebooklm-paper-to-ppt mode=deck-only source=https://example.com/article output=./out/article-deck.pptx language=zh-CN
+```
+
+```text
 /notebooklm-paper-to-ppt mode=notes-only raw_pptx=./out/article-deck.raw.pptx source_url=https://example.com/article output=./out/article-deck.pptx
 ```
+
+如果你希望 NotebookLM 原始 deck 本体就是中文，`full` 和 `deck-only` 都要显式传 `language=zh-CN`。不能只依赖默认值，否则会退回 `NOTEBOOKLM_HL` 或 `en`。
 
 ---
 

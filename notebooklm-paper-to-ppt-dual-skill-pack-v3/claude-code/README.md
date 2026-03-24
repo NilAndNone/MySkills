@@ -59,8 +59,10 @@ Default `full` with webpage URL:
 Explicit `deck-only` with webpage URL:
 
 ```text
-/notebooklm-paper-to-ppt mode=deck-only source=https://example.com/article output=./out/article-deck.pptx
+/notebooklm-paper-to-ppt mode=deck-only source=https://example.com/article output=./out/article-deck.pptx language=zh-CN
 ```
+
+If you want the raw NotebookLM deck text in Chinese, pass `language=zh-CN` explicitly. Otherwise NotebookLM may fall back to `NOTEBOOKLM_HL` or `en`.
 
 Explicit `notes-only` with `source_url`:
 

@@ -158,7 +158,7 @@ skill 会把输入识别成这几类：
 ### 显式 `deck-only` + 网页 URL
 
 ```text
-/notebooklm-paper-to-ppt mode=deck-only source=https://example.com/article output=./out/article-deck.pptx
+/notebooklm-paper-to-ppt mode=deck-only source=https://example.com/article output=./out/article-deck.pptx language=zh-CN
 ```
 
 ### 显式 `notes-only` + 网页 URL
@@ -172,6 +172,8 @@ skill 会把输入识别成这几类：
 ```text
 /notebooklm-paper-to-ppt mode=notes-only raw_pptx=./out/article-deck.raw.pptx source_text=./papers/article.txt output=./out/article-deck.pptx
 ```
+
+如果你希望 NotebookLM 原始 deck 本体就是中文，`full` 和 `deck-only` 都要显式传 `language=zh-CN`。不能只依赖默认值，否则会退回 `NOTEBOOKLM_HL` 或 `en`。
 
 ## 8. 路径约定
 

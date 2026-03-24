@@ -36,7 +36,7 @@ Applied in both platform skills and reference docs:
   - Short = `1`
   - Default = `3`
   - language uses BCP-47 codes
-- the skill also notes that the CLI docs do **not** currently document explicit slide flags for format/language/length, so hard-coding names would be fake confidence in a cheap suit
+- the local `nlm 0.4.8` CLI help now exposes explicit `--format`, `--length`, and `--language` flags, so the CLI fallback passes them instead of relying on defaults
 
 ## 4) Add timeout control to the CLI template
 

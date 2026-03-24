@@ -11,6 +11,9 @@ Usage:
 
 Options:
   --title <name>            Explicit notebook title
+  --language <code>         Deck language as BCP-47, e.g. zh-CN
+  --deck-format <name>      detailed|presenter (or detailed_deck|presenter_slides)
+  --length <name>           short|default
   --timeout <sec>           Poll timeout for slide generation (default: 900)
   --interval <sec>          Poll interval seconds (default: 60)
   --query-timeout <sec>     Grounding query timeout seconds (default: 120)
@@ -19,12 +22,15 @@ Options:
   -h, --help                Show this help
 
 Environment overrides:
+  NLM_SLIDES_LANGUAGE       Same as --language
+  NLM_SLIDES_FORMAT         Same as --deck-format
+  NLM_SLIDES_LENGTH         Same as --length
   NLM_POLL_TIMEOUT_SEC      Same as --timeout
   NLM_POLL_INTERVAL_SEC     Same as --interval
   NLM_QUERY_TIMEOUT_SEC     Same as --query-timeout
 
 Examples:
-  cli_flow_template.sh ./papers/source.pdf ./out/raw-deck.pptx
+  cli_flow_template.sh --language zh-CN ./papers/source.pdf ./out/raw-deck.pptx
   cli_flow_template.sh --non-interactive ./source.pdf ./out/raw-deck.pptx
 EOF
 }
@@ -109,6 +115,65 @@ ensure_min_nlm_version() {
   echo "[OK] nlm version $ver >= $MIN_NLM_VERSION"
 }
 
+normalize_language() {
+  local raw="${1:-}"
+  local lowered
+  lowered="$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')"
+  case "$lowered" in
+    "")
+      printf '%s\n' ""
+      ;;
+    zh|zh-cn|zh_cn|zh-hans|zh-hans-cn|chinese|simplified-chinese|simplified_chinese)
+      printf '%s\n' "zh-CN"
+      ;;
+    en|en-us|en_us|english)
+      printf '%s\n' "en"
+      ;;
+    *)
+      printf '%s\n' "$raw"
+      ;;
+  esac
+}
+
+normalize_slide_format() {
+  local raw="${1:-}"
+  case "$raw" in
+    detailed|detailed_deck|1)
+      printf '%s\n' "detailed_deck"
+      ;;
+    presenter|presenter_slides|2)
+      printf '%s\n' "presenter_slides"
+      ;;
+    *)
+      echo "[ERROR] Unsupported --deck-format value: $raw" >&2
+      echo "[ERROR] Use detailed|presenter (or detailed_deck|presenter_slides)." >&2
+      exit 1
+      ;;
+  esac
+}
+
+normalize_slide_length() {
+  local raw="${1:-}"
+  case "$raw" in
+    short|1)
+      printf '%s\n' "short"
+      ;;
+    default|3)
+      printf '%s\n' "default"
+      ;;
+    long)
+      echo "[ERROR] Unsupported --length value: $raw" >&2
+      echo "[ERROR] The installed nlm CLI on this machine exposes only short|default." >&2
+      exit 1
+      ;;
+    *)
+      echo "[ERROR] Unsupported --length value: $raw" >&2
+      echo "[ERROR] Use short|default." >&2
+      exit 1
+      ;;
+  esac
+}
+
 extract_slide_artifact_from_json() {
   python3 - "$1" <<'PY'
 import json, sys
@@ -164,6 +229,9 @@ prompt_or_fail() {
 SOURCE=""
 OUTPUT=""
 TITLE=""
+LANGUAGE="${NLM_SLIDES_LANGUAGE:-}"
+SLIDE_FORMAT="${NLM_SLIDES_FORMAT:-detailed_deck}"
+SLIDE_LENGTH="${NLM_SLIDES_LENGTH:-default}"
 NON_INTERACTIVE=0
 SKIP_GROUNDING_QUERY=0
 POLL_TIMEOUT_SEC="${NLM_POLL_TIMEOUT_SEC:-900}"
@@ -174,6 +242,18 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --title)
       TITLE="${2:-}"
+      shift 2
+      ;;
+    --language)
+      LANGUAGE="${2:-}"
+      shift 2
+      ;;
+    --deck-format|--format)
+      SLIDE_FORMAT="${2:-}"
+      shift 2
+      ;;
+    --length)
+      SLIDE_LENGTH="${2:-}"
       shift 2
       ;;
     --timeout)
@@ -241,6 +321,10 @@ if [ -z "$TITLE" ]; then
   TITLE="${base_name%.*}"
 fi
 
+LANGUAGE="$(normalize_language "$LANGUAGE")"
+SLIDE_FORMAT="$(normalize_slide_format "$SLIDE_FORMAT")"
+SLIDE_LENGTH="$(normalize_slide_length "$SLIDE_LENGTH")"
+
 case "$POLL_TIMEOUT_SEC" in
   ''|*[!0-9]*)
     echo "[ERROR] --timeout must be an integer number of seconds" >&2
@@ -267,6 +351,14 @@ fi
 
 SLUG="$(slugify "$TITLE")"
 ALIAS="ppt_${SLUG}_$RANDOM"
+
+if [ -n "$LANGUAGE" ]; then
+  echo "Deck language     : $LANGUAGE"
+else
+  echo "[WARN] Deck language is not explicitly set; NotebookLM will use NOTEBOOKLM_HL or en."
+fi
+echo "Deck format       : $SLIDE_FORMAT"
+echo "Deck length       : $SLIDE_LENGTH"
 
 echo "[1/7] Checking NotebookLM auth..."
 if ! nlm login --check >/dev/null 2>&1; then
@@ -336,7 +428,11 @@ if [ "$SKIP_GROUNDING_QUERY" -eq 0 ]; then
 fi
 
 echo "[5/7] Creating slide deck..."
-nlm slides create "$ALIAS" --confirm
+slide_create_args=("$ALIAS" "--confirm" "--format" "$SLIDE_FORMAT" "--length" "$SLIDE_LENGTH")
+if [ -n "$LANGUAGE" ]; then
+  slide_create_args+=("--language" "$LANGUAGE")
+fi
+nlm slides create "${slide_create_args[@]}"
 
 echo "[6/7] Polling status for a completed slide deck..."
 ARTIFACT_ID=""
@@ -373,6 +469,9 @@ echo "[OK] Finished."
 echo "Notebook alias    : $ALIAS"
 echo "Notebook id       : $NOTEBOOK_ID"
 echo "Artifact id       : $ARTIFACT_ID"
+echo "Deck language     : ${LANGUAGE:-<default>}"
+echo "Deck format       : $SLIDE_FORMAT"
+echo "Deck length       : $SLIDE_LENGTH"
 echo "Downloaded deck   : $OUTPUT"
 echo "Postprocess step  : python3 \"$SCRIPT_DIR/postprocess_downloaded_pptx.py\" prepare-context --input \"$OUTPUT\" --source-pdf <paper.pdf>"
 echo
