@@ -11,7 +11,7 @@ This skill is designed for **explicit invocation** with Codex, typically through
 
 - If the user explicitly asks for **subagents**, **parallel agents**, **panel mode**, or **multiple personas**, do not answer single-threaded.
 - For worldview tasks, prefer the custom agents in `.codex/agents/` over generic built-ins.
-- Never run more than 3 subagents at once. If the panel is larger, dispatch in batches of up to 3.
+- Default to 4 concurrent subagents. If the user explicitly requests another concurrency level, honor it up to the current runtime `agents.max_threads` budget.
 - Treat worldview persona subagents as packet-only answerers. They should not gather context, read files, or make tool calls.
 - The parent must prepare the full task packet before dispatch and should use `fork_context = false` for worldview persona subagents.
 - Wait for all batches of subagents before synthesizing.
@@ -107,8 +107,9 @@ Each section header is a plain-text label in square brackets (e.g. `[人格]`). 
    - 用户点名个人 → 严格按点名名单
 
 4. Dispatch the selected agents with a concurrency cap:
-   - 任一时刻最多只运行 3 个 subagents
-   - 如果选中的 agents 超过 3 个，拆成每批最多 3 个的批次
+   - 默认并发上限是 4 个 subagents
+   - 如果用户显式要求别的并发数（例如“同时启用 12 个 subagents”），按用户要求覆盖默认值，但不要超过当前运行环境允许的 `agents.max_threads`
+   - 如果选中的 agents 超过当前并发上限，拆成每批最多等于当前并发上限的批次
    - 等当前批次返回后，再启动下一批
    - 不要在批次未完成时提前写综合结论
    - 对 worldview persona subagents，使用 `fork_context = false`

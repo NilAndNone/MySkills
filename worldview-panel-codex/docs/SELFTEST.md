@@ -44,14 +44,14 @@ Summarize the instructions you loaded for this repo.
 
 ```text
 $worldview-panel-codex 分析：大模型创业还有没有意义？
-必须使用 subagents。默认路由 5 个最 relevant agents，任一时刻最多只开 3 个，分批等全部返回后再裁决。
+必须使用 subagents。默认路由 5 个最 relevant agents，默认并发 4 个，分批等全部返回后再裁决。
 ```
 
 预期：
 - 你能看到 spawned subagent threads。
 - `/agent` 里能切到子线程。
 - 最终汇总里至少有 5 个 agent 观点。
-- 任一时刻活跃的 subagent 不超过 3 个。
+- 任一时刻活跃的 subagent 不超过 4 个。
 - 如果能看到执行轨迹，worldview persona subagent 不应出现 tool call。
 
 ### Smoke test 4：路由是否像个正常人
@@ -79,14 +79,27 @@ $worldview-panel-codex 分析：大模型创业还有没有意义？必须使用
 ```text
 $worldview-panel-codex 分析：婚育、职业、移民怎么一起权衡？
 启用 full panel，覆盖全部 24 个 worldview agents。
-任一时刻最多只拉起 3 个，分批跑完再汇总。
+默认并发 4 个，分批跑完再汇总。
 ```
 
 预期：
 - 最终覆盖到 24 个 worldview agents
-- 任一时刻活跃的 subagent 不超过 3 个
+- 任一时刻活跃的 subagent 不超过 4 个
 - 汇总明确区分共同点 / 分歧点 / 主推建议
 - 不会把 24 个视角平均成“看你自己”这种废话
+
+### Smoke test 5b：显式覆盖并发
+
+```text
+$worldview-panel-codex 分析：AI 时代普通软件工程师该怎么自处？
+必须使用 subagents。
+同时启用 12 个 subagents，等全部返回后再汇总。
+```
+
+预期：
+- 如果当前运行环境的 `agents.max_threads` 至少是 12，活跃 subagent 可以到 12 个。
+- 如果当前运行环境的线程预算低于 12，应降到可用上限运行，而不是继续套用默认 4 个。
+- 最终仍然要等全部结果返回后再汇总。
 
 ### Smoke test 6：任务包纪律
 

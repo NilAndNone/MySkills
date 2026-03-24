@@ -9,6 +9,10 @@ DEFAULT_SUBDIR="worldview-panel-codex"
 START_MARKER="# >>> worldview-panel-codex managed block >>>"
 END_MARKER="# <<< worldview-panel-codex managed block <<<"
 
+log() {
+  echo "[$SCRIPT_NAME] $*" >&2
+}
+
 usage() {
   cat <<'EOF'
 Install the worldview-panel-codex bundle into the current user's Codex home.
@@ -54,6 +58,8 @@ fetch_remote_to_file() {
   dest_path=$2
   url="https://raw.githubusercontent.com/$REPO/$REF/$SUBDIR/$rel_path"
 
+  log "fetching $rel_path from $url"
+
   if command -v curl >/dev/null 2>&1; then
     curl -fsSL "$url" -o "$dest_path"
     return
@@ -72,6 +78,8 @@ copy_file() {
   dest_path=$2
   dest_dir=$(dirname "$dest_path")
 
+  log "installing $dest_path"
+
   if [ "$DRY_RUN" -eq 1 ]; then
     echo "copy $src_path -> $dest_path"
     return
@@ -87,6 +95,7 @@ prepare_source_file() {
   if [ -n "$SOURCE_DIR" ]; then
     src_path="$SOURCE_DIR/$rel_path"
     [ -f "$src_path" ] || die "missing source file: $src_path"
+    log "using local source $src_path"
     printf '%s\n' "$src_path"
     return
   fi
@@ -108,6 +117,8 @@ update_managed_snippet() {
   snippet_file=$1
   target_file=$2
   target_dir=$(dirname "$target_file")
+
+  log "updating managed block in $target_file"
 
   if [ "$DRY_RUN" -eq 1 ]; then
     echo "update managed block in $target_file from $snippet_file"
@@ -202,6 +213,25 @@ done
 [ -n "$DEST_HOME" ] || die "HOME is not set; pass --dest-home"
 
 if [ -n "$SOURCE_DIR" ]; then
+  SOURCE_DESC="local source $SOURCE_DIR"
+else
+  SOURCE_DESC="remote source $REPO@$REF/$SUBDIR"
+fi
+
+if [ "$DRY_RUN" -eq 1 ]; then
+  MODE_DESC="dry-run"
+else
+  MODE_DESC="apply"
+fi
+
+log "starting install in $MODE_DESC mode"
+log "destination home: $DEST_HOME"
+log "bundle source: $SOURCE_DESC"
+if [ "$FORCE" -eq 1 ]; then
+  log "force overwrite enabled"
+fi
+
+if [ -n "$SOURCE_DIR" ]; then
   [ -d "$SOURCE_DIR" ] || die "missing source directory: $SOURCE_DIR"
 else
   if ! command -v curl >/dev/null 2>&1 && ! command -v wget >/dev/null 2>&1; then
@@ -215,9 +245,11 @@ require_cmd mktemp
 
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT INT TERM
+log "created temp dir $TMP_DIR"
 
 if [ "$DRY_RUN" -ne 1 ]; then
   ensure_dir_writable "$DEST_HOME"
+  log "destination is writable"
 fi
 
 if [ -n "$SOURCE_DIR" ]; then
@@ -227,6 +259,7 @@ else
   MANIFEST_FILE="$TMP_DIR/manifest.txt"
   fetch_remote_to_file "scripts/install/manifest.txt" "$MANIFEST_FILE"
 fi
+log "loaded manifest $MANIFEST_FILE"
 
 SKILL_COUNT=0
 AGENT_COUNT=0
@@ -237,6 +270,8 @@ if [ -e "$DEST_HOME/.codex/skills/worldview-core" ]; then
   LEGACY_WORLDVIEW_CORE_PRESENT=1
 fi
 
+log "validating manifest targets"
+
 while IFS='|' read -r entry_kind source_rel dest_rel; do
   [ -n "$entry_kind" ] || continue
 
@@ -246,6 +281,7 @@ while IFS='|' read -r entry_kind source_rel dest_rel; do
       if [ -e "$target_path" ] && [ "$FORCE" -ne 1 ]; then
         die "target already exists: $target_path (rerun with --force to overwrite)"
       fi
+      log "validated target $target_path"
       case "$dest_rel" in
         .codex/skills/worldview-panel-codex/*)
           SKILL_COUNT=1
@@ -257,12 +293,16 @@ while IFS='|' read -r entry_kind source_rel dest_rel; do
       ;;
     managed_snippet)
       SNIPPET_PRESENT=1
+      target_path="$DEST_HOME/$dest_rel"
+      log "validated managed block target $target_path"
       ;;
     *)
       die "unknown manifest entry kind: $entry_kind"
       ;;
   esac
 done <"$MANIFEST_FILE"
+
+log "starting file install pass"
 
 while IFS='|' read -r entry_kind source_rel dest_rel; do
   [ -n "$entry_kind" ] || continue
