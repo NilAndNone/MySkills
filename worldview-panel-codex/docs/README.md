@@ -33,6 +33,7 @@ misc/
 scripts/
   generate_agents.py
   install_bundle.sh
+  uninstall_bundle.sh
   install/
     AGENTS.home.snippet.md
     manifest.txt
@@ -88,6 +89,32 @@ curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/dissociative_id
 - `--dry-run`：只打印将写入哪些路径，不落盘
 - `--force`：覆盖已安装的 skill / agent 文件
 - `--repo` / `--ref` / `--subdir`：用于 fork、分支或 monorepo 子目录安装
+
+## 卸载
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/dissociative_identity_disorder/worldview-panel-codex/scripts/uninstall_bundle.sh | sh
+```
+
+- 默认会移除：
+  - `~/.codex/skills/worldview-panel-codex`
+  - 本 bundle 安装的 `~/.codex/agents/*.toml`
+  - `~/.codex/AGENTS.override.md` 里的 managed block
+- 默认不会删掉和 bundle 内容不一致的同名文件；如果确定要强制移除，追加 `--force`
+- 如果 `AGENTS.override.md` 在删掉 managed block 后变空，脚本会顺手删掉这个空文件
+- 卸载不会恢复安装阶段被覆盖掉的旧文件
+
+### 远程卸载可选参数
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/dissociative_identity_disorder/worldview-panel-codex/scripts/uninstall_bundle.sh | sh -s -- --dry-run
+curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/dissociative_identity_disorder/worldview-panel-codex/scripts/uninstall_bundle.sh | sh -s -- --force
+curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/dissociative_identity_disorder/worldview-panel-codex/scripts/uninstall_bundle.sh | sh -s -- --repo NilAndNone/MySkills --ref dissociative_identity_disorder
+```
+
+- `--dry-run`：只打印将删除哪些路径，不落盘
+- `--force`：即使本地文件已被修改，也按 manifest 强制删除
+- `--repo` / `--ref` / `--subdir`：用于 fork、分支或 monorepo 子目录卸载
 
 ## 快速上手
 
