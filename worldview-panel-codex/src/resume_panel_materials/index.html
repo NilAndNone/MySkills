@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>24 种嘴脸</title>
+    <meta
+      name="description"
+      content="一份大模型评测工程师简历，被 24 个人格轮流开刀。"
+    />
+    <link rel="stylesheet" href="./site.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <noscript>
+        <div class="noscript-banner">
+          <strong>脚本未启用。</strong>
+          <span>页面交互层不可用，你可以先看</span>
+          <a href="./README.md">README</a>
+          <span>和各派别目录：</span>
+          <a href="./builders/">builders</a>
+          <a href="./critics/">critics</a>
+          <a href="./spectators/">spectators</a>
+          <a href="./defenders/">defenders</a>
+          <a href="./experientials/">experientials</a>
+        </div>
+      </noscript>
+
+      <header class="topbar">
+        <a class="topbar-brand" href="#top">Resume Panel</a>
+        <nav class="topbar-nav" aria-label="页面导航">
+          <a href="#overview">派别</a>
+          <a href="#chapters">原文</a>
+          <a href="#verdict">裁决</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero" id="top">
+          <div class="hero-backdrop" aria-hidden="true">
+            <span>24</span>
+            <span>VOICES</span>
+          </div>
+          <div class="hero-copy">
+            <p class="eyebrow">Resume Panel</p>
+            <h1>24 种嘴脸</h1>
+            <p class="hero-lead">
+              一份大模型评测工程师简历，被 24 个人格轮流开刀。
+            </p>
+            <p class="hero-note">
+              不是汇总摘要，是逐条留档的原话现场。
+            </p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="#overview">按派别阅读</a>
+              <a class="button button-secondary" href="#chapters">直接看 24 人格</a>
+            </div>
+            <dl class="hero-meta" aria-label="页面概览">
+              <div>
+                <dt>人格</dt>
+                <dd>24</dd>
+              </div>
+              <div>
+                <dt>派别</dt>
+                <dd>5</dd>
+              </div>
+              <div>
+                <dt>材料</dt>
+                <dd>原文档案</dd>
+              </div>
+            </dl>
+          </div>
+          <aside class="hero-cast" aria-labelledby="cast-title">
+            <div class="hero-cast-head">
+              <p class="eyebrow" id="cast-title">The Cast</p>
+              <p>从建设派到体验派，先看阵容，再下场细读。</p>
+            </div>
+            <div class="cast-list" id="hero-cast-list"></div>
+          </aside>
+        </section>
+
+        <section class="overview section" id="overview">
+          <div class="section-heading">
+            <p class="eyebrow">Camps</p>
+            <h2>五派同堂</h2>
+            <p>
+              先扫派别，再挑人格。每一派只负责一种攻击方式，不抢活。
+            </p>
+          </div>
+          <nav class="group-nav" id="group-nav" aria-label="派别导航"></nav>
+        </section>
+
+        <div class="story-layout">
+          <aside class="chapter-rail" aria-label="章节进度">
+            <div class="chapter-rail-inner">
+              <p class="eyebrow">Current</p>
+              <ol class="rail-list" id="chapter-rail-list"></ol>
+            </div>
+          </aside>
+          <section class="chapters section" id="chapters" aria-label="人格章节"></section>
+        </div>
+
+        <section class="verdict section" id="verdict">
+          <div class="section-heading">
+            <p class="eyebrow">Cross Verdict</p>
+            <h2>交叉裁决</h2>
+            <p>把 24 张嘴收拢成几句真正能带走的话。</p>
+          </div>
+          <div class="verdict-grid">
+            <div class="verdict-column">
+              <h3>共同承认</h3>
+              <ul id="consensus-list"></ul>
+            </div>
+            <div class="verdict-column">
+              <h3>共同毒点</h3>
+              <ul id="risk-list"></ul>
+            </div>
+          </div>
+          <blockquote class="verdict-quote" id="verdict-quote"></blockquote>
+          <div class="final-actions">
+            <a class="button button-primary" href="#top">回到顶部</a>
+            <a class="button button-secondary" href="./README.md">打开材料索引</a>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="reader" id="reader" aria-hidden="true">
+      <div class="reader-backdrop" data-close-reader></div>
+      <div
+        class="reader-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reader-title"
+        tabindex="-1"
+      >
+        <header class="reader-header">
+          <button class="reader-close" type="button" data-close-reader>
+            关闭
+          </button>
+          <div class="reader-header-copy">
+            <p class="eyebrow" id="reader-group-label"></p>
+            <h2 id="reader-title"></h2>
+            <p class="reader-tagline" id="reader-tagline"></p>
+          </div>
+          <div class="reader-controls">
+            <button class="reader-switch" id="reader-prev" type="button">
+              上一位
+            </button>
+            <button class="reader-switch" id="reader-next" type="button">
+              下一位
+            </button>
+          </div>
+        </header>
+
+        <div class="reader-body">
+          <aside class="reader-sidebar">
+            <p class="eyebrow">In This Camp</p>
+            <div class="reader-sidebar-list" id="reader-sidebar-list"></div>
+          </aside>
+          <article class="reader-article">
+            <div class="reader-article-inner" id="reader-content"></div>
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="./site.js"></script>
+  </body>
+</html>
