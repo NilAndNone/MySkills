@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import tempfile
 from dataclasses import asdict, dataclass
@@ -11,6 +12,7 @@ from persona_materials import build_persona_material_packet
 
 
 USER_PASTED_LABEL = "用户粘贴内容"
+DISPATCH_MISMATCH_MESSAGE = "这次请求已作废，请重新发准备好的上下文。"
 UNRESOLVED_REFERENCE_TOKENS = ("这个", "那个", "上面", "刚才", "该方案", "该材料")
 OTHER_ANSWER_SECTION_HEADERS = ("[人格]", "[核心判断]", "[问题诊断]", "[行动主张]", "[语言风格]", "[最大盲区]", "[过度采用的风险]", "[签名句]")
 PARENT_SYNTHESIS_MARKERS = ("TL;DR", "主推建议", "面板观点", "对照式整理", "可执行下一步")
@@ -109,6 +111,24 @@ def _render_external_materials(materials: list[dict[str, Any]]) -> str:
     return "\n".join(blocks).strip()
 
 
+def packet_fingerprint(rendered_packet: str) -> str:
+    return hashlib.sha256(rendered_packet.encode("utf-8")).hexdigest()
+
+
+def build_dispatch_artifact(
+    rendered_packet: str,
+    *,
+    packet_path: Path | None = None,
+    validation_status: str = "passed",
+) -> dict[str, Any]:
+    return {
+        "packet_path": str(packet_path.resolve()) if packet_path else None,
+        "packet_fingerprint": packet_fingerprint(rendered_packet),
+        "packet_length": len(rendered_packet),
+        "dispatch_ready": packet_path is not None and validation_status == "passed",
+    }
+
+
 def validate_packet_bundle(packet_bundle: dict[str, Any]) -> dict[str, Any]:
     errors: list[dict[str, str]] = []
     rendered_packet = packet_bundle["rendered_packet"]
@@ -177,40 +197,123 @@ def build_packet_bundle(normalized: dict[str, Any], *, persona_slug: str) -> dic
             _render_external_materials(normalized["external_materials"]),
         ]
     ).strip()
+    validation = validate_packet_bundle(
+        {
+            "persona": persona_slug,
+            "structured_packet": structured_packet,
+            "rendered_packet": rendered_packet,
+        }
+    )
     packet_bundle = {
         "persona": persona_slug,
         "structured_packet": structured_packet,
         "rendered_packet": rendered_packet,
+        "validation": validation,
+        "dispatch_artifact": build_dispatch_artifact(rendered_packet, validation_status=validation["status"]),
     }
-    packet_bundle["validation"] = validate_packet_bundle(packet_bundle)
     return packet_bundle
+
+
+def _refresh_round_manifest(round_bundle: dict[str, Any]) -> None:
+    packet_statuses = []
+    for packet in round_bundle["packets"]:
+        packet_statuses.append(
+            {
+                "persona": packet["persona"],
+                "status": packet["validation"]["status"],
+                **packet["dispatch_artifact"],
+            }
+        )
+
+    round_bundle["manifest"]["ready"] = all(packet["validation"]["status"] == "passed" for packet in round_bundle["packets"])
+    round_bundle["manifest"]["dispatch_ready"] = all(status["dispatch_ready"] for status in packet_statuses)
+    round_bundle["manifest"]["packet_statuses"] = packet_statuses
 
 
 def build_round_bundle(payload: dict[str, Any]) -> dict[str, Any]:
     normalized = normalize_round_input(payload)
     packets = [build_packet_bundle(normalized, persona_slug=persona) for persona in normalized["selected_personas"]]
-    ready = all(packet["validation"]["status"] == "passed" for packet in packets)
-    return {
+    round_bundle = {
         "normalized": normalized,
         "packets": packets,
         "manifest": {
             "question": normalized["question"],
             "selected_personas": normalized["selected_personas"],
-            "ready": ready,
-            "packet_statuses": [
-                {
-                    "persona": packet["persona"],
-                    "status": packet["validation"]["status"],
-                }
-                for packet in packets
-            ],
+            "ready": False,
+            "dispatch_ready": False,
+            "packet_statuses": [],
         },
     }
+    _refresh_round_manifest(round_bundle)
+    return round_bundle
 
 
 def require_round_ready(round_bundle: dict[str, Any]) -> None:
     if not round_bundle["manifest"]["ready"]:
         raise ValueError("batch blocked")
+
+
+def load_dispatch_packet(round_root: Path | str, persona_slug: str) -> dict[str, Any]:
+    resolved_root = Path(round_root).expanduser().resolve()
+    manifest_path = resolved_root / "round.json"
+    if not manifest_path.is_file():
+        raise FileNotFoundError(f"missing round manifest: {manifest_path}")
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    packet_status = next((item for item in manifest.get("packet_statuses", []) if item.get("persona") == persona_slug), None)
+    if packet_status is None:
+        raise ValueError(f"unknown persona in persisted round: {persona_slug}")
+
+    packet_path_value = packet_status.get("packet_path")
+    if not packet_path_value:
+        raise ValueError(f"dispatch artifact is missing packet_path for persona: {persona_slug}")
+
+    packet_path = Path(packet_path_value).expanduser().resolve()
+    if not packet_path.is_file():
+        raise FileNotFoundError(f"missing packet artifact: {packet_path}")
+
+    rendered_packet = packet_path.read_text(encoding="utf-8")
+    actual_fingerprint = packet_fingerprint(rendered_packet)
+    actual_length = len(rendered_packet)
+    if actual_fingerprint != packet_status.get("packet_fingerprint") or actual_length != packet_status.get("packet_length"):
+        raise ValueError("persisted packet artifact no longer matches manifest")
+
+    return {
+        "persona": persona_slug,
+        "rendered_packet": rendered_packet,
+        **packet_status,
+    }
+
+
+def verify_dispatch_payload(round_root: Path | str, persona_slug: str, candidate_text: str) -> dict[str, Any]:
+    dispatch_packet = load_dispatch_packet(round_root, persona_slug)
+    expected_text = dispatch_packet["rendered_packet"]
+    actual_fingerprint = packet_fingerprint(candidate_text)
+    actual_length = len(candidate_text)
+    matched = (
+        dispatch_packet["dispatch_ready"]
+        and candidate_text == expected_text
+        and actual_fingerprint == dispatch_packet["packet_fingerprint"]
+        and actual_length == dispatch_packet["packet_length"]
+    )
+    return {
+        "persona": persona_slug,
+        "packet_path": dispatch_packet["packet_path"],
+        "dispatch_ready": dispatch_packet["dispatch_ready"],
+        "expected_fingerprint": dispatch_packet["packet_fingerprint"],
+        "actual_fingerprint": actual_fingerprint,
+        "expected_length": dispatch_packet["packet_length"],
+        "actual_length": actual_length,
+        "matched": matched,
+        "failure_message": None if matched else DISPATCH_MISMATCH_MESSAGE,
+    }
+
+
+def require_matching_dispatch_payload(round_root: Path | str, persona_slug: str, candidate_text: str) -> dict[str, Any]:
+    verification = verify_dispatch_payload(round_root, persona_slug, candidate_text)
+    if not verification["matched"]:
+        raise ValueError(DISPATCH_MISMATCH_MESSAGE)
+    return verification
 
 
 def persist_round_bundle(round_bundle: dict[str, Any], *, output_root: Path | None = None) -> Path:
@@ -220,7 +323,8 @@ def persist_round_bundle(round_bundle: dict[str, Any], *, output_root: Path | No
     for packet in round_bundle["packets"]:
         packet_root = round_root / packet["persona"]
         packet_root.mkdir(parents=True, exist_ok=True)
-        (packet_root / "packet.txt").write_text(packet["rendered_packet"], encoding="utf-8")
+        packet_path = (packet_root / "packet.txt").resolve()
+        packet_path.write_text(packet["rendered_packet"], encoding="utf-8")
         (packet_root / "packet.json").write_text(
             json.dumps(packet["structured_packet"], ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
@@ -229,6 +333,13 @@ def persist_round_bundle(round_bundle: dict[str, Any], *, output_root: Path | No
             json.dumps(packet["validation"], ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
+        packet["dispatch_artifact"] = build_dispatch_artifact(
+            packet["rendered_packet"],
+            packet_path=packet_path,
+            validation_status=packet["validation"]["status"],
+        )
+
+    _refresh_round_manifest(round_bundle)
 
     (round_root / "round.json").write_text(
         json.dumps(round_bundle["manifest"], ensure_ascii=False, indent=2) + "\n",

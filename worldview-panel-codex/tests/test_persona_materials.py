@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import sys
 import unittest
 from pathlib import Path
 
@@ -45,7 +46,12 @@ def load_persona_materials_module(test_case: unittest.TestCase):
     test_case.assertIsNotNone(spec.loader)
 
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    sys.path.insert(0, str(TOOLS_DIR))
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        if sys.path and sys.path[0] == str(TOOLS_DIR):
+            sys.path.pop(0)
     return module
 
 
@@ -136,6 +142,10 @@ class PersonaMaterialsTests(unittest.TestCase):
             "copy|src/skills/worldview-panel-codex/tools/panel_logging.py|.codex/skills/worldview-panel-codex/tools/panel_logging.py",
             manifest_lines,
         )
+        self.assertIn(
+            "copy|src/skills/worldview-panel-codex/tools/dispatch_packet_guard.py|.codex/skills/worldview-panel-codex/tools/dispatch_packet_guard.py",
+            manifest_lines,
+        )
 
     def test_user_guide_mentions_context_prep_cli(self) -> None:
         guide_text = USER_GUIDE_PATH.read_text(encoding="utf-8")
@@ -144,6 +154,11 @@ class PersonaMaterialsTests(unittest.TestCase):
         self.assertIn("prepare_context_packets.py", guide_text)
         self.assertIn("worldview-panel-codex.log", guide_text)
         self.assertIn("runs/<run-id>.log", guide_text)
+        self.assertIn("有 `run_end` 才算完整结束", guide_text)
+        self.assertIn("没有 `run_end` 就是未完成", guide_text)
+        self.assertIn("单次日志优先", guide_text)
+        self.assertIn("dispatch_packet_guard.py", guide_text)
+        self.assertIn("这次请求已作废，请重新发准备好的上下文。", guide_text)
 
     def test_skill_makes_refs_backed_material_injection_mandatory(self) -> None:
         skill_text = SKILL_PATH.read_text(encoding="utf-8")
@@ -162,6 +177,10 @@ class PersonaMaterialsTests(unittest.TestCase):
 
         self.assertIn("must generate refs-backed persona materials before dispatch", prompt_text)
         self.assertIn("never hand-wave or manually omit", prompt_text)
+        self.assertIn("question_classify", prompt_text)
+        self.assertIn("dispatch_ready", prompt_text)
+        self.assertIn("progress_heartbeat", prompt_text)
+        self.assertIn("60s", prompt_text)
 
     def test_core_runtime_docs_raise_concurrency_cap_to_six(self) -> None:
         skill_text = SKILL_PATH.read_text(encoding="utf-8")
@@ -174,6 +193,26 @@ class PersonaMaterialsTests(unittest.TestCase):
         self.assertIn("keep at most 6 active at a time", prompt_text)
         self.assertIn("任一时刻最多只运行 6 个 subagents", routing_text)
         self.assertIn("每批最多 6 个", routing_text)
+
+    def test_skill_documents_observability_stage_contract(self) -> None:
+        skill_text = SKILL_PATH.read_text(encoding="utf-8")
+
+        self.assertIn("question_classify", skill_text)
+        self.assertIn("panel_select", skill_text)
+        self.assertIn("dispatch_ready", skill_text)
+        self.assertIn("agent_result", skill_text)
+        self.assertIn("progress_heartbeat", skill_text)
+        self.assertIn("run_end` 统一只用三种状态", skill_text)
+        self.assertIn("每完成 6 个材料打一条进度", skill_text)
+        self.assertIn("如果 60 秒内没有任何新返回，就写一条 `progress_heartbeat`", skill_text)
+        self.assertIn("如果日志里没有 `run_end`，就按“外部中断或未完成”理解", skill_text)
+
+    def test_skill_documents_exact_packet_dispatch_contract(self) -> None:
+        skill_text = SKILL_PATH.read_text(encoding="utf-8")
+
+        self.assertIn("只允许从已准备好的成品包里取内容，不要临时手写一个缩略版再 dispatch。", skill_text)
+        self.assertIn("派发前必须先核对将要发送的文本与落盘 `packet.txt` 完全一致。", skill_text)
+        self.assertIn("只要不一致，就立刻中止整轮并要求用户重新发准备好的上下文。", skill_text)
 
     def test_generated_agent_includes_profile_anchor_block(self) -> None:
         agent_text = (AGENTS_ROOT / "techno_optimist.toml").read_text(encoding="utf-8")

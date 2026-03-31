@@ -43,6 +43,7 @@
 - `src/skills/worldview-panel-codex/tools/persona_materials.py`
 - `src/skills/worldview-panel-codex/tools/context_packet_common.py`
 - `src/skills/worldview-panel-codex/tools/prepare_context_packets.py`
+- `src/skills/worldview-panel-codex/tools/dispatch_packet_guard.py`
 - `src/skills/worldview-context-prep/SKILL.md`
 
 这层控制的东西包括：
@@ -54,6 +55,7 @@
 - 任务包必需段落
 - 校验失败时是否允许 dispatch
 - 任务包落盘结构
+- 成品路径、成品指纹、成品长度、是否可派发
 
 ### 三层：报告和页面
 
@@ -86,6 +88,7 @@
 - `src/skills/worldview-panel-codex/tools/panel_log.py`
 - `persona_materials.py`
 - `prepare_context_packets.py`
+- `dispatch_packet_guard.py`
 - `export_panel_cache.py`
 - `render_panel_site.py`
 
@@ -96,6 +99,14 @@
 - 日志只记动作和状态，不记整段人格回答正文
 - 同一趟运行的本地工具必须能复用同一个 `--run-id`
 - 默认总日志短行可扫，细节更多的东西只进单次日志
+- 单次日志是主排查入口，总日志只负责先定位 `run_id`
+- 主流程顶层阶段固定是：`run_start`、`question_classify`、`panel_select`、`material_prepare`、`context_prepare`、`dispatch_ready`、`batch_start`、`agent_result`、`batch_end`、`progress_heartbeat`、`synthesis`、`run_end`
+- `run_end` 只允许：`completed`、`failed`、`incomplete`
+- 准备阶段必须可见：开始、进度、完成，不再允许整段黑箱
+- 派发前只能领取已落盘的 `packet.txt`，不能临时手写一个缩略版
+- 验包失败时，整轮直接作废，固定提示用户重新发准备好的上下文
+- 等待批次结果超过 60 秒时，必须有 `progress_heartbeat`
+- 如果日志里没有 `run_end`，统一按“未完成/被中断”理解
 
 ### 五层：安装和交付
 
@@ -152,6 +163,7 @@
 
 - `context_packet_common.py`
 - `prepare_context_packets.py`
+- `dispatch_packet_guard.py`
 - `src/skills/worldview-context-prep/SKILL.md`
 - `docs/USER_GUIDE.md`
 - `docs/DEVELOPER_SELFTEST.md`
@@ -285,6 +297,9 @@ sed -n '1,40p' ~/.codex/log/worldview-panel-codex/runs/maint-check.log
   - 成功生成 `site/index.html`
 - 日志链
   - 总日志和单次日志都能看到同一个 `run_id`
+  - 总日志能快速看出停在分类、选人、准备、可发送、哪一批、汇总中的哪一步
+  - 单次日志能看到 `dispatch_ready`
+  - 单次日志能看到 `progress_heartbeat`
   - 没有整段人格正文泄漏进日志
 
 ## 常见维护失误

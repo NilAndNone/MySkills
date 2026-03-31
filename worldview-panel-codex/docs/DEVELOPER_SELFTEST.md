@@ -178,25 +178,62 @@ python3 ~/.codex/skills/worldview-panel-codex/tools/prepare_context_packets.py -
 - 每个 subagent 在发送前就有各自目录
 - 每个目录都包含 `packet.txt`、`packet.json`、`validation.json`
 - `round.json` 明确标记整批是否可发送
+- `round.json` 里每个人格都有 `packet_path`、`packet_fingerprint`、`packet_length`、`dispatch_ready`
 - 如果任意一个 subagent 的内容没通过检查，整批会标记为不可发送
+
+接着验一次“只能发那份完整包”：
+
+```sh
+python3 ~/.codex/skills/worldview-panel-codex/tools/dispatch_packet_guard.py --round-root /tmp/codex-context-packets/<round-id> --persona risk_manager --json --run-id selftest-context
+python3 ~/.codex/skills/worldview-panel-codex/tools/dispatch_packet_guard.py --round-root /tmp/codex-context-packets/<round-id> --persona risk_manager --candidate-file /tmp/shortened.txt --json --run-id selftest-context
+```
+
+预期：
+
+- 第一条会返回已落盘的完整包路径、指纹、长度和 `dispatch_ready`
+- 第二条如果内容被改短或改写，会返回固定失败语句：`这次请求已作废，请重新发准备好的上下文。`
+- 单次日志里能定位到是哪一个人格、哪一份成品、长度差了多少
 
 ## Smoke test 11：日志链是否可追
 
 ```sh
 python3 ~/.codex/skills/worldview-panel-codex/tools/panel_log.py --run-id selftest-log --stage run_start --status started --message "selftest start"
+python3 ~/.codex/skills/worldview-panel-codex/tools/panel_log.py --run-id selftest-log --stage question_classify --status completed --message "question classified" --field domain=career --field intent=decide --field risk=normal
+python3 ~/.codex/skills/worldview-panel-codex/tools/panel_log.py --run-id selftest-log --stage panel_select --status completed --message "panel selected" --field persona_total=24 --field group_scope=all
 python3 ~/.codex/skills/worldview-panel-codex/tools/persona_materials.py --persona techno_optimist --domain career --run-id selftest-log >/dev/null
+python3 ~/.codex/skills/worldview-panel-codex/tools/panel_log.py --run-id selftest-log --stage dispatch_ready --status completed --message "dispatch can begin" --field ready=true --field persona_total=24 --field batch_total=4
+python3 ~/.codex/skills/worldview-panel-codex/tools/panel_log.py --run-id selftest-log --stage progress_heartbeat --status running --message "still waiting on batch results" --field phase=batch_wait --field elapsed_sec=60 --field done=0 --field total=6
 tail -n 5 ~/.codex/log/worldview-panel-codex.log
-sed -n '1,20p' ~/.codex/log/worldview-panel-codex/runs/selftest-log.log
+sed -n '1,40p' ~/.codex/log/worldview-panel-codex/runs/selftest-log.log
 ```
 
 预期：
 
 - `~/.codex/log/worldview-panel-codex.log` 会出现 `run=selftest-log`
 - `~/.codex/log/worldview-panel-codex/runs/selftest-log.log` 会存在
-- 两边都能看到简要动作和结果
+- 两边都能看到 `question_classify`
+- 两边都能看到 `dispatch_ready`
+- 两边都能看到 `progress_heartbeat`
+- 单次日志里能顺着阶段看明白“先分类、再选人、再准备、再可发送”
 - 日志里不应出现整段人格回答正文
 
-## Smoke test 12：文档是否和当前行为一致
+## Smoke test 12：未完成运行怎么判断
+
+```sh
+run_id=selftest-incomplete
+python3 ~/.codex/skills/worldview-panel-codex/tools/panel_log.py --run-id "$run_id" --stage run_start --status started --message "selftest start"
+python3 ~/.codex/skills/worldview-panel-codex/tools/panel_log.py --run-id "$run_id" --stage batch_start --status started --message "starting batch 1" --field batch=1 --field batch_total=4 --field batch_size=6 --field personas=risk_manager,systems_operator,existentialist
+python3 ~/.codex/skills/worldview-panel-codex/tools/panel_log.py --run-id "$run_id" --stage progress_heartbeat --status running --message "still waiting on batch results" --field phase=batch_wait --field elapsed_sec=60 --field done=0 --field total=6
+sed -n '1,20p' ~/.codex/log/worldview-panel-codex/runs/$run_id.log
+```
+
+预期：
+
+- 这份单次日志里没有 `run_end`
+- 维护文档和用户文档都明确把这种情况解释成“未完成/被中断”
+- 不会把这种情况写成“模型还在后台继续慢慢算”
+
+## Smoke test 13：文档是否和当前行为一致
 
 重点回看这些文件：
 
@@ -210,9 +247,12 @@ sed -n '1,20p' ~/.codex/log/worldview-panel-codex/runs/selftest-log.log
 
 - `USER_GUIDE.md` 里的默认并发还是 6
 - `USER_GUIDE.md` 里的日志路径和当前实现一致
+- `USER_GUIDE.md` 里明确写了“有 `run_end` 才算完整结束”
+- `USER_GUIDE.md` 里明确写了“单次日志优先”
 - `USER_PROMPTS.md` 的示例还符合当前工作流
 - `USER_PERSONAS.md` 的分组和 `personas.json` 一致
 - 开发者文档没有继续引用旧名字
+- 开发者文档写清了 `dispatch_ready` 和 `progress_heartbeat`
 
 ## 常见失败模式
 

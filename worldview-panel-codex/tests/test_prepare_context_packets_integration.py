@@ -41,6 +41,14 @@ class PrepareContextPacketsIntegrationTests(unittest.TestCase):
             self.assertTrue((round_root / "risk_manager" / "validation.json").is_file())
             self.assertTrue((round_root / "existentialist" / "packet.txt").is_file())
             self.assertTrue((round_root / "round.json").is_file())
+            manifest = json.loads((round_root / "round.json").read_text(encoding="utf-8"))
+            self.assertTrue(manifest["packet_statuses"][0]["dispatch_ready"])
+            self.assertEqual(
+                manifest["packet_statuses"][0]["packet_path"],
+                str((round_root / "risk_manager" / "packet.txt").resolve()),
+            )
+            self.assertEqual(len(manifest["packet_statuses"][0]["packet_fingerprint"]), 64)
+            self.assertGreater(manifest["packet_statuses"][0]["packet_length"], 0)
 
 
 if __name__ == "__main__":

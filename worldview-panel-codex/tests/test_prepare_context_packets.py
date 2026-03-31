@@ -37,6 +37,13 @@ class PrepareContextPacketsCliTests(unittest.TestCase):
             self.assertTrue(Path(payload["round_root"]).is_dir())
             self.assertTrue((Path(payload["round_root"]) / "risk_manager" / "packet.txt").is_file())
             self.assertTrue((Path(payload["round_root"]) / "round.json").is_file())
+            self.assertTrue(payload["manifest"]["packet_statuses"][0]["dispatch_ready"])
+            self.assertEqual(
+                payload["manifest"]["packet_statuses"][0]["packet_path"],
+                str((Path(payload["round_root"]) / "risk_manager" / "packet.txt").resolve()),
+            )
+            self.assertEqual(len(payload["manifest"]["packet_statuses"][0]["packet_fingerprint"]), 64)
+            self.assertGreater(payload["manifest"]["packet_statuses"][0]["packet_length"], 0)
 
     def test_normalize_stage_returns_normalized_payload_only(self) -> None:
         proc = subprocess.run(

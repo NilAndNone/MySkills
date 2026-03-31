@@ -97,6 +97,8 @@ Each section header is a plain-text label in square brackets (e.g. `[人格]`). 
 2. Set up run logging before any heavy work:
    - 先生成一个本次运行的 `run_id`
    - 先用 `tools/panel_log.py` 写一条 `run_start`
+   - 立刻补一条 `question_classify`，至少带上 `domain`、`intent`、`risk`
+   - 再补一条 `panel_select`，至少带上 `persona_total`、`group_scope`
    - 主线程关键动作只写简要阶段日志，不把整段人格回答落进日志
    - 本地调用 `tools/persona_materials.py`、`tools/prepare_context_packets.py`、`tools/export_panel_cache.py`、`tools/render_panel_site.py` 时，把同一个 `--run-id <run_id>` 传进去
    - 只有用户明确要求“详细日志”或“调试模式”时，才额外传 `--log-detail`
@@ -114,6 +116,7 @@ Each section header is a plain-text label in square brackets (e.g. `[人格]`). 
    - 如果任务包缺少 `[人格底盘材料]` 或 `[当前领域材料]`，视为主线程协议违规：不要分发 subagent，先补材料再 dispatch。
    - 只保留 subagent 回答所需的变量；不要把整段聊天历史塞进去
    - 不要把其他人格答案或主线程综合判断混进任务包
+   - 只允许从已准备好的成品包里取内容，不要临时手写一个缩略版再 dispatch。
    - 任务包格式参见 `references/task-packet.md`
 
 4. Decide panel scope:
@@ -130,8 +133,17 @@ Each section header is a plain-text label in square brackets (e.g. `[人格]`). 
    - 对 worldview persona subagents，使用 `fork_context = false`
    - 下发内容只包含任务包本身，不附带整段 thread history
    - 不要要求 subagent 自己去读文件、搜资料、调用工具
-   - 每批开始和结束都用 `tools/panel_log.py` 记简要日志
-   - 某个 subagent 超时、异常或协议违规时，也要记一条简要失败日志
+   - 派发时优先用 `tools/dispatch_packet_guard.py --round-root <round_root> --persona <slug>` 领取成品包，不要自己重新拼 prompt
+   - 派发前必须先核对将要发送的文本与落盘 `packet.txt` 完全一致。
+   - 只要不一致，就立刻中止整轮并要求用户重新发准备好的上下文。
+   - 在第一批真正发出前，先补一条 `dispatch_ready`，至少带上 `ready`、`persona_total`、`batch_total`
+   - 每批开始都写 `batch_start`，至少带上 `batch`、`batch_total`、`batch_size`、`personas`
+   - 某个 subagent 返回时，在单次日志里写一条 `agent_result`，至少带上 `batch`、`persona`、`result`
+   - 每批结束都写 `batch_end`，至少带上 `batch`、`batch_total`、`success`、`failed`、`missing`
+   - 如果 60 秒内没有任何新返回，就写一条 `progress_heartbeat`
+   - `progress_heartbeat` 至少带上 `phase`、`elapsed_sec`、`done`、`total`
+   - `progress_heartbeat` 只允许写当前真实状态，不要写“快好了”这种猜测
+   - 某个 subagent 超时、异常或协议违规时，也要记一条 `agent_result`
 
 6. Ask each subagent to answer using this skill's built-in 8-section output contract.
 
@@ -142,8 +154,9 @@ Each section header is a plain-text label in square brackets (e.g. `[人格]`). 
    - 对照式整理
    - 主推建议
    - 可执行下一步
-   - 进入汇总前后都记简要日志
-   - 整次完成或失败时都补一条 `run_end`
+   - 进入汇总前先写 `synthesis started`
+   - 汇总完成后写 `synthesis completed`
+   - 整次完成、失败或未完成时都补一条 `run_end`
 
 8. If the task needs a persistent report or a local front-end view:
    - 先把结果整理成规范化 panel JSON
@@ -153,6 +166,27 @@ Each section header is a plain-text label in square brackets (e.g. `[人格]`). 
    - 这条基础链不依赖 `frontend-skill`
    - 如果当前会话环境也有 `frontend-skill`，并且需要做前端二次开发，主线程可以在默认 `site/` 成功生成后，再额外启一个前端开发 subagent
    - 前端开发 subagent 只允许写 `site/`，不要改 `meta.json`、`report.json` 或 markdown cache
+
+## Top-level logging contract
+
+- 主流程顶层阶段固定用这组名字：`run_start`、`question_classify`、`panel_select`、`material_prepare`、`context_prepare`、`dispatch_ready`、`batch_start`、`agent_result`、`batch_end`、`progress_heartbeat`、`synthesis`、`run_end`
+- `run_end` 统一只用三种状态：`completed`、`failed`、`incomplete`
+- `question_classify` 至少带：`domain`、`intent`、`risk`
+- `panel_select` 至少带：`persona_total`、`group_scope`
+- `material_prepare` 至少带：`done`、`total`、`domain`
+- `context_prepare` 至少带：`requested_stage`、`ready`
+- `dispatch_ready` 至少带：`ready`、`persona_total`、`batch_total`
+- `dispatch_ready` 做逐人格验包时，还应带：`persona`、`packet_path`、`expected_length`、`actual_length`、`matched`
+- `batch_start` 至少带：`batch`、`batch_total`、`batch_size`、`personas`
+- `agent_result` 至少带：`batch`、`persona`、`result`
+- `batch_end` 至少带：`batch`、`batch_total`、`success`、`failed`、`missing`
+- `progress_heartbeat` 至少带：`phase`、`elapsed_sec`、`done`、`total`
+- `synthesis` 至少带：`responded`、`missing`
+- `material_prepare` 不再只写总开始和总完成；每完成 6 个材料打一条进度
+- `context_prepare` 不再只记“开始/结束”，要把包组装完成、校验完成、落盘完成拆开
+- 如果验包失败，固定返回：`这次请求已作废，请重新发准备好的上下文。`
+- 单次日志优先用于完整排查，总日志只保留顶层摘要和 `run_id` 导航
+- 如果日志里没有 `run_end`，就按“外部中断或未完成”理解，不要自动理解成模型还在慢慢算
 
 ## Cross-verdict rules
 

@@ -12,6 +12,7 @@ copy|src/skills/worldview-panel-codex/tools/render_panel_site.py|.codex/skills/w
 copy|src/skills/worldview-panel-codex/tools/persona_materials.py|.codex/skills/worldview-panel-codex/tools/persona_materials.py
 copy|src/skills/worldview-panel-codex/tools/context_packet_common.py|.codex/skills/worldview-panel-codex/tools/context_packet_common.py
 copy|src/skills/worldview-panel-codex/tools/prepare_context_packets.py|.codex/skills/worldview-panel-codex/tools/prepare_context_packets.py
+copy|src/skills/worldview-panel-codex/tools/dispatch_packet_guard.py|.codex/skills/worldview-panel-codex/tools/dispatch_packet_guard.py
 copy|src/resume_panel_materials/index.html|.codex/skills/worldview-panel-codex/report-ui/index.html
 copy|src/resume_panel_materials/site.css|.codex/skills/worldview-panel-codex/report-ui/site.css
 copy|src/resume_panel_materials/site.js|.codex/skills/worldview-panel-codex/report-ui/site.js

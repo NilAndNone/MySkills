@@ -12,11 +12,15 @@ TOOLS_DIR = REPO_ROOT / "src" / "skills" / "worldview-panel-codex" / "tools"
 sys.path.insert(0, str(TOOLS_DIR))
 
 from context_packet_common import (  # noqa: E402
+    DISPATCH_MISMATCH_MESSAGE,
     build_packet_bundle,
     build_round_bundle,
+    load_dispatch_packet,
     normalize_round_input,
     persist_round_bundle,
+    require_matching_dispatch_payload,
     require_round_ready,
+    verify_dispatch_payload,
 )
 
 
@@ -74,6 +78,10 @@ class ContextPacketCommonTests(unittest.TestCase):
         self.assertIn("[当前领域材料]", bundle["rendered_packet"])
         self.assertIn("[外部材料]", bundle["rendered_packet"])
         self.assertEqual(bundle["validation"]["status"], "passed")
+        self.assertIsNone(bundle["dispatch_artifact"]["packet_path"])
+        self.assertEqual(bundle["dispatch_artifact"]["packet_length"], len(bundle["rendered_packet"]))
+        self.assertEqual(len(bundle["dispatch_artifact"]["packet_fingerprint"]), 64)
+        self.assertFalse(bundle["dispatch_artifact"]["dispatch_ready"])
 
     def test_build_round_bundle_marks_batch_not_ready_when_other_answer_leaks_in(self) -> None:
         round_bundle = build_round_bundle(
@@ -126,8 +134,79 @@ class ContextPacketCommonTests(unittest.TestCase):
             self.assertTrue((round_root / "risk_manager" / "packet.txt").is_file())
             self.assertTrue((round_root / "risk_manager" / "packet.json").is_file())
             self.assertTrue((round_root / "risk_manager" / "validation.json").is_file())
+            self.assertEqual(
+                round_bundle["packets"][0]["dispatch_artifact"]["packet_path"],
+                str((round_root / "risk_manager" / "packet.txt").resolve()),
+            )
+            self.assertTrue(round_bundle["packets"][0]["dispatch_artifact"]["dispatch_ready"])
             manifest = json.loads((round_root / "round.json").read_text(encoding="utf-8"))
             self.assertTrue(manifest["ready"])
+            self.assertEqual(
+                manifest["packet_statuses"][0]["packet_path"],
+                str((round_root / "risk_manager" / "packet.txt").resolve()),
+            )
+            self.assertEqual(
+                manifest["packet_statuses"][0]["packet_length"],
+                len((round_root / "risk_manager" / "packet.txt").read_text(encoding="utf-8")),
+            )
+            self.assertEqual(len(manifest["packet_statuses"][0]["packet_fingerprint"]), 64)
+            self.assertTrue(manifest["packet_statuses"][0]["dispatch_ready"])
+
+    def test_verify_dispatch_payload_blocks_shortened_packet_and_returns_fixed_message(self) -> None:
+        round_bundle = build_round_bundle(
+            {
+                "question": "请判断“先完整备包，再统一分发”这套流程是否稳妥",
+                "answer_goal": "decide",
+                "domain": "career",
+                "hard_constraints": ["只用中文"],
+                "selected_personas": ["risk_manager"],
+                "external_materials": [
+                    {
+                        "title": "用户粘贴内容",
+                        "source": "用户粘贴内容",
+                        "content": "完整原文材料",
+                    }
+                ],
+            }
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            round_root = persist_round_bundle(round_bundle, output_root=Path(tmpdir) / "round-1")
+            original_packet = (round_root / "risk_manager" / "packet.txt").read_text(encoding="utf-8")
+            result = verify_dispatch_payload(round_root, "risk_manager", original_packet[:-12])
+
+            self.assertFalse(result["matched"])
+            self.assertEqual(result["expected_length"], len(original_packet))
+            self.assertEqual(result["actual_length"], len(original_packet[:-12]))
+            self.assertEqual(result["failure_message"], DISPATCH_MISMATCH_MESSAGE)
+            with self.assertRaisesRegex(ValueError, DISPATCH_MISMATCH_MESSAGE):
+                require_matching_dispatch_payload(round_root, "risk_manager", original_packet[:-12])
+
+    def test_load_dispatch_packet_rejects_tampered_persisted_packet(self) -> None:
+        round_bundle = build_round_bundle(
+            {
+                "question": "请判断“先完整备包，再统一分发”这套流程是否稳妥",
+                "answer_goal": "decide",
+                "domain": "career",
+                "hard_constraints": ["只用中文"],
+                "selected_personas": ["risk_manager"],
+                "external_materials": [
+                    {
+                        "title": "用户粘贴内容",
+                        "source": "用户粘贴内容",
+                        "content": "完整原文材料",
+                    }
+                ],
+            }
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            round_root = persist_round_bundle(round_bundle, output_root=Path(tmpdir) / "round-1")
+            packet_path = round_root / "risk_manager" / "packet.txt"
+            packet_path.write_text(packet_path.read_text(encoding="utf-8") + "\n手动篡改", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "persisted packet artifact no longer matches manifest"):
+                load_dispatch_packet(round_root, "risk_manager")
 
 
 if __name__ == "__main__":

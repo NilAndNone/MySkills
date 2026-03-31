@@ -121,6 +121,16 @@ def main() -> int:
         return 0
 
     if args.stage == "validate":
+        if args.log_detail:
+            logger.log(
+                stage="context_prepare",
+                status="progress",
+                message="validation manifest ready" if round_bundle["manifest"]["ready"] else "validation manifest blocked",
+                requested_stage=args.stage,
+                personas=len(round_bundle["packets"]),
+                ready=round_bundle["manifest"]["ready"],
+                detail_only=True,
+            )
         emit({"ready": round_bundle["manifest"]["ready"], "manifest": round_bundle["manifest"]}, as_json=args.json)
         status = "completed" if round_bundle["manifest"]["ready"] else "blocked"
         logger.log(
@@ -143,6 +153,26 @@ def main() -> int:
         round_bundle,
         output_root=Path(args.output_root).expanduser().resolve() if args.output_root else None,
     )
+    if args.log_detail:
+        logger.log(
+            stage="context_prepare",
+            status="progress",
+            message="validation manifest ready" if round_bundle["manifest"]["ready"] else "validation manifest blocked",
+            requested_stage=args.stage,
+            personas=len(round_bundle["packets"]),
+            ready=round_bundle["manifest"]["ready"],
+            detail_only=True,
+        )
+        logger.log(
+            stage="context_prepare",
+            status="progress",
+            message="round bundle persisted",
+            requested_stage=args.stage,
+            personas=len(round_bundle["packets"]),
+            ready=round_bundle["manifest"]["ready"],
+            round_root=round_root,
+            detail_only=True,
+        )
     emit(
         {
             "ready": round_bundle["manifest"]["ready"],

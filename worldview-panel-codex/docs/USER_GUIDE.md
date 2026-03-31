@@ -125,6 +125,7 @@ curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/dissociative_id
 3. `~/.codex/skills/worldview-panel-codex/tools/` 下能看到这些工具：
    - `persona_materials.py`
    - `prepare_context_packets.py`
+   - `dispatch_packet_guard.py`
    - `export_panel_cache.py`
    - `render_panel_site.py`
    - `panel_log.py`
@@ -229,6 +230,7 @@ persona subagents 不得调用工具，不得读取任务包外的上下文。
 
 - 它不是随便把整段聊天扔给 subagent
 - 它默认先把材料补齐再分发
+- 它默认只从已落盘的完整包里领内容，不允许临时缩写后再发
 - 它默认保留分歧，不会强行揉成一个温吞答案
 
 ## 使用原则
@@ -256,6 +258,14 @@ python3 ~/.codex/skills/worldview-panel-codex/tools/persona_materials.py --perso
 
 - `[人格底盘材料]`
 - `[当前领域材料]`
+
+真正分发前，主线程还应该再做一次验包：
+
+```sh
+python3 ~/.codex/skills/worldview-panel-codex/tools/dispatch_packet_guard.py --round-root /tmp/codex-context-packets/<round-id> --persona <slug> --json
+```
+
+如果后面真要把文本发给 subagent，应该再拿“即将发出的文本”去核对一次，而不是自己改写一版再发。
 
 ### 3. 默认并发上限是 6
 
@@ -291,6 +301,7 @@ python3 ~/.codex/skills/worldview-panel-codex/tools/persona_materials.py --perso
 - 某次大概卡在哪个阶段
 - 成功还是失败
 - 哪个 `run_id` 值得继续深挖
+- 先快速定位，再跳去单次日志
 
 ### 单次日志
 
@@ -303,6 +314,13 @@ python3 ~/.codex/skills/worldview-panel-codex/tools/persona_materials.py --perso
 - 某一趟到底按什么顺序跑的
 - 哪一步失败
 - 同一个 `run_id` 下有哪些工具被调用了
+- 这次是不是其实还没跑完
+
+默认判断方式很简单：
+
+- 有 `run_end` 才算完整结束
+- 没有 `run_end` 就是未完成
+- 单次日志优先，总日志只负责先帮你找到 `run_id`
 
 ### 日志里会写什么
 
@@ -314,6 +332,31 @@ python3 ~/.codex/skills/worldview-panel-codex/tools/persona_materials.py --perso
 - 当前阶段
 - 成功、失败或阻塞状态
 - 简短说明
+
+主流程里你现在应该能看到这些关键阶段：
+
+- `run_start`
+- `question_classify`
+- `panel_select`
+- `material_prepare`
+- `context_prepare`
+- `dispatch_ready`
+- `batch_start`
+- `progress_heartbeat`
+- `batch_end`
+- `synthesis`
+- `run_end`
+
+如果是准备阶段，主线程不该再只写一条“大概在准备”：
+
+- 材料准备开始
+- 每完成 6 个材料打一条进度
+- 全部材料完成
+- 上下文准备开始
+- 包组装完成
+- 校验完成
+- 落盘完成
+- 真正可发送了，也就是 `dispatch_ready`
 
 它不会把这些东西整段写进去：
 
@@ -330,6 +373,7 @@ python3 ~/.codex/skills/worldview-panel-codex/tools/persona_materials.py --perso
 ```sh
 python3 ~/.codex/skills/worldview-panel-codex/tools/persona_materials.py --persona techno_optimist --domain career --run-id demo-run
 python3 ~/.codex/skills/worldview-panel-codex/tools/prepare_context_packets.py --input /path/to/round.json --stage all --json --run-id demo-run
+python3 ~/.codex/skills/worldview-panel-codex/tools/dispatch_packet_guard.py --round-root /tmp/codex-context-packets/<round-id> --persona techno_optimist --json --run-id demo-run
 python3 ~/.codex/skills/worldview-panel-codex/tools/export_panel_cache.py --input /path/to/panel.json --run-id demo-run
 python3 ~/.codex/skills/worldview-panel-codex/tools/render_panel_site.py --md-root /path/to/report-root --run-id demo-run
 ```
@@ -347,11 +391,39 @@ python3 ~/.codex/skills/worldview-panel-codex/tools/panel_log.py --stage run_sta
 ```sh
 python3 ~/.codex/skills/worldview-panel-codex/tools/panel_log.py \
   --run-id demo-run \
-  --stage batch_start \
-  --status started \
-  --message "starting batch 2" \
-  --field batch=2 \
-  --field agents=risk_manager,systems_operator,existentialist
+  --stage question_classify \
+  --status completed \
+  --message "question classified" \
+  --field domain=career \
+  --field intent=decide \
+  --field risk=normal
+```
+
+再比如，真正准备开始分发前，应该能写出这种边界日志：
+
+```sh
+python3 ~/.codex/skills/worldview-panel-codex/tools/panel_log.py \
+  --run-id demo-run \
+  --stage dispatch_ready \
+  --status completed \
+  --message "dispatch can begin" \
+  --field ready=true \
+  --field persona_total=24 \
+  --field batch_total=4
+```
+
+如果等待批次结果超过一段时间，也应该能看到心跳：
+
+```sh
+python3 ~/.codex/skills/worldview-panel-codex/tools/panel_log.py \
+  --run-id demo-run \
+  --stage progress_heartbeat \
+  --status running \
+  --message "still waiting on batch results" \
+  --field phase=batch_wait \
+  --field elapsed_sec=60 \
+  --field done=0 \
+  --field total=6
 ```
 
 ### 如果你想看更细一点
@@ -404,6 +476,17 @@ Context prep only:
 ```sh
 python3 ~/.codex/skills/worldview-panel-codex/tools/prepare_context_packets.py --input /path/to/round.json --stage all --json --run-id demo-run
 ```
+
+领取并核对已准备好的完整包：
+
+```sh
+python3 ~/.codex/skills/worldview-panel-codex/tools/dispatch_packet_guard.py --round-root /tmp/codex-context-packets/<round-id> --persona techno_optimist --json --run-id demo-run
+python3 ~/.codex/skills/worldview-panel-codex/tools/dispatch_packet_guard.py --round-root /tmp/codex-context-packets/<round-id> --persona techno_optimist --candidate-file /tmp/outgoing-packet.txt --json --run-id demo-run
+```
+
+如果核对失败，固定按这句话理解：
+
+`这次请求已作废，请重新发准备好的上下文。`
 
 导出缓存：
 
