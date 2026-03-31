@@ -15,7 +15,7 @@ AGENTS_ROOT = REPO_ROOT / ".codex" / "agents"
 SKILL_PATH = REPO_ROOT / "src" / "skills" / "worldview-panel-codex" / "SKILL.md"
 OPENAI_AGENT_PATH = REPO_ROOT / "src" / "skills" / "worldview-panel-codex" / "agents" / "openai.yaml"
 ROUTING_MATRIX_PATH = REPO_ROOT / "src" / "skills" / "worldview-panel-codex" / "references" / "routing-matrix.md"
-README_PATH = REPO_ROOT / "docs" / "README.md"
+USER_GUIDE_PATH = REPO_ROOT / "docs" / "USER_GUIDE.md"
 PROFILE_FIELDS = (
     "archetypes",
     "communities",
@@ -137,13 +137,13 @@ class PersonaMaterialsTests(unittest.TestCase):
             manifest_lines,
         )
 
-    def test_readme_mentions_context_prep_cli(self) -> None:
-        readme_text = README_PATH.read_text(encoding="utf-8")
+    def test_user_guide_mentions_context_prep_cli(self) -> None:
+        guide_text = USER_GUIDE_PATH.read_text(encoding="utf-8")
 
-        self.assertIn("Context prep only", readme_text)
-        self.assertIn("prepare_context_packets.py", readme_text)
-        self.assertIn("worldview-panel-codex.log", readme_text)
-        self.assertIn("runs/<run-id>.log", readme_text)
+        self.assertIn("Context prep only", guide_text)
+        self.assertIn("prepare_context_packets.py", guide_text)
+        self.assertIn("worldview-panel-codex.log", guide_text)
+        self.assertIn("runs/<run-id>.log", guide_text)
 
     def test_skill_makes_refs_backed_material_injection_mandatory(self) -> None:
         skill_text = SKILL_PATH.read_text(encoding="utf-8")

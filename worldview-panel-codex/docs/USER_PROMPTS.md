@@ -1,4 +1,12 @@
-# PROMPTS
+# USER PROMPTS
+
+给使用者直接复制的模板。
+
+用法建议：
+
+- 先复制最接近你的那一段
+- 再把问题本身替换掉
+- 如果你关心日志、页面、指定人格、是否 full panel，把约束直接写进模板里
 
 ## 1) 默认全量面板，分批调度
 
@@ -71,4 +79,21 @@ persona subagents 不得调用工具，不得读取任务包外的上下文。
 逐份校验。
 落盘到 tmp。
 不要 dispatch。
+```
+
+## 10) 跑完后我要看日志
+
+```text
+$worldview-panel-codex 分析：婚育、职业和移民怎么一起权衡？
+必须使用 subagents。
+这次请保留详细日志。
+最后告诉我这次运行的 run_id，我要单独去看日志文件。
+```
+
+## 11) 跑完后我要页面
+
+```text
+$worldview-panel-codex 分析：AI 时代普通软件工程师该怎么自处？
+必须使用 subagents，开一个 full panel。
+跑完以后把结果导出成本地页面，我要能打开 site/index.html 查看。
 ```

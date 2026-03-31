@@ -1,6 +1,6 @@
 # Worldview roster — 分组速查
 
-完整人格表见 `docs/PERSONAS.md`。本文件只列分组结构，供路由和汇总时快速查阅。
+完整人格表见 `docs/USER_PERSONAS.md`。本文件只列分组结构，供路由和汇总时快速查阅。
 
 ## 分组
 
