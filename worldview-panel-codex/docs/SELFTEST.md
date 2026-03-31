@@ -147,6 +147,18 @@ python3 ~/.codex/skills/worldview-panel-codex/tools/render_panel_site.py --md-ro
 - `render_panel_site.py --validate-only` 能通过
 - 如果缓存目录结构故意放错，渲染器会报严格校验错误
 
+### Smoke test 10：只做上下文准备，不分发
+
+```sh
+python3 ~/.codex/skills/worldview-panel-codex/tools/prepare_context_packets.py --input /path/to/round.json --stage all --json
+```
+
+预期：
+- 每个 subagent 在发送前就有各自目录
+- 每个目录都包含 `packet.txt`、`packet.json`、`validation.json`
+- `round.json` 明确标记整批是否可发送
+- 如果任意一个 subagent 的内容没通过检查，整批会标记为不可发送
+
 ## 失败模式
 
 - 没 spawn subagents：通常是你没有明确要求 subagents，或者没有启用 skill

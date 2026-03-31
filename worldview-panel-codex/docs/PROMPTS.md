@@ -63,3 +63,12 @@ persona subagents 不得调用工具，不得读取任务包外的上下文。
 必须使用 subagents，开一个 full panel，覆盖全部 24 个 worldview agents。
 任一时刻最多只开 6 个，分批跑完再综合裁决。
 ```
+
+## 9) 只做 context prep
+
+```text
+先准备全部 subagent 的上下文。
+逐份校验。
+落盘到 tmp。
+不要 dispatch。
+```
