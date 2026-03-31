@@ -3,165 +3,157 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>24 种嘴脸</title>
+    <title>Worldview Panel</title>
     <meta
       name="description"
-      content="一份大模型评测工程师简历，被 24 个人格轮流开刀。"
+      content="多个人格对同一个问题的原文档案。"
     />
     <link rel="stylesheet" href="./site.css" />
   </head>
-  <body>
+  <body data-preset="editorial">
     <div class="page-shell">
       <noscript>
         <div class="noscript-banner">
           <strong>脚本未启用。</strong>
-          <span>页面交互层不可用，你可以先看</span>
-          <a href="./README.md">README</a>
-          <span>和各派别目录：</span>
-          <a href="./builders/">builders</a>
-          <a href="./critics/">critics</a>
-          <a href="./spectators/">spectators</a>
-          <a href="./defenders/">defenders</a>
-          <a href="./experientials/">experientials</a>
+          <span>页面交互层不可用；如果你是从缓存目录渲染出的站点，请回到 md 根目录检查 `site/` 之外的原始材料。</span>
         </div>
       </noscript>
 
       <header class="topbar">
-        <a class="topbar-brand" href="#top">Resume Panel</a>
+        <a class="topbar-brand" href="#top" id="brand-name">Worldview Panel</a>
         <nav class="topbar-nav" aria-label="页面导航">
-          <a href="#overview">派别</a>
-          <a href="#chapters">原文</a>
-          <a href="#verdict">裁决</a>
+          <a href="#battlefield">中线</a>
+          <a href="#camps">战区</a>
+          <a href="#verdict">收束</a>
         </nav>
       </header>
 
       <main>
         <section class="hero" id="top">
-          <div class="hero-backdrop" aria-hidden="true">
-            <span>24</span>
-            <span>VOICES</span>
-          </div>
-          <div class="hero-copy">
-            <p class="eyebrow">Resume Panel</p>
-            <h1>24 种嘴脸</h1>
-            <p class="hero-lead">
-              一份大模型评测工程师简历，被 24 个人格轮流开刀。
-            </p>
-            <p class="hero-note">
-              不是汇总摘要，是逐条留档的原话现场。
-            </p>
-            <div class="hero-actions">
-              <a class="button button-primary" href="#overview">按派别阅读</a>
-              <a class="button button-secondary" href="#chapters">直接看 24 人格</a>
+          <div class="hero-surface">
+            <div class="hero-copy">
+              <p class="eyebrow">Identity Trial</p>
+              <h1 id="hero-title">Worldview Panel</h1>
+              <p class="hero-lead" id="hero-lead">多个人格对同一个问题的原文档案。</p>
+              <p class="hero-question" id="hero-question">问题：加载中</p>
             </div>
-            <dl class="hero-meta" aria-label="页面概览">
-              <div>
-                <dt>人格</dt>
-                <dd>24</dd>
+
+            <div class="hero-casefiles">
+              <article class="hero-case hero-case--prosecution">
+                <p class="hero-case-side">提醒</p>
+                <p class="hero-case-kicker">Strong but Risky</p>
+                <h2 id="hero-prosecution-title">解释力强但不宜照做</h2>
+                <p class="hero-case-summary" id="hero-prosecution-summary"></p>
+              </article>
+
+              <div class="hero-centerline-note">
+                <p class="hero-case-side">镜子</p>
+                <strong id="hero-centerline-title">最该借的人格</strong>
+                <p id="hero-centerline-summary"></p>
               </div>
-              <div>
-                <dt>派别</dt>
-                <dd>5</dd>
-              </div>
-              <div>
-                <dt>材料</dt>
-                <dd>原文档案</dd>
-              </div>
-            </dl>
-          </div>
-          <aside class="hero-cast" aria-labelledby="cast-title">
-            <div class="hero-cast-head">
-              <p class="eyebrow" id="cast-title">The Cast</p>
-              <p>从建设派到体验派，先看阵容，再下场细读。</p>
+
+              <article class="hero-case hero-case--defense">
+                <p class="hero-case-side">落地</p>
+                <p class="hero-case-kicker">Harsh but Actionable</p>
+                <h2 id="hero-defense-title">虽然难听但有操作性</h2>
+                <p class="hero-case-summary" id="hero-defense-summary"></p>
+              </article>
             </div>
-            <div class="cast-list" id="hero-cast-list"></div>
-          </aside>
+
+            <div class="hero-meta-line">
+              <div class="hero-metrics">
+                <span class="hero-metric">
+                  <strong id="meta-persona-count">0</strong>
+                  <em>人格</em>
+                </span>
+                <span class="hero-metric">
+                  <strong id="meta-group-count">0</strong>
+                  <em>派别</em>
+                </span>
+                <span class="hero-metric">
+                  <strong>五派</strong>
+                  <em>对打</em>
+                </span>
+              </div>
+              <blockquote class="hero-quote" id="hero-quote"></blockquote>
+            </div>
+
+            <div class="hero-frontline" id="hero-frontline"></div>
+          </div>
         </section>
 
-        <section class="overview section" id="overview">
-          <div class="section-heading">
-            <p class="eyebrow">Camps</p>
-            <h2>五派同堂</h2>
-            <p>
-              先扫派别，再挑人格。每一派只负责一种攻击方式，不抢活。
-            </p>
+        <section class="verdict-band section" id="battlefield">
+          <div class="section-heading section-heading--compact">
+            <p class="eyebrow">Midline Verdict</p>
+            <h2>先判清中线，再进五派战区</h2>
+            <p>这一带只做两件事：压出最大共识，和最大的分歧。</p>
           </div>
-          <nav class="group-nav" id="group-nav" aria-label="派别导航"></nav>
+
+          <div class="verdict-band-shell">
+            <article class="verdict-band-card verdict-band-card--shared">
+              <p class="eyebrow">Shared Ground</p>
+              <h3>最大共识</h3>
+              <ul id="common-ground-list"></ul>
+            </article>
+
+            <div class="verdict-band-divider">
+              <span>Midline</span>
+            </div>
+
+            <article class="verdict-band-card verdict-band-card--split">
+              <p class="eyebrow">Central Split</p>
+              <h3>最大分歧</h3>
+              <ul id="biggest-split-list"></ul>
+            </article>
+          </div>
         </section>
 
-        <div class="story-layout">
-          <aside class="chapter-rail" aria-label="章节进度">
-            <div class="chapter-rail-inner">
-              <p class="eyebrow">Current</p>
-              <ol class="rail-list" id="chapter-rail-list"></ol>
-            </div>
-          </aside>
-          <section class="chapters section" id="chapters" aria-label="人格章节"></section>
-        </div>
+        <section class="caseboard section" id="camps" aria-label="派别战区">
+          <div class="section-heading section-heading--compact">
+            <p class="eyebrow">Caseboard</p>
+            <h2>左边锁阵线，右边读证词</h2>
+            <p>五派固定挂在侧边，右侧只展开当前战区，阅读感更像证据板而不是长列表。</p>
+          </div>
 
-        <section class="verdict section" id="verdict">
-          <div class="section-heading">
-            <p class="eyebrow">Cross Verdict</p>
-            <h2>交叉裁决</h2>
-            <p>把 24 张嘴收拢成几句真正能带走的话。</p>
+          <div class="caseboard-shell">
+            <aside class="camp-sidebar" id="camp-sidebar" aria-label="五派导航"></aside>
+            <section class="camp-detail-stage" id="camp-detail-stage" aria-live="polite"></section>
           </div>
-          <div class="verdict-grid">
-            <div class="verdict-column">
-              <h3>共同承认</h3>
-              <ul id="consensus-list"></ul>
-            </div>
-            <div class="verdict-column">
-              <h3>共同毒点</h3>
-              <ul id="risk-list"></ul>
-            </div>
+        </section>
+
+        <section class="endgame section" id="verdict">
+          <div class="section-heading section-heading--compact">
+            <p class="eyebrow">Endgame</p>
+            <h2>最后怎么收束</h2>
+            <p>不是把摘要再说一遍，而是把最值得保留的提醒、最能落地的动作和最该借的视角排清楚。</p>
           </div>
-          <blockquote class="verdict-quote" id="verdict-quote"></blockquote>
+
+          <div class="endgame-grid" id="endgame-grid">
+            <article class="endgame-card endgame-card--red">
+              <p class="eyebrow endgame-eyebrow" id="endgame-support-title">解释力强但不宜照做</p>
+              <p class="endgame-summary" id="endgame-support-summary"></p>
+              <div class="endgame-personas" id="endgame-support-personas"></div>
+            </article>
+
+            <article class="endgame-card endgame-card--blue">
+              <p class="eyebrow endgame-eyebrow" id="endgame-oppose-title">虽然难听但有操作性</p>
+              <p class="endgame-summary" id="endgame-oppose-summary"></p>
+              <div class="endgame-personas" id="endgame-oppose-personas"></div>
+            </article>
+
+            <article class="endgame-card endgame-card--neutral">
+              <p class="eyebrow endgame-eyebrow" id="endgame-redirect-title">最该借的人格</p>
+              <p class="endgame-summary" id="endgame-redirect-summary"></p>
+              <div class="endgame-personas" id="endgame-redirect-personas"></div>
+            </article>
+          </div>
+
           <div class="final-actions">
             <a class="button button-primary" href="#top">回到顶部</a>
-            <a class="button button-secondary" href="./README.md">打开材料索引</a>
+            <a class="button button-secondary" href="../report.json">查看 report.json</a>
           </div>
         </section>
       </main>
-    </div>
-
-    <div class="reader" id="reader" aria-hidden="true">
-      <div class="reader-backdrop" data-close-reader></div>
-      <div
-        class="reader-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="reader-title"
-        tabindex="-1"
-      >
-        <header class="reader-header">
-          <button class="reader-close" type="button" data-close-reader>
-            关闭
-          </button>
-          <div class="reader-header-copy">
-            <p class="eyebrow" id="reader-group-label"></p>
-            <h2 id="reader-title"></h2>
-            <p class="reader-tagline" id="reader-tagline"></p>
-          </div>
-          <div class="reader-controls">
-            <button class="reader-switch" id="reader-prev" type="button">
-              上一位
-            </button>
-            <button class="reader-switch" id="reader-next" type="button">
-              下一位
-            </button>
-          </div>
-        </header>
-
-        <div class="reader-body">
-          <aside class="reader-sidebar">
-            <p class="eyebrow">In This Camp</p>
-            <div class="reader-sidebar-list" id="reader-sidebar-list"></div>
-          </aside>
-          <article class="reader-article">
-            <div class="reader-article-inner" id="reader-content"></div>
-          </article>
-        </div>
-      </div>
     </div>
 
     <script type="module" src="./site.js"></script>

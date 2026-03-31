@@ -4,7 +4,8 @@
 
 - 用 **Codex skill** 组织入口、共享规则和 panel 编排。
 - 用 **24 个 worldview persona agents** 跑多人格并行分析。
-- 默认安装只复制 skill 文件和 24 个 persona agents，不改写 generic built-in agents，也不写 `~/.codex/AGENTS.override.md`。
+- 额外附带一套 **md cache -> site/** 的默认报告渲染链路。
+- 默认安装复制 skill 文件、报告工具、默认模板和 24 个 persona agents，不改写 generic built-in agents，也不写 `~/.codex/AGENTS.override.md`。
 - 这 24 个 persona subagents 全部显式钉到 **`gpt-5.4` + `xhigh`**。
 - 自动进入 worldview panel 依赖 skill 自身的 implicit invocation，不再依赖 home 级 AGENTS 注入。
 
@@ -34,6 +35,20 @@ scripts/
     manifest.txt
 src/
   personas.json
+  refs/
+    <24 personas>/
+      career.md
+      startup.md
+      product.md
+      relationship.md
+      politics.md
+      philosophy.md
+      public_discourse.md
+      psychology.md
+  resume_panel_materials/
+    index.html
+    site.css
+    site.js
   skills/
     worldview-panel-codex/
       SKILL.md
@@ -42,6 +57,11 @@ src/
         roster.md
         routing-matrix.md
         task-packet.md
+      tools/
+        export_panel_cache.py
+        panel_site_common.py
+        persona_materials.py
+        render_panel_site.py
 ```
 
 ## 这包东西怎么生效
@@ -57,6 +77,10 @@ curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/dissociative_id
    - 默认会安装到：
      - `~/.codex/skills/worldview-panel-codex`
      - `~/.codex/agents/<24 worldview personas>.toml`
+     - `~/.codex/skills/worldview-panel-codex/tools/*.py`
+     - `~/.codex/skills/worldview-panel-codex/refs/<persona>/*.md`
+     - `~/.codex/skills/worldview-panel-codex/report-ui/*`
+     - `~/.codex/skills/worldview-panel-codex/personas.json`
    - 默认**不会**安装或修改：
      - `~/.codex/AGENTS.override.md`
      - `default.toml` / `worker.toml` / `explorer.toml`
@@ -72,6 +96,10 @@ curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/dissociative_id
 3. **手动用户级安装**（不用脚本时的 fallback）
    - 把 `.codex/agents/<24 worldview personas>.toml` 复制到 `~/.codex/agents/`
    - 把 `src/skills/worldview-panel-codex` 复制到 `~/.codex/skills/worldview-panel-codex`
+   - 再把 `src/personas.json`、`src/refs/` 和 `src/resume_panel_materials/{index.html,site.css,site.js}` 复制到：
+     - `~/.codex/skills/worldview-panel-codex/personas.json`
+     - `~/.codex/skills/worldview-panel-codex/refs/`
+     - `~/.codex/skills/worldview-panel-codex/report-ui/`
 
 ### 远程安装可选参数
 
@@ -118,14 +146,14 @@ curl -fsSL https://raw.githubusercontent.com/NilAndNone/MySkills/dissociative_id
 
 ```text
 $worldview-panel-codex 分析这个问题：大模型创业还有没有意义？
-必须使用 subagents。默认覆盖全部 24 个 worldview agents，任一时刻最多只开 3 个，分批等全部返回后再裁决。
+必须使用 subagents。默认覆盖全部 24 个 worldview agents，任一时刻最多只开 6 个，分批等全部返回后再裁决。
 ```
 
 ### 方式 B：直接点名 agents
 
 ```text
 必须使用 subagents，只用 existentialist, systems_operator, risk_manager, red_leftist, network_jester 这 5 个 agent 回答：
-任一时刻最多只开 3 个，分批跑完再综合裁决。
+任一时刻最多只开 6 个，分批跑完再综合裁决。
 大模型创业还有没有意义？
 等全部返回后再给综合裁决。
 ```
@@ -135,7 +163,7 @@ $worldview-panel-codex 分析这个问题：大模型创业还有没有意义？
 ```text
 不同人怎么看：婚育、职业和移民怎么一起权衡？
 必须使用 subagents，开一个 full panel，覆盖全部 24 个 worldview agents。
-任一时刻最多只开 3 个，分批跑完再汇总。
+任一时刻最多只开 6 个，分批跑完再汇总。
 ```
 
 ## packet-only 协议
@@ -144,7 +172,59 @@ $worldview-panel-codex 分析这个问题：大模型创业还有没有意义？
 - 主线程必须先准备好 subagent 所需的全部上下文任务包，再分发给 subagent。
 - 分发 worldview persona subagent 时，默认使用 `fork_context = false`，不要把整段 thread history 直接 fork 进去。
 - 如果回答依赖文章、代码、日志或对话材料，应该由主线程先读取并摘录，再放进任务包。
+- 默认材料顺序是：`profile` 全量块 → `refs/<persona>/psychology.md` 全文 → `refs/<persona>/<domain>.md` 全文。
+- 这两块人格材料是核心功能，不是可选增强项；主线程不能手工省略、缩写或“凭印象代替”。
+- 本地 bundle 自带 `tools/persona_materials.py`，主线程在本地执行时必须先用它生成默认的 `[人格底盘材料] + [当前领域材料]`，再 dispatch。
 - 任务包格式见 `src/skills/worldview-panel-codex/references/task-packet.md`。
+- 如果缺关键材料，子人格必须先用 `缺失变量：...` 或 `缺少材料：...` 点明缺口，再做最小条件回答。
+
+## 报告缓存与默认站点
+
+这套 bundle 现在内置一条**基础报告链**：
+
+```text
+panel -> markdown cache -> Python 校验 -> site/
+```
+
+- `export_panel_cache.py`：把规范化 panel JSON 导出成标准缓存目录。
+- `render_panel_site.py`：严格校验缓存目录结构，并渲染成 `site/index.html`。
+- `report.json` 的核心汇总结构现在以 `common_ground`、`biggest_split`、`strong_but_risky`、`harsh_but_actionable`、`recommended_lenses` 为主；旧的立场分桶只作为兼容层。
+- 默认缓存结构按当前示例组织：
+  - `<root>/builders/<persona>.md`
+  - `<root>/critics/<persona>.md`
+  - `<root>/spectators/<persona>.md`
+  - `<root>/defenders/<persona>.md`
+  - `<root>/experientials/<persona>.md`
+  - `<root>/meta.json`
+  - `<root>/report.json`
+- 默认站点入口固定为：`<root>/site/index.html`
+
+### CLI 示例
+
+导出缓存：
+
+```sh
+python3 ~/.codex/skills/worldview-panel-codex/tools/export_panel_cache.py --input /path/to/panel.json
+```
+
+校验并渲染：
+
+```sh
+python3 ~/.codex/skills/worldview-panel-codex/tools/render_panel_site.py --md-root /path/to/report-root
+```
+
+只校验目录结构：
+
+```sh
+python3 ~/.codex/skills/worldview-panel-codex/tools/render_panel_site.py --md-root /path/to/report-root --validate-only
+```
+
+### 与 `frontend-skill` 的关系
+
+- `worldview-panel-codex` **不会**在 skill 内部直接调用别的 skill。
+- 默认站点这条基础链不依赖 `frontend-skill`。
+- 如果当前会话环境里有 `frontend-skill`，主线程可以在默认 `site/` 成功生成后，再额外启一个前端开发 subagent 做二次开发。
+- 这条升级链只允许写 `site/`，不允许改 `meta.json`、`report.json` 或原始 markdown cache。
 
 ## persona 模型是怎么钉的
 

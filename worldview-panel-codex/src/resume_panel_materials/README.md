@@ -9,6 +9,7 @@
 - 目录结构改为按派别拆分，每个人格一个独立 Markdown 文件。
 - 原文只做分组与标题标记，不额外改写结论。
 - 另附一个独立静态展示页，入口为 `index.html`。
+- `index.html` / `site.css` / `site.js` 也是默认报告模板的源码来源；运行时会由 `render_panel_site.py` 复制到目标缓存目录下的 `site/`，并结合 `panel-data.js` 展示任意符合结构约束的 markdown cache。
 
 目录：
 - `builders/`

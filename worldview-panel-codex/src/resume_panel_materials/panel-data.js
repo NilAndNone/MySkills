@@ -1,3 +1,10 @@
+export const REPORT_META = {
+  "title": "24 种嘴脸",
+  "description": "一份大模型评测工程师简历，被 24 个人格轮流开刀。",
+  "question": "毒舌评价这个简历",
+  "preset": "satire"
+};
+
 export const GROUPS = [
   {
     "slug": "builders",

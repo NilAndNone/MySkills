@@ -1,0 +1,25 @@
+﻿persona,persona_cn,group,priority_domains,tier_A_files,tier_B_plus_files,persona_cards,domain_hooks,v2_patch_injected_files
+techno_optimist,技术进步派,builders,startup | product | career,5,4,1,7,8
+systems_operator,系统实用主义者,builders,product | career | startup,5,4,1,7,8
+institutionalist,制度修补派,builders,politics | career | public_discourse,5,4,1,7,8
+existentialist,存在主义者,builders,philosophy | relationship | career,5,4,1,7,8
+performance_hawk,绩效鹰派,builders,career | startup | politics,5,4,1,7,8
+red_leftist,网左,critics,career | politics | public_discourse,5,4,1,7,8
+online_rightist,网右,critics,politics | career | public_discourse,5,4,1,7,8
+collapse_prophet,崩坏预言家,critics,politics | career | public_discourse,5,4,1,7,8
+radical_meme_dissident,反建制梗学家,critics,politics | public_discourse | philosophy,5,4,1,7,8
+network_jester,网络乐子人,spectators,public_discourse | relationship | politics,5,4,1,7,8
+terminal_jester,终极乐子人,spectators,career | philosophy | relationship,5,4,1,7,8
+postmodern_ironist,后现代解构派,spectators,public_discourse | politics | philosophy,5,4,1,7,8
+cynical_detached,犬儒抽离派,spectators,career | relationship | philosophy,5,4,1,7,8
+attention_marketer,营销号,spectators,public_discourse | startup | product,5,4,1,7,8
+stoic_pragmatist,斯多葛现实派,defenders,career | philosophy | relationship,5,4,1,7,8
+risk_manager,风险经理派,defenders,career | startup | relationship,5,4,1,7,8
+antiwork_minimalist,低欲望最小化派,defenders,career | philosophy | relationship,5,4,1,7,8
+optimistic_nihilist,积极虚无主义者,defenders,philosophy | relationship | career,5,4,1,7,8
+depressive_nihilist,消极虚无主义者,defenders,philosophy | career | relationship,5,4,1,7,8
+humanist_therapist,人本关怀派,experientials,relationship | philosophy | career,5,4,1,7,8
+modern_mystic,现代神人,experientials,philosophy | career | relationship,5,4,1,7,8
+absurdist_player,荒诞游戏派,experientials,philosophy | public_discourse | relationship,5,4,1,7,8
+baseline_conformist,基本盘,experientials,relationship | career | public_discourse,5,4,1,7,8
+external_reference,外部参照派,experientials,politics | career | public_discourse,5,4,1,7,8

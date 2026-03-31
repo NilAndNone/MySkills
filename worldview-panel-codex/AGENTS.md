@@ -13,7 +13,7 @@
 ## worldview 任务的硬规则
 
 - 如果用户明确要求 **subagents**、**parallel agents**、**panel**、**多人格**，不要单线程糊弄过去。
-- **默认覆盖全部 24 个 worldview agents，但任一时刻最多只拉起 3 个 subagents。**
+- **默认覆盖全部 24 个 worldview agents，但任一时刻最多只拉起 6 个 subagents。**
 - 如果目标 agents 超过 3 个，按批次串行调度；每批最多 3 个，等前一批返回后再拉下一批。
 - worldview persona subagent 是 **packet-only answerer**：只负责按人格回答，不负责找资料、读文件、补上下文。
 - 主线程必须先准备好 subagent 所需的**全部上下文任务包**，严格控制输入变量，再分发给 subagents。
@@ -45,6 +45,17 @@
 4. 交叉裁决（共同点 / 分歧点 / 解释力强但不宜照做 / 虽然难听但有操作性）
 5. 主推建议（优先采纳哪 1–2 个视角，为什么）
 6. 可执行下一步
+
+## 默认报告链
+
+如果任务需要把 panel 结果落成可浏览的本地页面，主线程按这条顺序执行：
+
+1. 整理规范化 panel JSON
+2. 用 `tools/export_panel_cache.py` 导出标准 markdown cache
+3. 用 `tools/render_panel_site.py --md-root <report-root>` 生成默认 `site/`
+
+默认模板由 `worldview-panel-codex` 自带，不依赖 `frontend-skill`。
+如果当前环境里可用 `frontend-skill`，且确实要做前端二次开发，应该在默认 `site/` 成功生成后再额外启一个前端开发 subagent，并把写权限限制在 `site/`。
 
 ## 安全覆盖
 

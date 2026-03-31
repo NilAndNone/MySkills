@@ -11,9 +11,10 @@ This skill supports both **explicit invocation** through `$worldview-panel-codex
 
 - If the user explicitly asks for **subagents**, **parallel agents**, **panel mode**, or **multiple personas**, do not answer single-threaded.
 - For worldview tasks, prefer the custom agents in `.codex/agents/` over generic built-ins.
-- Never run more than 3 subagents at once. If the panel is larger, dispatch in batches of up to 3.
+- Never run more than 6 subagents at once. If the panel is larger, dispatch in batches of up to 6.
 - Treat worldview persona subagents as packet-only answerers. They should not gather context, read files, or make tool calls.
 - The parent must prepare the full task packet before dispatch and should use `fork_context = false` for worldview persona subagents.
+- The parent must inject refs-backed persona materials into every worldview task packet; do not hand-wave, summarize away, or manually omit them when local materials are available.
 - Wait for all batches of subagents before synthesizing.
 - Preserve disagreement; do not average everything into bland consensus.
 
@@ -35,7 +36,7 @@ They are not clinical personality types, moral authorities, or groups to recruit
 - Do not call tools, inspect files, browse, search, or fetch additional context.
 - Do not rely on hidden thread history, repo state, or outside knowledge that was not included in the task packet.
 - Base the answer only on: your persona definition, the task packet, and this skill's shared safety/output contract.
-- If a critical variable is missing, state the missing variable briefly and answer conditionally from the provided packet instead of going to look for it.
+- If a critical variable is missing, start with `缺失变量：...` or `缺少材料：...`, then answer conditionally from the provided packet instead of going to look for it.
 
 ## Shared output contract
 
@@ -44,28 +45,28 @@ Unless the caller explicitly requests another format, require persona subagents 
 Each section header is a plain-text label in square brackets (e.g. `[人格]`). These are NOT markdown headings — do not use `##` or `###`. Just write the bracket label on its own line, followed by the content on the next line.
 
 [人格]
-一句话说明你是谁。
+只用一句话说明你是谁，不要提前下判断。
 
 [核心判断]
-用 1–3 句话概括你对问题的总看法。
+固定先写事实判断，再写价值判断，最后给总策略。
 
 [问题诊断]
-指出你认为问题最关键的成因、矛盾或错位。
+只解释成因、错位或矛盾，不直接给行动建议。
 
 [行动主张]
-给出 2–4 条最符合你人格立场的建议或对策。
+固定给出 2–4 条可执行动作，不要写成抽象态度。
 
 [语言风格]
-用一句话概括你这种人会怎么说话。
+只概括你这种人会怎么说话，不引入新的核心论点。
 
 [最大盲区]
-坦白这个人格最容易忽略什么。
+只坦白这个人格最容易忽略什么，不补新的主结论。
 
 [过度采用的风险]
-指出如果长期只按这个人格生活，会付出什么代价。
+只指出如果长期只按这个人格生活，会付出什么代价。
 
 [签名句]
-给一句最像这个人格会说的话。
+只给一句最像这个人格会说的话，不再追加论证。
 
 ## Shared reasoning discipline
 
@@ -96,8 +97,14 @@ Each section header is a plain-text label in square brackets (e.g. `[人格]`). 
 2. Prepare a closed task packet for subagents:
    - 先把用户问题改写成不依赖历史上下文的明确问题
    - 把代词、简称、"那个方案"、"上面那段" 之类指代全部展开
-   - 如果需要材料依据，由主线程先读取、筛选、摘录，再放进任务包
+   - 如果需要材料依据，任务包默认固定成两段：任务段 + 材料段
+   - 任务段至少写明：`任务`、`用户问题`、`回答目标`、`硬约束`、`允许假设`、`禁止事项`、`输出格式`
+   - 材料段默认喂满：该人格在 `personas.json` 的 `profile` 全量块、`refs/{persona}/psychology.md` 全文、`refs/{persona}/{domain}.md` 全文
+   - `domain = other` 时，不强行补领域文件，只保留 `profile + psychology.md`
+   - 如果在本地 bundle 里执行，必须先用 `tools/persona_materials.py --persona <slug> --domain <domain>` 生成默认材料块；不要手写一个“差不多”的省略版
+   - 如果任务包缺少 `[人格底盘材料]` 或 `[当前领域材料]`，视为主线程协议违规：不要分发 subagent，先补材料再 dispatch。
    - 只保留 subagent 回答所需的变量；不要把整段聊天历史塞进去
+   - 不要把其他人格答案或主线程综合判断混进任务包
    - 任务包格式参见 `references/task-packet.md`
 
 3. Decide panel scope:
@@ -107,8 +114,8 @@ Each section header is a plain-text label in square brackets (e.g. `[人格]`). 
    - 用户点名个人 → 严格按点名名单
 
 4. Dispatch the selected agents with a concurrency cap:
-   - 任一时刻最多只运行 3 个 subagents
-   - 如果选中的 agents 超过 3 个，拆成每批最多 3 个的批次
+   - 任一时刻最多只运行 6 个 subagents
+   - 如果选中的 agents 超过 6 个，拆成每批最多 6 个的批次
    - 等当前批次返回后，再启动下一批
    - 不要在批次未完成时提前写综合结论
    - 对 worldview persona subagents，使用 `fork_context = false`
@@ -121,9 +128,18 @@ Each section header is a plain-text label in square brackets (e.g. `[人格]`). 
    - TL;DR
    - 问题拆解
    - 面板观点（按分组排列，高权重组优先展示；参见 `references/routing-matrix.md`）
-   - 交叉裁决
+   - 对照式整理
    - 主推建议
    - 可执行下一步
+
+7. If the task needs a persistent report or a local front-end view:
+   - 先把结果整理成规范化 panel JSON
+   - 用 `tools/export_panel_cache.py` 导出到标准 markdown cache
+   - 再用 `tools/render_panel_site.py --md-root <report-root>` 生成默认 `site/`
+   - 默认站点入口固定为 `<report-root>/site/index.html`
+   - 这条基础链不依赖 `frontend-skill`
+   - 如果当前会话环境也有 `frontend-skill`，并且需要做前端二次开发，主线程可以在默认 `site/` 成功生成后，再额外启一个前端开发 subagent
+   - 前端开发 subagent 只允许写 `site/`，不要改 `meta.json`、`report.json` 或 markdown cache
 
 ## Cross-verdict rules
 
@@ -134,6 +150,7 @@ Always answer these questions in the synthesis:
 - 哪些观点解释力强但不宜照做？
 - 哪些观点虽然不好听但有操作性？
 - 当前问题里，用户最该优先借哪 1–2 个人格当镜子或工具？
+- 不要自动推断 `support / oppose / redirect` 这类立场桶，也不要把解释型问题硬塞成辩论题。
 
 ## Degradation strategy
 
