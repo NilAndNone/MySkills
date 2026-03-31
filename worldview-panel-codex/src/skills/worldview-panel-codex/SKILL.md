@@ -94,7 +94,16 @@ Each section header is a plain-text label in square brackets (e.g. `[人格]`). 
    - intent: decide / explain / roast / compare worldviews / roleplay
    - risk: normal / sensitive / crisis
 
-2. Prepare a closed task packet for subagents:
+2. Set up run logging before any heavy work:
+   - 先生成一个本次运行的 `run_id`
+   - 先用 `tools/panel_log.py` 写一条 `run_start`
+   - 主线程关键动作只写简要阶段日志，不把整段人格回答落进日志
+   - 本地调用 `tools/persona_materials.py`、`tools/prepare_context_packets.py`、`tools/export_panel_cache.py`、`tools/render_panel_site.py` 时，把同一个 `--run-id <run_id>` 传进去
+   - 只有用户明确要求“详细日志”或“调试模式”时，才额外传 `--log-detail`
+   - 总日志固定写到 `~/.codex/log/worldview-panel-codex.log`
+   - 单次附件固定写到 `~/.codex/log/worldview-panel-codex/runs/<run_id>.log`
+
+3. Prepare a closed task packet for subagents:
    - 先把用户问题改写成不依赖历史上下文的明确问题
    - 把代词、简称、"那个方案"、"上面那段" 之类指代全部展开
    - 如果需要材料依据，任务包默认固定成两段：任务段 + 材料段
@@ -107,13 +116,13 @@ Each section header is a plain-text label in square brackets (e.g. `[人格]`). 
    - 不要把其他人格答案或主线程综合判断混进任务包
    - 任务包格式参见 `references/task-packet.md`
 
-3. Decide panel scope:
+4. Decide panel scope:
    - **默认：选择全部 24 个 worldview agents**
    - 用户正选分组（"只用建设派和批判派"）→ 只 spawn 被点名的分组
    - 用户排除分组（"跳过旁观派"）→ spawn 除被排除组之外的所有 agents
    - 用户点名个人 → 严格按点名名单
 
-4. Dispatch the selected agents with a concurrency cap:
+5. Dispatch the selected agents with a concurrency cap:
    - 任一时刻最多只运行 6 个 subagents
    - 如果选中的 agents 超过 6 个，拆成每批最多 6 个的批次
    - 等当前批次返回后，再启动下一批
@@ -121,18 +130,22 @@ Each section header is a plain-text label in square brackets (e.g. `[人格]`). 
    - 对 worldview persona subagents，使用 `fork_context = false`
    - 下发内容只包含任务包本身，不附带整段 thread history
    - 不要要求 subagent 自己去读文件、搜资料、调用工具
+   - 每批开始和结束都用 `tools/panel_log.py` 记简要日志
+   - 某个 subagent 超时、异常或协议违规时，也要记一条简要失败日志
 
-5. Ask each subagent to answer using this skill's built-in 8-section output contract.
+6. Ask each subagent to answer using this skill's built-in 8-section output contract.
 
-6. Synthesize into:
+7. Synthesize into:
    - TL;DR
    - 问题拆解
    - 面板观点（按分组排列，高权重组优先展示；参见 `references/routing-matrix.md`）
    - 对照式整理
    - 主推建议
    - 可执行下一步
+   - 进入汇总前后都记简要日志
+   - 整次完成或失败时都补一条 `run_end`
 
-7. If the task needs a persistent report or a local front-end view:
+8. If the task needs a persistent report or a local front-end view:
    - 先把结果整理成规范化 panel JSON
    - 用 `tools/export_panel_cache.py` 导出到标准 markdown cache
    - 再用 `tools/render_panel_site.py --md-root <report-root>` 生成默认 `site/`

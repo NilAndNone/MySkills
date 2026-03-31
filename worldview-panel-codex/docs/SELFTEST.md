@@ -120,7 +120,7 @@ sed -n '1,6p' ~/.codex/agents/risk_manager.toml
 ### Smoke test 8：人格素材链
 
 ```sh
-python3 ~/.codex/skills/worldview-panel-codex/tools/persona_materials.py --persona techno_optimist --domain career
+python3 ~/.codex/skills/worldview-panel-codex/tools/persona_materials.py --persona techno_optimist --domain career --run-id selftest-materials
 ```
 
 预期：
@@ -135,8 +135,8 @@ python3 ~/.codex/skills/worldview-panel-codex/tools/persona_materials.py --perso
 先准备一份规范化 panel JSON，再执行：
 
 ```sh
-python3 ~/.codex/skills/worldview-panel-codex/tools/export_panel_cache.py --input /path/to/panel.json
-python3 ~/.codex/skills/worldview-panel-codex/tools/render_panel_site.py --md-root /tmp/codex-worldview-panel/<report-id>
+python3 ~/.codex/skills/worldview-panel-codex/tools/export_panel_cache.py --input /path/to/panel.json --run-id selftest-report
+python3 ~/.codex/skills/worldview-panel-codex/tools/render_panel_site.py --md-root /tmp/codex-worldview-panel/<report-id> --run-id selftest-report
 ```
 
 预期：
@@ -150,7 +150,7 @@ python3 ~/.codex/skills/worldview-panel-codex/tools/render_panel_site.py --md-ro
 ### Smoke test 10：只做上下文准备，不分发
 
 ```sh
-python3 ~/.codex/skills/worldview-panel-codex/tools/prepare_context_packets.py --input /path/to/round.json --stage all --json
+python3 ~/.codex/skills/worldview-panel-codex/tools/prepare_context_packets.py --input /path/to/round.json --stage all --json --run-id selftest-context
 ```
 
 预期：
@@ -158,6 +158,21 @@ python3 ~/.codex/skills/worldview-panel-codex/tools/prepare_context_packets.py -
 - 每个目录都包含 `packet.txt`、`packet.json`、`validation.json`
 - `round.json` 明确标记整批是否可发送
 - 如果任意一个 subagent 的内容没通过检查，整批会标记为不可发送
+
+### Smoke test 11：日志链是否可追
+
+```sh
+python3 ~/.codex/skills/worldview-panel-codex/tools/panel_log.py --run-id selftest-log --stage run_start --status started --message "selftest start"
+python3 ~/.codex/skills/worldview-panel-codex/tools/persona_materials.py --persona techno_optimist --domain career --run-id selftest-log >/dev/null
+tail -n 5 ~/.codex/log/worldview-panel-codex.log
+sed -n '1,20p' ~/.codex/log/worldview-panel-codex/runs/selftest-log.log
+```
+
+预期：
+- `~/.codex/log/worldview-panel-codex.log` 会出现 `run=selftest-log`
+- `~/.codex/log/worldview-panel-codex/runs/selftest-log.log` 会存在
+- 两边都能看到简要动作和结果
+- 日志里不应出现整段人格回答正文
 
 ## 失败模式
 
@@ -170,3 +185,4 @@ python3 ~/.codex/skills/worldview-panel-codex/tools/prepare_context_packets.py -
 - 人格回答还是太薄：通常是安装时没把 `refs/` 一起带上，或者主线程没有先跑 `persona_materials.py` 补 `profile + psychology + domain full text`
 - 主线程手工写了一个没带 `[人格底盘材料]` / `[当前领域材料]` 的任务包：按当前协议这就是流程失败，不是“可接受的精简版”
 - 报告页渲染失败：通常是 markdown cache 目录结构不符合严格校验规则，或者安装时没把 `tools/` / `report-ui/` / `personas.json` 一起带上
+- 找不到某次运行：通常是主线程没有复用同一个 `run-id`，或者只看了总日志没顺着编号去单次附件

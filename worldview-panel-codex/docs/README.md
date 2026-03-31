@@ -59,8 +59,11 @@ src/
         task-packet.md
       tools/
         export_panel_cache.py
+        panel_log.py
+        panel_logging.py
         panel_site_common.py
         persona_materials.py
+        prepare_context_packets.py
         render_panel_site.py
 ```
 
@@ -178,6 +181,28 @@ $worldview-panel-codex 分析这个问题：大模型创业还有没有意义？
 - 任务包格式见 `src/skills/worldview-panel-codex/references/task-packet.md`。
 - 如果缺关键材料，子人格必须先用 `缺失变量：...` 或 `缺少材料：...` 点明缺口，再做最小条件回答。
 
+## 运行日志
+
+现在这套 bundle 自带两层运行日志：
+
+- 总日志：`~/.codex/log/worldview-panel-codex.log`
+- 单次附件：`~/.codex/log/worldview-panel-codex/runs/<run-id>.log`
+
+规则：
+
+- 总日志只保留简要动作，适合平时直接看最近发生了什么。
+- 单次附件按一次运行一份，适合顺着 `run-id` 回看完整动作串。
+- 这两层日志都只记录动作和状态，不保存整段人格回答内容。
+- 本地 bundle 里的工具现在都支持 `--run-id <run_id>`，会把记录写进同一趟运行的日志里。
+- 只有明确需要详细排查时，再加 `--log-detail`，把更多中间动作写进单次附件。
+- 如果主线程自己也要记简要动作，可以直接调用 `tools/panel_log.py`。
+
+主线程单独记一条动作：
+
+```sh
+python3 ~/.codex/skills/worldview-panel-codex/tools/panel_log.py --stage run_start --status started --message "starting worldview panel"
+```
+
 ## 报告缓存与默认站点
 
 这套 bundle 现在内置一条**基础报告链**：
@@ -204,25 +229,25 @@ panel -> markdown cache -> Python 校验 -> site/
 Context prep only:
 
 ```sh
-python3 ~/.codex/skills/worldview-panel-codex/tools/prepare_context_packets.py --input /path/to/round.json --stage all --json
+python3 ~/.codex/skills/worldview-panel-codex/tools/prepare_context_packets.py --input /path/to/round.json --stage all --json --run-id demo-run
 ```
 
 导出缓存：
 
 ```sh
-python3 ~/.codex/skills/worldview-panel-codex/tools/export_panel_cache.py --input /path/to/panel.json
+python3 ~/.codex/skills/worldview-panel-codex/tools/export_panel_cache.py --input /path/to/panel.json --run-id demo-run
 ```
 
 校验并渲染：
 
 ```sh
-python3 ~/.codex/skills/worldview-panel-codex/tools/render_panel_site.py --md-root /path/to/report-root
+python3 ~/.codex/skills/worldview-panel-codex/tools/render_panel_site.py --md-root /path/to/report-root --run-id demo-run
 ```
 
 只校验目录结构：
 
 ```sh
-python3 ~/.codex/skills/worldview-panel-codex/tools/render_panel_site.py --md-root /path/to/report-root --validate-only
+python3 ~/.codex/skills/worldview-panel-codex/tools/render_panel_site.py --md-root /path/to/report-root --validate-only --run-id demo-run
 ```
 
 ### 与 `frontend-skill` 的关系

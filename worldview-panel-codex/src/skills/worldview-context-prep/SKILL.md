@@ -12,5 +12,7 @@ Use the shared prep CLI for explicit stages:
 - `validate`: build and validate packets, return readiness
 - `persist`: build, validate, and persist packet artifacts
 - `all`: run the full preparation flow and write a tmp round directory
+- optional `--run-id <run_id>`: join the shared worldview panel log for this run
+- optional `--log-detail`: add richer per-run attachment entries without making the total log noisy
 
 Do not dispatch any subagent until the CLI reports the batch is ready.

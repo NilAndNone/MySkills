@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
+
+from panel_logging import PanelLogger
 
 
 DOMAIN_LABELS = {
@@ -174,16 +177,61 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Print structured JSON instead of the plain packet markdown block.",
     )
+    parser.add_argument("--run-id", help="Optional run id for shared logging.")
+    parser.add_argument("--log-detail", action="store_true", help="Write detailed per-run log entries.")
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
-    payload = build_persona_material_packet(
-        args.persona,
-        args.domain,
-        include_full_domain=True,
+    logger = PanelLogger(component="persona_materials", run_id=args.run_id, detail=args.log_detail)
+    logger.log(
+        stage="material_prepare",
+        status="started",
+        message="building persona materials",
+        persona=args.persona,
+        domain=args.domain,
     )
+
+    try:
+        payload = build_persona_material_packet(
+            args.persona,
+            args.domain,
+            include_full_domain=True,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        logger.log(
+            stage="material_prepare",
+            status="failed",
+            message=str(exc),
+            persona=args.persona,
+            domain=args.domain,
+        )
+        logger.log(
+            stage="run_end",
+            status="failed",
+            message="persona material build failed",
+            persona=args.persona,
+            domain=args.domain,
+        )
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+
+    logger.log(
+        stage="material_prepare",
+        status="completed",
+        message="persona materials ready",
+        persona=args.persona,
+        domain=args.domain,
+    )
+    logger.log(
+        stage="run_end",
+        status="completed",
+        message="persona material build finished",
+        persona=args.persona,
+        domain=args.domain,
+    )
+
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:

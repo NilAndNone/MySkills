@@ -5,6 +5,8 @@ copy|src/skills/worldview-panel-codex/references/roster.md|.codex/skills/worldvi
 copy|src/skills/worldview-panel-codex/references/routing-matrix.md|.codex/skills/worldview-panel-codex/references/routing-matrix.md
 copy|src/skills/worldview-panel-codex/references/task-packet.md|.codex/skills/worldview-panel-codex/references/task-packet.md
 copy|src/skills/worldview-panel-codex/tools/export_panel_cache.py|.codex/skills/worldview-panel-codex/tools/export_panel_cache.py
+copy|src/skills/worldview-panel-codex/tools/panel_log.py|.codex/skills/worldview-panel-codex/tools/panel_log.py
+copy|src/skills/worldview-panel-codex/tools/panel_logging.py|.codex/skills/worldview-panel-codex/tools/panel_logging.py
 copy|src/skills/worldview-panel-codex/tools/panel_site_common.py|.codex/skills/worldview-panel-codex/tools/panel_site_common.py
 copy|src/skills/worldview-panel-codex/tools/render_panel_site.py|.codex/skills/worldview-panel-codex/tools/render_panel_site.py
 copy|src/skills/worldview-panel-codex/tools/persona_materials.py|.codex/skills/worldview-panel-codex/tools/persona_materials.py

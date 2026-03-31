@@ -128,12 +128,22 @@ class PersonaMaterialsTests(unittest.TestCase):
             "copy|src/skills/worldview-panel-codex/tools/prepare_context_packets.py|.codex/skills/worldview-panel-codex/tools/prepare_context_packets.py",
             manifest_lines,
         )
+        self.assertIn(
+            "copy|src/skills/worldview-panel-codex/tools/panel_log.py|.codex/skills/worldview-panel-codex/tools/panel_log.py",
+            manifest_lines,
+        )
+        self.assertIn(
+            "copy|src/skills/worldview-panel-codex/tools/panel_logging.py|.codex/skills/worldview-panel-codex/tools/panel_logging.py",
+            manifest_lines,
+        )
 
     def test_readme_mentions_context_prep_cli(self) -> None:
         readme_text = README_PATH.read_text(encoding="utf-8")
 
         self.assertIn("Context prep only", readme_text)
         self.assertIn("prepare_context_packets.py", readme_text)
+        self.assertIn("worldview-panel-codex.log", readme_text)
+        self.assertIn("runs/<run-id>.log", readme_text)
 
     def test_skill_makes_refs_backed_material_injection_mandatory(self) -> None:
         skill_text = SKILL_PATH.read_text(encoding="utf-8")
