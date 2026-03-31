@@ -15,6 +15,7 @@ AGENTS_ROOT = REPO_ROOT / ".codex" / "agents"
 SKILL_PATH = REPO_ROOT / "src" / "skills" / "worldview-panel-codex" / "SKILL.md"
 OPENAI_AGENT_PATH = REPO_ROOT / "src" / "skills" / "worldview-panel-codex" / "agents" / "openai.yaml"
 ROUTING_MATRIX_PATH = REPO_ROOT / "src" / "skills" / "worldview-panel-codex" / "references" / "routing-matrix.md"
+README_PATH = REPO_ROOT / "docs" / "README.md"
 PROFILE_FIELDS = (
     "archetypes",
     "communities",
@@ -115,6 +116,24 @@ class PersonaMaterialsTests(unittest.TestCase):
             manifest_lines,
         )
         self.assertEqual(len(ref_lines), 24 * 8)
+
+    def test_manifest_copies_context_prep_skill_and_cli(self) -> None:
+        manifest_lines = MANIFEST_PATH.read_text(encoding="utf-8").splitlines()
+
+        self.assertIn(
+            "copy|src/skills/worldview-context-prep/SKILL.md|.codex/skills/worldview-context-prep/SKILL.md",
+            manifest_lines,
+        )
+        self.assertIn(
+            "copy|src/skills/worldview-panel-codex/tools/prepare_context_packets.py|.codex/skills/worldview-panel-codex/tools/prepare_context_packets.py",
+            manifest_lines,
+        )
+
+    def test_readme_mentions_context_prep_cli(self) -> None:
+        readme_text = README_PATH.read_text(encoding="utf-8")
+
+        self.assertIn("Context prep only", readme_text)
+        self.assertIn("prepare_context_packets.py", readme_text)
 
     def test_skill_makes_refs_backed_material_injection_mandatory(self) -> None:
         skill_text = SKILL_PATH.read_text(encoding="utf-8")

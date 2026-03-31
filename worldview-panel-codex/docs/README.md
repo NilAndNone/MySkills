@@ -201,6 +201,12 @@ panel -> markdown cache -> Python 校验 -> site/
 
 ### CLI 示例
 
+Context prep only:
+
+```sh
+python3 ~/.codex/skills/worldview-panel-codex/tools/prepare_context_packets.py --input /path/to/round.json --stage all --json
+```
+
 导出缓存：
 
 ```sh

@@ -1,4 +1,5 @@
 copy|src/skills/worldview-panel-codex/SKILL.md|.codex/skills/worldview-panel-codex/SKILL.md
+copy|src/skills/worldview-context-prep/SKILL.md|.codex/skills/worldview-context-prep/SKILL.md
 copy|src/skills/worldview-panel-codex/agents/openai.yaml|.codex/skills/worldview-panel-codex/agents/openai.yaml
 copy|src/skills/worldview-panel-codex/references/roster.md|.codex/skills/worldview-panel-codex/references/roster.md
 copy|src/skills/worldview-panel-codex/references/routing-matrix.md|.codex/skills/worldview-panel-codex/references/routing-matrix.md
@@ -7,6 +8,8 @@ copy|src/skills/worldview-panel-codex/tools/export_panel_cache.py|.codex/skills/
 copy|src/skills/worldview-panel-codex/tools/panel_site_common.py|.codex/skills/worldview-panel-codex/tools/panel_site_common.py
 copy|src/skills/worldview-panel-codex/tools/render_panel_site.py|.codex/skills/worldview-panel-codex/tools/render_panel_site.py
 copy|src/skills/worldview-panel-codex/tools/persona_materials.py|.codex/skills/worldview-panel-codex/tools/persona_materials.py
+copy|src/skills/worldview-panel-codex/tools/context_packet_common.py|.codex/skills/worldview-panel-codex/tools/context_packet_common.py
+copy|src/skills/worldview-panel-codex/tools/prepare_context_packets.py|.codex/skills/worldview-panel-codex/tools/prepare_context_packets.py
 copy|src/resume_panel_materials/index.html|.codex/skills/worldview-panel-codex/report-ui/index.html
 copy|src/resume_panel_materials/site.css|.codex/skills/worldview-panel-codex/report-ui/site.css
 copy|src/resume_panel_materials/site.js|.codex/skills/worldview-panel-codex/report-ui/site.js
