@@ -1,0 +1,37 @@
+{
+  "name": "worldview-panel-codex",
+  "version": "0.1.0",
+  "description": "Local trial plugin for multi-perspective worldview panels in Codex.",
+  "author": {
+    "name": "Xiaohan Lu",
+    "email": "local-trial@example.invalid",
+    "url": "https://github.com/NilAndNone/MySkills"
+  },
+  "homepage": "https://github.com/NilAndNone/MySkills/tree/dissociative_identity_disorder/plugins/worldview-panel-codex",
+  "repository": "https://github.com/NilAndNone/MySkills",
+  "license": "MIT",
+  "keywords": [
+    "worldview-panel",
+    "codex-plugin",
+    "multi-agent"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Worldview Panel Codex",
+    "shortDescription": "Run worldview panels through a local plugin with split skills.",
+    "longDescription": "Local trial plugin that splits worldview panel orchestration into entry, context prep, and logging skills while keeping companion agents installed separately.",
+    "developerName": "NilAndNone",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/NilAndNone/MySkills",
+    "defaultPrompt": [
+      "Analyze this problem with a worldview panel and keep the run log.",
+      "Prepare a packet-only worldview panel for a smaller persona subset.",
+      "Review whether a saved worldview run is complete from its run log."
+    ],
+    "brandColor": "#1F5A4F"
+  }
+}
