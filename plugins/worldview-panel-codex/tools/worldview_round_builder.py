@@ -168,11 +168,15 @@ def _require_external_materials(payload: Mapping[str, Any]) -> list[dict[str, st
         title = material.get("title")
         source = material.get("source")
         content = material.get("content")
-        if not isinstance(title, str) or not isinstance(source, str) or not isinstance(content, str):
-            raise ValueError("external material fields must be strings")
+        if title is not None and not isinstance(title, str):
+            raise ValueError("external material title and source must be strings when provided")
+        if source is not None and not isinstance(source, str):
+            raise ValueError("external material title and source must be strings when provided")
+        if not isinstance(content, str):
+            raise ValueError("external material content must be a string")
 
-        normalized_title = title.strip() or "用户粘贴内容"
-        normalized_source = source.strip() or "用户粘贴内容"
+        normalized_title = (title or "用户粘贴内容").strip() or "用户粘贴内容"
+        normalized_source = (source or "用户粘贴内容").strip() or "用户粘贴内容"
         normalized_content = content.strip()
         if not normalized_content:
             raise ValueError("external material content cannot be empty")

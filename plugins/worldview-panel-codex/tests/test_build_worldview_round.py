@@ -156,6 +156,17 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, message):
                     module.build_round_from_input(self._write_round_input(candidate), output_root=Path(tempfile.mkdtemp()))
 
+    def test_build_round_defaults_missing_external_material_labels(self) -> None:
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["external_materials"] = [{"content": "用户直接贴来的原文"}]
+        round_root = self._build_round(payload)
+        round_input = json.loads((round_root / "round_input.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(round_input["external_materials"][0]["title"], "用户粘贴内容")
+        self.assertEqual(round_input["external_materials"][0]["source"], "用户粘贴内容")
+
     def test_posix_path_serializer_normalizes_platform_separators(self) -> None:
         module = load_worldview_round_builder_module(self)
 
