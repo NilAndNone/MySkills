@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "technical_certified_result_v1",
+  "title": "technical_certified_result_v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "technical_certified_result_v1"
+    }
+  },
+  "required": ["schema_version"],
+  "additionalProperties": true
+}

@@ -11,7 +11,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 TOOLS_DIR = REPO_ROOT / "tools"
 PERSONAS_JSON = REPO_ROOT / "runtime" / "persona-index.json"
 PERSONAS_ROOT = REPO_ROOT / "runtime" / "personas"
-AGENTS_ROOT = REPO_ROOT / "runtime" / "agents"
 SKILL_PATH = REPO_ROOT / "skills" / "worldview-panel-entry" / "SKILL.md"
 OPENAI_AGENT_PATH = REPO_ROOT / "skills" / "worldview-panel-entry" / "agents" / "openai.yaml"
 ROUTING_MATRIX_PATH = REPO_ROOT / "skills" / "worldview-panel-entry" / "references" / "routing-matrix.md"
@@ -195,17 +194,19 @@ class PersonaMaterialsTests(unittest.TestCase):
         self.assertIn("只要不一致，就立刻中止整轮并要求用户重新发准备好的上下文。", skill_text)
         self.assertIn("只有拿到 `matched=true` 的结果，才允许把该副本发给 subagent。", skill_text)
 
-    def test_generated_agent_includes_profile_anchor_block(self) -> None:
-        agent_text = (AGENTS_ROOT / "techno_optimist.toml").read_text(encoding="utf-8")
+    def test_build_persona_material_packet_includes_profile_anchor_block(self) -> None:
+        module = load_persona_materials_module(self)
 
-        self.assertIn("默认参考锚点：", agent_text)
-        self.assertIn("对标人物：", agent_text)
-        self.assertIn("- Paul Graham", agent_text)
-        self.assertIn("思维习惯：", agent_text)
-        self.assertIn("[核心判断]\n先写事实判断，再写价值判断，最后给总策略。", agent_text)
-        self.assertIn("[问题诊断]\n只解释成因、错位或矛盾，不要在这里给行动建议。", agent_text)
-        self.assertIn("如果任务包缺关键材料，先点明缺的变量，再做最小条件回答。", agent_text)
-        self.assertIn("如果主线程没提供 `[人格底盘材料]` 或 `[当前领域材料]`，要明确指出这是缺少核心人格材料。", agent_text)
+        bundle = module.build_persona_material_packet("techno_optimist", "career")
+        packet_text = bundle["packet_material"]
+        psychology_anchor = bundle["psychology_anchor"]
+
+        self.assertIn("### profile_2_0.md（提炼）", packet_text)
+        self.assertIn("- 对标人物：Paul Graham；Elon Musk；张一鸣；Marc Andreessen；Sam Altman；黄仁勋", packet_text)
+        self.assertIn("- 思维习惯：先问哪里能加杠杆和自动化；把焦虑翻译成建设任务和学习率问题；用复利、作品和长期增量评估选择", packet_text)
+        self.assertIn("自我效能感(Bandura)", psychology_anchor)
+        self.assertIn("成长心态(Dweck)", psychology_anchor)
+        self.assertIn("认知模式：倾向把模糊困境重新编码为可优化问题", psychology_anchor)
 
     def test_default_prompt_requires_release_gate_not_claim_only(self) -> None:
         prompt_text = OPENAI_AGENT_PATH.read_text(encoding="utf-8")

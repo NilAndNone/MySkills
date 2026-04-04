@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "audit_event_v1",
+  "title": "audit_event_v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "audit_event_v1"
+    }
+  },
+  "required": ["schema_version"],
+  "additionalProperties": true
+}

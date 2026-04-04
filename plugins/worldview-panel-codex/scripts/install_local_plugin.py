@@ -39,12 +39,9 @@ def main() -> int:
     dest_home = Path(args.dest_home).expanduser().resolve()
     plugin_dest = dest_home / "plugins" / PLUGIN_NAME
     skills_link = dest_home / ".agents" / "skills" / PLUGIN_NAME
-    agents_dest = dest_home / ".codex" / "agents"
-
     actions = [
         f"copy {PLUGIN_ROOT} -> {plugin_dest}",
         f"symlink {skills_link} -> {plugin_dest / 'skills'}",
-        f"copy companion agents -> {agents_dest}",
     ]
     if args.dry_run:
         print("\n".join(actions))
@@ -52,16 +49,12 @@ def main() -> int:
 
     plugin_dest.parent.mkdir(parents=True, exist_ok=True)
     skills_link.parent.mkdir(parents=True, exist_ok=True)
-    agents_dest.mkdir(parents=True, exist_ok=True)
 
     ensure_absent(plugin_dest, force=args.force)
     ensure_absent(skills_link, force=args.force)
 
     shutil.copytree(PLUGIN_ROOT, plugin_dest, ignore=IGNORE_NAMES)
     skills_link.symlink_to((plugin_dest / "skills").resolve(), target_is_directory=True)
-
-    for agent_file in sorted((plugin_dest / "runtime" / "agents").glob("*.toml")):
-        shutil.copy2(agent_file, agents_dest / agent_file.name)
 
     print(f"Installed local plugin to {plugin_dest}")
     return 0

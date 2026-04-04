@@ -1,7 +1,7 @@
 {
   "name": "worldview-panel-codex",
   "version": "0.1.0",
-  "description": "Local trial plugin for multi-perspective worldview panels in Codex.",
+  "description": "Local trial plugin for the worldview panel broker v1 surface in Codex.",
   "author": {
     "name": "Xiaohan Lu",
     "email": "local-trial@example.invalid",
@@ -18,8 +18,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Worldview Panel Codex",
-    "shortDescription": "Run worldview panels through a local plugin with split skills.",
-    "longDescription": "Local trial plugin that splits worldview panel orchestration into entry, context prep, and logging skills while keeping companion agents installed separately.",
+    "shortDescription": "Run worldview panels through a broker v1 local plugin.",
+    "longDescription": "Local trial plugin that routes worldview panel work through the broker v1 surface and split skills.",
     "developerName": "NilAndNone",
     "category": "Productivity",
     "capabilities": [

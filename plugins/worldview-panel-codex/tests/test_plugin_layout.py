@@ -17,8 +17,35 @@ class PluginLayoutTests(unittest.TestCase):
         self.assertEqual(manifest["name"], "worldview-panel-codex")
         self.assertEqual(manifest["skills"], "./skills/")
         self.assertEqual(manifest["interface"]["displayName"], "Worldview Panel Codex")
+        self.assertIn("broker v1", manifest["description"].lower())
+        self.assertIn("broker v1", manifest["interface"]["shortDescription"].lower())
+        self.assertIn("broker v1", manifest["interface"]["longDescription"].lower())
 
-    def test_plugin_root_contains_runtime_archive_and_three_skills(self) -> None:
+    def test_plugin_root_contains_only_broker_v1_schemas_and_entrypoints(self) -> None:
+        expected_schemas = {
+            "dispatch_job_v1.json",
+            "dispatch_ticket_v1.json",
+            "worldview_worker_result_v1.json",
+            "attestation_v1.json",
+            "technical_certified_result_v1.json",
+            "audit_event_v1.json",
+        }
+        schema_dir = PLUGIN_ROOT / "schemas"
+        self.assertTrue(schema_dir.is_dir())
+        self.assertEqual({path.name for path in schema_dir.glob("*.json")}, expected_schemas)
+
+        for tool_name in {
+            "build_worldview_round.py",
+            "run_worldview_broker.py",
+            "synthesize_worldview_panel.py",
+            "verify_worldview_round.py",
+        }:
+            self.assertTrue((PLUGIN_ROOT / "tools" / tool_name).is_file(), tool_name)
+
+        self.assertFalse((PLUGIN_ROOT / "runtime" / "agents").exists())
+        self.assertFalse((PLUGIN_ROOT / "scripts" / "rebuild_agents.py").exists())
+
+    def test_plugin_root_keeps_existing_skills_and_runtime_inputs(self) -> None:
         expected_skills = {
             "worldview-panel-entry",
             "worldview-context-prep",
@@ -34,9 +61,6 @@ class PluginLayoutTests(unittest.TestCase):
         self.assertTrue((PLUGIN_ROOT / "runtime" / "personas" / "risk_manager" / "career.md").is_file())
         self.assertTrue((PLUGIN_ROOT / "archive" / "persona-research").is_dir())
         self.assertFalse((PLUGIN_ROOT / "report-ui").exists())
-
-        agent_files = sorted((PLUGIN_ROOT / "runtime" / "agents").glob("*.toml"))
-        self.assertEqual(len(agent_files), 24)
 
     def test_split_skills_state_their_own_boundaries(self) -> None:
         entry_text = (PLUGIN_ROOT / "skills" / "worldview-panel-entry" / "SKILL.md").read_text(encoding="utf-8")
