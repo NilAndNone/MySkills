@@ -36,8 +36,9 @@ def write_worker_skill(path: str | Path, profile_id: str, instruction_text: str)
     rendered = render_worker_skill(profile_id, instruction_text)
     skill_path = Path(path)
     skill_path.parent.mkdir(parents=True, exist_ok=True)
-    skill_path.write_text(rendered["skill_text"], encoding="utf-8")
+    with skill_path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(rendered["skill_text"])
 
     result = dict(rendered)
-    result["skill_path"] = str(skill_path)
+    result["skill_path"] = str(skill_path.resolve())
     return result

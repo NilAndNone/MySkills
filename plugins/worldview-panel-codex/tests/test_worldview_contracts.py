@@ -68,6 +68,53 @@ class WorldviewContractsTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "raw prompt fields are forbidden"):
             module.validate_dispatch_job(payload)
 
+    def test_validate_dispatch_job_rejects_empty_selected_personas(self) -> None:
+        module = load_worldview_contracts_module(self)
+
+        payload = {
+            "schema_version": "dispatch_job_v1",
+            "run_id": "wv-test",
+            "round_root": "/tmp/round",
+            "selected_personas": [],
+            "batch_size": 1,
+            "dispatch_mode": "strict_all_required",
+        }
+
+        with self.assertRaisesRegex(ValueError, "selected_personas must be a non-empty list of strings"):
+            module.validate_dispatch_job(payload)
+
+    def test_validate_dispatch_job_rejects_out_of_range_batch_size(self) -> None:
+        module = load_worldview_contracts_module(self)
+
+        base_payload = {
+            "schema_version": "dispatch_job_v1",
+            "run_id": "wv-test",
+            "round_root": "/tmp/round",
+            "selected_personas": ["risk_manager"],
+            "dispatch_mode": "strict_all_required",
+        }
+
+        for batch_size in (0, -1, 7):
+            with self.subTest(batch_size=batch_size):
+                payload = dict(base_payload, batch_size=batch_size)
+                with self.assertRaisesRegex(ValueError, "batch_size must be between 1 and 6"):
+                    module.validate_dispatch_job(payload)
+
+    def test_validate_dispatch_job_rejects_non_strict_dispatch_mode(self) -> None:
+        module = load_worldview_contracts_module(self)
+
+        payload = {
+            "schema_version": "dispatch_job_v1",
+            "run_id": "wv-test",
+            "round_root": "/tmp/round",
+            "selected_personas": ["risk_manager"],
+            "batch_size": 1,
+            "dispatch_mode": "permissive",
+        }
+
+        with self.assertRaisesRegex(ValueError, "dispatch_mode must be strict_all_required"):
+            module.validate_dispatch_job(payload)
+
     def test_validate_dispatch_job_rejects_missing_required_fields(self) -> None:
         module = load_worldview_contracts_module(self)
 

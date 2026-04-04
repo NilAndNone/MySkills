@@ -80,15 +80,12 @@ def load_persona_index() -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]
 
 
 def build_persona_instruction_seed(persona_slug: str) -> dict[str, Any]:
-    _, registry = load_persona_index()
-    persona = registry.get(persona_slug)
-    if persona is None:
-        raise ValueError(f"unknown persona: {persona_slug}")
+    runtime_bundle = build_persona_material_packet(persona_slug, "other")
 
     return {
         "persona": persona_slug,
-        "persona_name": persona["chinese_name"],
-        "instruction_seed": persona["persona_brief"].strip(),
+        "persona_name": runtime_bundle["persona_name"],
+        "instruction_seed": runtime_bundle["packet_material"],
     }
 
 

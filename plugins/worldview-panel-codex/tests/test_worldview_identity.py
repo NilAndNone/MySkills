@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import importlib.util
 import sys
 import tempfile
@@ -52,13 +53,22 @@ class WorldviewIdentityTests(unittest.TestCase):
         seed = persona_materials.build_persona_instruction_seed("risk_manager")
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            path = Path(tmpdir) / "skill.md"
-            result = identity.write_worker_skill(path, "risk_manager_worker_v1", seed["instruction_seed"])
+            cwd = Path.cwd()
+            os.chdir(tmpdir)
+            try:
+                result = identity.write_worker_skill(Path("skill.md"), "risk_manager_worker_v1", seed["instruction_seed"])
+            finally:
+                os.chdir(cwd)
 
-            self.assertTrue(path.is_file())
-            self.assertEqual(path.read_text(encoding="utf-8"), result["skill_text"])
-            self.assertEqual(result["skill_fingerprint"], identity.render_worker_skill("risk_manager_worker_v1", seed["instruction_seed"])["skill_fingerprint"])
-            self.assertEqual(result["skill_path"], str(path))
+            resolved_path = Path(tmpdir) / "skill.md"
+            self.assertTrue(resolved_path.is_file())
+            self.assertEqual(result["skill_path"], str(resolved_path.resolve()))
+            self.assertEqual(resolved_path.read_bytes(), result["skill_text"].encode("utf-8"))
+            self.assertEqual(resolved_path.read_text(encoding="utf-8"), result["skill_text"])
+            self.assertEqual(
+                result["skill_fingerprint"],
+                identity.render_worker_skill("risk_manager_worker_v1", seed["instruction_seed"])["skill_fingerprint"],
+            )
 
 
 if __name__ == "__main__":

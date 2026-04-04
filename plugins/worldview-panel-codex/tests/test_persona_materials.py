@@ -111,6 +111,20 @@ class PersonaMaterialsTests(unittest.TestCase):
         self.assertEqual(bundle["domain_summary"], "")
         self.assertEqual(bundle["domain_full_text"], "")
 
+    def test_build_persona_instruction_seed_uses_runtime_backed_material(self) -> None:
+        module = load_persona_materials_module(self)
+        personas = json.loads(PERSONAS_JSON.read_text(encoding="utf-8"))
+        risk_manager_brief = next(persona["persona_brief"] for persona in personas if persona["name"] == "risk_manager")
+
+        seed = module.build_persona_instruction_seed("risk_manager")
+
+        self.assertEqual(seed["persona"], "risk_manager")
+        self.assertEqual(seed["persona_name"], "风险经理派")
+        self.assertIn("人格底盘材料", seed["instruction_seed"])
+        self.assertIn("### psychology.md（全文）", seed["instruction_seed"])
+        self.assertIn("### 其他 / 无固定领域文件", seed["instruction_seed"])
+        self.assertNotEqual(seed["instruction_seed"], risk_manager_brief)
+
     def test_local_plugin_layout_keeps_runtime_tools_and_split_skills_together(self) -> None:
         persona_names = {persona["name"] for persona in json.loads(PERSONAS_JSON.read_text(encoding="utf-8"))}
         runtime_dirs = {path.name for path in PERSONAS_ROOT.iterdir() if path.is_dir() and path.name in persona_names}

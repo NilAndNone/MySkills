@@ -17,6 +17,7 @@ DISPATCH_JOB_REQUIRED_FIELDS = (
     "batch_size",
     "dispatch_mode",
 )
+DISPATCH_MODE_STRICT_ALL_REQUIRED = "strict_all_required"
 
 
 def canonical_json_bytes(payload: Any) -> bytes:
@@ -72,11 +73,15 @@ def validate_dispatch_job(payload: Mapping[str, Any]) -> dict[str, Any]:
         raise ValueError("run_id must be a non-empty string")
     if not isinstance(data["round_root"], str) or not data["round_root"]:
         raise ValueError("round_root must be a non-empty string")
-    if not isinstance(data["selected_personas"], list) or not all(isinstance(item, str) and item for item in data["selected_personas"]):
+    if not isinstance(data["selected_personas"], list) or not data["selected_personas"]:
+        raise ValueError("selected_personas must be a non-empty list of strings")
+    if not all(isinstance(item, str) and item for item in data["selected_personas"]):
         raise ValueError("selected_personas must be a list of non-empty strings")
     if not isinstance(data["batch_size"], int) or isinstance(data["batch_size"], bool):
         raise ValueError("batch_size must be an integer")
-    if not isinstance(data["dispatch_mode"], str) or not data["dispatch_mode"]:
-        raise ValueError("dispatch_mode must be a non-empty string")
+    if data["batch_size"] <= 0 or data["batch_size"] > 6:
+        raise ValueError("batch_size must be between 1 and 6")
+    if data["dispatch_mode"] != DISPATCH_MODE_STRICT_ALL_REQUIRED:
+        raise ValueError("dispatch_mode must be strict_all_required")
 
     return data
