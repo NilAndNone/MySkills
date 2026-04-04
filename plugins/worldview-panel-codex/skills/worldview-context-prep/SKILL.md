@@ -1,6 +1,6 @@
 ---
 name: worldview-context-prep
-description: Build, validate, and persist per-subagent context packets before dispatch.
+description: Build, validate, and persist sealed worldview broker-v1 round artifacts before dispatch.
 ---
 
 ## Workflow
@@ -14,5 +14,6 @@ Use the broker-v1 round builder:
 - optional `--json`: return `{"round_root": ...}` instead of plain text
 - optional `--run-id <run_id>`: join the shared worldview panel log for this run
 - optional `--log-detail`: add richer per-run attachment entries without making the total log noisy
+- the generated round is the only valid handoff into broker dispatch
 
-Do not use `prepare_context_packets.py` or `dispatch_packet_guard.py` for broker-v1 dispatch. They belong to the legacy parent-controlled flow and are not the authoritative path for sealed worker input.
+Do not use legacy prompt-side dispatch tools for broker-v1 dispatch. They belong to the legacy parent-controlled flow and are not the authoritative path for sealed worker input.

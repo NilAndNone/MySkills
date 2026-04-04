@@ -228,13 +228,50 @@ class PluginLayoutTests(unittest.TestCase):
         self.assertIn("worldview-context-prep", entry_text)
         self.assertIn("worldview-panel-logging", entry_text)
         self.assertNotIn("worldview-panel-report-ui", entry_text)
+        self.assertIn("run_worldview_broker.py", entry_text)
+        self.assertIn("synthesize_worldview_panel.py", entry_text)
+        self.assertNotIn("dispatch_packet_guard.py", entry_text)
+        self.assertNotIn("prepare_context_packets.py", entry_text)
+        self.assertNotIn("spawn_agent(message", entry_text)
         self.assertIn("build_worldview_round.py", prep_text)
-        self.assertIn("Do not use `prepare_context_packets.py` or `dispatch_packet_guard.py`", prep_text)
+        self.assertIn("legacy parent-controlled flow", prep_text)
         self.assertIn("write_run_log.py", logging_text)
         self.assertIn("run_log.py", logging_text)
         self.assertNotIn("render_panel_site.py", entry_text)
         self.assertNotIn("export_panel_cache.py", entry_text)
         self.assertNotIn("site/index.html", entry_text)
+
+    def test_docs_reference_broker_v1_flow_instead_of_legacy_dispatch(self) -> None:
+        maintenance_text = (PLUGIN_ROOT / "docs" / "developer" / "DEVELOPER_MAINTENANCE.md").read_text(encoding="utf-8")
+        selftest_text = (PLUGIN_ROOT / "docs" / "developer" / "DEVELOPER_SELFTEST.md").read_text(encoding="utf-8")
+        user_guide_text = (PLUGIN_ROOT / "docs" / "user" / "USER_GUIDE.md").read_text(encoding="utf-8")
+        user_prompts_text = (PLUGIN_ROOT / "docs" / "user" / "USER_PROMPTS.md").read_text(encoding="utf-8")
+
+        for text in (maintenance_text, selftest_text, user_guide_text, user_prompts_text):
+            self.assertNotIn("prepare_context_packets.py", text)
+            self.assertNotIn("dispatch_packet_guard.py", text)
+            self.assertNotIn("context_packet_common.py", text)
+
+        self.assertIn("build_worldview_round.py", maintenance_text)
+        self.assertIn("run_worldview_broker.py", maintenance_text)
+        self.assertIn("build_worldview_round.py", selftest_text)
+        self.assertIn("run_worldview_broker.py", selftest_text)
+        self.assertIn("verify_worldview_round.py", selftest_text)
+        self.assertIn("run_worldview_broker.py", user_guide_text)
+        self.assertIn("synthesize_worldview_panel.py", user_guide_text)
+        self.assertIn("run_worldview_broker.py", user_prompts_text)
+
+    def test_legacy_dispatch_tools_and_tests_are_removed(self) -> None:
+        for path in (
+            PLUGIN_ROOT / "tools" / "dispatch_packet_guard.py",
+            PLUGIN_ROOT / "tools" / "context_packet_common.py",
+            PLUGIN_ROOT / "tools" / "prepare_context_packets.py",
+            PLUGIN_ROOT / "tests" / "test_context_packet_common.py",
+            PLUGIN_ROOT / "tests" / "test_prepare_context_packets.py",
+            PLUGIN_ROOT / "tests" / "test_prepare_context_packets_integration.py",
+            PLUGIN_ROOT / "tests" / "test_panel_logging.py",
+        ):
+            self.assertFalse(path.exists(), path.name)
 
 
 if __name__ == "__main__":

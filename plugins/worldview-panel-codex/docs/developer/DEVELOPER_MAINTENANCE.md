@@ -2,83 +2,71 @@
 
 给维护这套本地 plugin 的人看。
 
-## 当前结构
+## 当前执行主线
 
-主线目录固定是：
+broker v1 只有这一条执行链：
 
-- `plugins/worldview-panel-codex/`
+1. `tools/build_worldview_round.py`
+2. `tools/run_worldview_broker.py`
+3. `tools/synthesize_worldview_panel.py`
+4. `tools/verify_worldview_round.py`
 
-里面分成这几层：
+这些步骤之间只交换 round-root 下的 JSON artifacts。
+
+## 主要目录
 
 - `skills/worldview-panel-entry`
 - `skills/worldview-context-prep`
 - `skills/worldview-panel-logging`
 - `runtime/persona-index.json`
 - `runtime/personas/`
-- `runtime/agents/`
-- `archive/persona-research/`
 - `tools/`
 - `tests/`
+- `archive/persona-research/`
 
-## 改不同东西时要看哪一层
+## 改不同东西时看哪里
 
-### 入口和调度
+### 入口和编排
 
-看：
-
+- `AGENTS.md`
 - `skills/worldview-panel-entry/SKILL.md`
 - `skills/worldview-panel-entry/agents/openai.yaml`
-- `AGENTS.md`
 
-### 上下文包
+### round 构建和 broker
 
-看：
+- `tools/build_worldview_round.py`
+- `tools/worldview_round_builder.py`
+- `tools/worldview_app_server.py`
+- `tools/worldview_broker.py`
+- `tools/worldview_synthesis.py`
+- `tools/verify_worldview_round.py`
 
-- `skills/worldview-context-prep/SKILL.md`
-- `tools/persona_materials.py`
-- `tools/context_packet_common.py`
-- `tools/prepare_context_packets.py`
-- `tools/dispatch_packet_guard.py`
-- `runtime/persona-index.json`
-- `runtime/personas/`
-
-### 日志
-
-看：
+### 日志和审计
 
 - `skills/worldview-panel-logging/SKILL.md`
 - `tools/write_run_log.py`
 - `tools/run_log.py`
+- `tools/worldview_audit.py`
+- `tools/worldview_attestation.py`
 
-### 人格产物
+## 不再属于执行面的旧东西
 
-看：
+旧的 prompt-side dispatch 模块不应再回到执行路径。
 
-- `scripts/rebuild_agents.py`
-- `runtime/agents/`
+如果你看到文档、测试或 skill 还在要求 legacy dispatch，直接修掉。
 
-## 安装链路
-
-现在只维护这三条：
-
-- `scripts/install_local_plugin.py`
-- `scripts/uninstall_local_plugin.py`
-- `scripts/rebuild_agents.py`
-
-## 改完后至少跑什么
-
-最少跑：
+## 最少回归
 
 ```sh
-python3 -m pytest plugins/worldview-panel-codex/tests/test_plugin_layout.py -q
-python3 -m pytest plugins/worldview-panel-codex/tests/test_local_plugin_install.py -q
-python3 -m pytest plugins/worldview-panel-codex/tests/test_prepare_context_packets.py -q
-python3 -m pytest plugins/worldview-panel-codex/tests/test_panel_logging.py -q
-python3 -m pytest plugins/worldview-panel-codex/tests/test_persona_materials.py -q
+python3 -m unittest discover -s plugins/worldview-panel-codex/tests -p 'test_plugin_layout.py' -q
+python3 -m unittest discover -s plugins/worldview-panel-codex/tests -p 'test_run_worldview_broker.py' -q
+python3 -m unittest discover -s plugins/worldview-panel-codex/tests -p 'test_synthesize_worldview_panel.py' -q
+python3 -m unittest discover -s plugins/worldview-panel-codex/tests -p 'test_verify_worldview_round.py' -q
+python3 -m unittest discover -s plugins/worldview-panel-codex/tests -p 'test_worldview_audit.py' -q
 ```
 
-准备交付前再跑：
+准备交付前跑：
 
 ```sh
-python3 -m pytest plugins/worldview-panel-codex/tests -q
+python3 -m unittest discover -s plugins/worldview-panel-codex/tests -q
 ```

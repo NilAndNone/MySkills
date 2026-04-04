@@ -1,53 +1,42 @@
 # Worldview panel guidance for Codex
 
-## 什么时候启用这套面板
+## 什么时候启用
 
-当用户在问下面这些事时，优先用 `$worldview-panel-entry`：
+当用户要的是这些能力时，优先启用 `$worldview-panel-entry`：
 
-- 多角度 / 多立场 / 多人格 / 网络画像 / roleplay panel
-- "不同人怎么看"
-- "分别用 X 人格回答"
-- "必须使用 subagents / parallel agents"
-- 想看同一个问题在不同互联网话语机器里会被怎么解释
+- 多角度 / 多立场 / 多人格分析
+- “不同人怎么看”
+- 指定若干 worldview personas 回答同一问题
+- 要求 panel mode、parallel viewpoints、internet archetype views
 
-## worldview 任务的硬规则
+## broker v1 硬规则
 
-- 如果用户明确要求 **subagents**、**parallel agents**、**panel**、**多人格**，不要单线程糊弄过去。
-- **默认覆盖全部 24 个 worldview agents，但任一时刻最多只拉起 6 个 subagents。**
-- 如果目标 agents 超过 6 个，按批次串行调度；每批最多 6 个，等前一批返回后再拉下一批。
-- worldview persona subagent 是 **packet-only answerer**：只负责按人格回答，不负责找资料、读文件、补上下文。
-- 主线程必须先准备好 subagent 所需的**全部上下文任务包**，严格控制输入变量，再分发给 subagents。
-- 调用 worldview persona subagent 时，默认使用 `fork_context = false`；不要把整段历史对话直接 fork 进去。
-- 不要让 worldview persona subagent 调用工具；如果缺材料、缺指代消解、缺约束，先回到主线程补齐任务包。
-- 如果用户指定分组（正选 "只用建设派和批判派" 或排除 "跳过旁观派"），按指示筛选。
-- 如果用户点名了 agents，严格按点名名单执行。
-- worldview 任务里优先用已经安装到 `~/.codex/agents/` 的 companion agents，不要偷懒退回 generic built-ins。
-- 等所有批次的 subagents 都返回后再汇总；不要边收边写导致前后打架。
-- 汇总时保留分歧，不要把不同人格平均成一锅温吞水。
-- 本地 plugin 不再负责页面导出或本地站点展示。
+- 主流程固定是：
+  - `build_worldview_round.py`
+  - `run_worldview_broker.py`
+  - `synthesize_worldview_panel.py`
+  - `verify_worldview_round.py`
+- 所有模块边界只允许 JSON artifacts。
+- 父层可以决定选哪些 personas、怎么综合，但不能手写 worker prompt。
+- 不允许手工 outgoing copy、协作调用直派发、或任何“简化版 prompt 直接派发”。
+- 不允许任何 legacy prompt-side dispatch tools 回到执行路径。
+- broker worker turn 一律 fresh thread；不要复用、resume、rollback、steer。
+- 只有 `technical_certified_result.json` 能进入汇总。
+- 如果 broker 报告 hash mismatch、schema invalid 或 uncertified results，固定按失败处理：
+  - `这次请求已作废，请重新发准备好的上下文。`
 
-## 分组体系
+## 输出要求
 
-24 个人格按对现状的姿态分为 5 组：
-
-| group | 中文名 | 成员 |
-|---|---|---|
-| `builders` | 建设派 | techno_optimist, systems_operator, institutionalist, existentialist, performance_hawk |
-| `critics` | 批判派 | red_leftist, online_rightist, collapse_prophet, radical_meme_dissident |
-| `spectators` | 旁观派 | network_jester, terminal_jester, postmodern_ironist, cynical_detached, attention_marketer |
-| `defenders` | 退守派 | stoic_pragmatist, risk_manager, antiwork_minimalist, optimistic_nihilist, depressive_nihilist |
-| `experientials` | 体验派 | humanist_therapist, modern_mystic, absurdist_player, baseline_conformist, external_reference |
-
-## 输出骨架
-
-1. TL;DR（不超过 6 行）
-2. 问题拆解（这个问题真正卡在哪里）
-3. 人格面板（按分组排列，高权重组优先展示；每个 agent 列核心判断 / 行动主张 / 盲区）
-4. 交叉裁决（共同点 / 分歧点 / 解释力强但不宜照做 / 虽然难听但有操作性）
-5. 主推建议（优先采纳哪 1–2 个视角，为什么）
-6. 可执行下一步
+- 保留人格差异，不要平均成单一结论。
+- 最终面板至少包含：
+  - TL;DR
+  - 问题拆解
+  - 人格面板
+  - 交叉裁决
+  - 主推建议
+  - 可执行下一步
 
 ## 安全覆盖
 
-- 如果用户出现明显自伤、他伤、急性精神危机、极端绝望信号：不要开黑暗人格大会，直接安全回复。
-- 不要让人格输出变成仇恨、极化动员、违法或现实伤害建议。
+- 出现明显自伤、他伤、急性危机信号时，不要跑人格大会，直接安全回复。
+- 不要让任何人格产出仇恨、现实伤害、违法或极端动员建议。

@@ -140,15 +140,15 @@ class PersonaMaterialsTests(unittest.TestCase):
     def test_user_guide_mentions_context_prep_cli(self) -> None:
         guide_text = USER_GUIDE_PATH.read_text(encoding="utf-8")
 
-        self.assertIn("Context prep only", guide_text)
+        self.assertIn("只做 round 构建", guide_text)
         self.assertIn("build_worldview_round.py", guide_text)
         self.assertIn("run_worldview_broker.py", guide_text)
+        self.assertIn("synthesize_worldview_panel.py", guide_text)
+        self.assertIn("verify_worldview_round.py", guide_text)
         self.assertIn("worldview-panel-codex.log", guide_text)
         self.assertIn("runs/<run-id>.log", guide_text)
-        self.assertIn("有 `run_end` 才算完整结束", guide_text)
-        self.assertIn("没有 `run_end` 就是未完成", guide_text)
-        self.assertIn("单次日志优先", guide_text)
-        self.assertIn("不要再用 `prepare_context_packets.py` 或 `dispatch_packet_guard.py`", guide_text)
+        self.assertIn("audit/events.jsonl", guide_text)
+        self.assertIn("不要再使用任何 legacy prompt-side dispatch 工具。", guide_text)
         self.assertIn("这次请求已作废，请重新发准备好的上下文。", guide_text)
         self.assertIn("technical_certified_result.json", guide_text)
         self.assertIn("attestation.json", guide_text)
@@ -156,58 +156,43 @@ class PersonaMaterialsTests(unittest.TestCase):
     def test_skill_makes_runtime_backed_material_injection_mandatory(self) -> None:
         skill_text = SKILL_PATH.read_text(encoding="utf-8")
 
-        self.assertIn(
-            "如果在本地 plugin 里执行，必须先用 `../../tools/persona_materials.py --persona <slug> --domain <domain>` 生成默认材料块",
-            skill_text,
-        )
-        self.assertIn("runtime/personas/<persona>/", skill_text)
-        self.assertIn(
-            "如果任务包缺少 `[人格底盘材料]` 或 `[当前领域材料]`，视为主线程协议违规：不要分发 subagent，先补材料再 dispatch。",
-            skill_text,
-        )
+        self.assertIn("build_worldview_round.py", skill_text)
+        self.assertIn("The round must contain `packets/`, `tickets/`, and `identities/`.", skill_text)
+        self.assertIn("The round root is the only valid handoff into dispatch.", skill_text)
+        self.assertIn("Do not hand-write worker prompts.", skill_text)
 
     def test_default_prompt_marks_persona_materials_as_required(self) -> None:
         prompt_text = OPENAI_AGENT_PATH.read_text(encoding="utf-8")
 
-        self.assertIn("must generate runtime-backed persona materials before dispatch", prompt_text)
-        self.assertIn("never hand-wave or manually omit", prompt_text)
-        self.assertIn("question_classify", prompt_text)
-        self.assertIn("dispatch_ready", prompt_text)
-        self.assertIn("progress_heartbeat", prompt_text)
-        self.assertIn("60s", prompt_text)
+        self.assertIn("build the sealed round with ../../tools/build_worldview_round.py", prompt_text)
+        self.assertIn("dispatch only through ../../tools/run_worldview_broker.py", prompt_text)
+        self.assertIn("synthesize only through ../../tools/synthesize_worldview_panel.py", prompt_text)
+        self.assertIn("verify through ../../tools/verify_worldview_round.py", prompt_text)
+        self.assertIn("这次请求已作废，请重新发准备好的上下文。", prompt_text)
 
-    def test_core_runtime_docs_raise_concurrency_cap_to_six(self) -> None:
+    def test_core_runtime_docs_point_to_broker_v1_flow(self) -> None:
         skill_text = SKILL_PATH.read_text(encoding="utf-8")
         prompt_text = OPENAI_AGENT_PATH.read_text(encoding="utf-8")
-        routing_text = ROUTING_MATRIX_PATH.read_text(encoding="utf-8")
 
-        self.assertIn("Never run more than 6 subagents at once. If the panel is larger, dispatch in batches of up to 6.", skill_text)
-        self.assertIn("任一时刻最多只运行 6 个 subagents", skill_text)
-        self.assertIn("每批最多 6 个", skill_text)
-        self.assertIn("keep at most 6 active at a time", prompt_text)
-        self.assertIn("任一时刻最多只运行 6 个 subagents", routing_text)
-        self.assertIn("每批最多 6 个", routing_text)
+        self.assertIn("run_worldview_broker.py", skill_text)
+        self.assertIn("synthesize_worldview_panel.py", skill_text)
+        self.assertIn("verify_worldview_round.py", skill_text)
+        self.assertIn("worldview broker v1", prompt_text)
 
     def test_skill_documents_observability_stage_contract(self) -> None:
         skill_text = SKILL_PATH.read_text(encoding="utf-8")
 
-        self.assertIn("question_classify", skill_text)
-        self.assertIn("panel_select", skill_text)
-        self.assertIn("dispatch_ready", skill_text)
-        self.assertIn("agent_result", skill_text)
-        self.assertIn("progress_heartbeat", skill_text)
-        self.assertIn("run_end` 统一只用三种状态", skill_text)
-        self.assertIn("每完成 6 个材料打一条进度", skill_text)
-        self.assertIn("如果 60 秒内没有任何新返回，就写一条 `progress_heartbeat`", skill_text)
-        self.assertIn("如果日志里没有 `run_end`，就按“外部中断或未完成”理解", skill_text)
+        self.assertIn("run_id", skill_text)
+        self.assertIn("write_run_log.py", skill_text)
+        self.assertIn("Classify the user request", skill_text)
+        self.assertIn("Verify with `../../tools/verify_worldview_round.py`.", skill_text)
 
     def test_skill_documents_exact_packet_dispatch_contract(self) -> None:
         skill_text = SKILL_PATH.read_text(encoding="utf-8")
 
-        self.assertIn("只允许从已准备好的 sealed round / ticket 里取内容，不要临时手写一个缩略版再 dispatch。", skill_text)
-        self.assertIn("派发时只允许调用 `../../tools/run_worldview_broker.py` 读取 sealed `dispatch_job.json` / tickets，不要自己重新拼 prompt", skill_text)
-        self.assertIn("只有 broker 写出 `technical_certified_result.json`，才允许把该 persona 计入后续汇总", skill_text)
-        self.assertIn("只要 broker 报告 hash mismatch、schema invalid 或 uncertified result，就立刻中止整轮并要求用户重新发准备好的上下文。", skill_text)
+        self.assertIn("Handoff is `dispatch_job.json`, not raw prompt text.", skill_text)
+        self.assertIn("Only technically certified broker results may continue.", skill_text)
+        self.assertIn("If any requested persona is not technically certified, fail closed.", skill_text)
 
     def test_build_persona_material_packet_includes_profile_anchor_block(self) -> None:
         module = load_persona_materials_module(self)
@@ -227,8 +212,9 @@ class PersonaMaterialsTests(unittest.TestCase):
         prompt_text = OPENAI_AGENT_PATH.read_text(encoding="utf-8")
         prep_skill_text = (REPO_ROOT / "skills" / "worldview-context-prep" / "SKILL.md").read_text(encoding="utf-8")
 
-        self.assertIn("Build sealed worker inputs with ../../tools/build_worldview_round.py and dispatch only through ../../tools/run_worldview_broker.py.", prompt_text)
-        self.assertIn("Only technically certified broker results may enter synthesis", prompt_text)
+        self.assertIn("build the sealed round with ../../tools/build_worldview_round.py", prompt_text)
+        self.assertIn("dispatch only through ../../tools/run_worldview_broker.py", prompt_text)
+        self.assertIn("synthesize only through ../../tools/synthesize_worldview_panel.py", prompt_text)
         self.assertIn("`../../tools/build_worldview_round.py` is the supported entrypoint for worldview broker v1", prep_skill_text)
 
 
