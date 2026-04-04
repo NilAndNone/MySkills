@@ -3,8 +3,7 @@ from __future__ import annotations
 
 
 def main() -> int:
-    print("build_worldview_round.py is a broker-v1 stub for Task 1.")
-    return 0
+    raise SystemExit("broker-v1 stub: build_worldview_round.py is not implemented yet")
 
 
 if __name__ == "__main__":

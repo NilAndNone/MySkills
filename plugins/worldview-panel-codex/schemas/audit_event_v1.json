@@ -6,8 +6,32 @@
   "properties": {
     "schema_version": {
       "const": "audit_event_v1"
+    },
+    "event_id": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "component": {
+      "type": "string"
+    },
+    "entity_type": {
+      "type": "string"
+    },
+    "entity_id": {
+      "type": "string"
+    },
+    "stage": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
     }
   },
-  "required": ["schema_version"],
+  "required": ["schema_version", "event_id", "timestamp", "run_id", "component", "entity_type", "entity_id", "stage", "status"],
   "additionalProperties": true
 }

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -44,6 +45,122 @@ class PluginLayoutTests(unittest.TestCase):
 
         self.assertFalse((PLUGIN_ROOT / "runtime" / "agents").exists())
         self.assertFalse((PLUGIN_ROOT / "scripts" / "rebuild_agents.py").exists())
+
+    def test_broker_v1_schema_files_require_core_fields(self) -> None:
+        expected_required = {
+            "dispatch_job_v1.json": [
+                "schema_version",
+                "run_id",
+                "round_root",
+                "selected_personas",
+                "batch_size",
+                "dispatch_mode",
+            ],
+            "dispatch_ticket_v1.json": [
+                "schema_version",
+                "run_id",
+                "persona",
+                "ticket_id",
+                "packet_id",
+                "packet_path",
+                "packet_fingerprint",
+                "packet_length",
+                "profile_id",
+                "profile_version",
+                "profile_hash",
+                "policy_id",
+                "policy_hash",
+                "worker_schema_version",
+                "state",
+            ],
+            "worldview_worker_result_v1.json": [
+                "schema_version",
+                "persona",
+                "judgment",
+                "diagnosis",
+                "recommended_actions",
+                "voice_style",
+                "blind_spot",
+                "overuse_risk",
+                "signature_line",
+                "confidence",
+            ],
+            "attestation_v1.json": [
+                "schema_version",
+                "run_id",
+                "persona",
+                "packet_id",
+                "packet_fingerprint",
+                "packet_length",
+                "ticket_id",
+                "ticket_fingerprint",
+                "profile_id",
+                "profile_version",
+                "profile_hash",
+                "skill_fingerprint",
+                "policy_id",
+                "policy_hash",
+                "thread_id",
+                "turn_id",
+                "turn_input_fingerprint",
+                "turn_user_text_fingerprint",
+                "renderer_version",
+                "newline_policy",
+                "encoding",
+                "input_item_count",
+                "effective_model",
+                "effective_output_schema_version",
+                "schema_valid",
+                "item_allowlist_valid",
+                "technical_status",
+                "dispatch_started_at",
+                "dispatch_completed_at",
+            ],
+            "technical_certified_result_v1.json": [
+                "schema_version",
+                "run_id",
+                "persona",
+                "packet_fingerprint",
+                "result_fingerprint",
+                "attestation_fingerprint",
+                "technical_status",
+                "certified_at",
+                "result",
+            ],
+            "audit_event_v1.json": [
+                "schema_version",
+                "event_id",
+                "timestamp",
+                "run_id",
+                "component",
+                "entity_type",
+                "entity_id",
+                "stage",
+                "status",
+            ],
+        }
+
+        for schema_name, required_fields in expected_required.items():
+            schema_path = PLUGIN_ROOT / "schemas" / schema_name
+            schema = json.loads(schema_path.read_text(encoding="utf-8"))
+            self.assertEqual(schema["required"], required_fields, schema_name)
+            self.assertEqual(schema["properties"]["schema_version"]["const"], schema["$id"], schema_name)
+
+    def test_broker_v1_placeholder_clis_fail_loudly(self) -> None:
+        for tool_name in {
+            "build_worldview_round.py",
+            "run_worldview_broker.py",
+            "synthesize_worldview_panel.py",
+            "verify_worldview_round.py",
+        }:
+            proc = subprocess.run(
+                ["python3", str(PLUGIN_ROOT / "tools" / tool_name)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(proc.returncode, 0, tool_name)
+            self.assertIn("broker-v1 stub", proc.stderr + proc.stdout, tool_name)
 
     def test_plugin_root_keeps_existing_skills_and_runtime_inputs(self) -> None:
         expected_skills = {

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import tempfile
@@ -10,6 +11,8 @@ from pathlib import Path
 PLUGIN_ROOT = Path(__file__).resolve().parents[1]
 INSTALLER = PLUGIN_ROOT / "scripts" / "install_local_plugin.py"
 UNINSTALLER = PLUGIN_ROOT / "scripts" / "uninstall_local_plugin.py"
+PERSONA_INDEX = json.loads((PLUGIN_ROOT / "runtime" / "persona-index.json").read_text(encoding="utf-8"))
+STALE_AGENT_FILENAMES = [f"{persona['name']}.toml" for persona in PERSONA_INDEX]
 
 
 class LocalPluginInstallTests(unittest.TestCase):
@@ -44,6 +47,34 @@ class LocalPluginInstallTests(unittest.TestCase):
             codex_agents = dest_home / ".codex" / "agents"
             self.assertFalse(codex_agents.exists())
 
+    def test_install_local_plugin_removes_stale_agent_files_from_destination_home(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dest_home = Path(tmpdir) / "home"
+            codex_agents = dest_home / ".codex" / "agents"
+            codex_agents.mkdir(parents=True, exist_ok=True)
+            stale_agent = codex_agents / STALE_AGENT_FILENAMES[0]
+            stale_agent.write_text("stale\n", encoding="utf-8")
+            unrelated_agent = codex_agents / "unrelated.toml"
+            unrelated_agent.write_text("keep\n", encoding="utf-8")
+
+            proc = subprocess.run(
+                [
+                    "python3",
+                    str(INSTALLER),
+                    "--dest-home",
+                    str(dest_home),
+                    "--force",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=os.environ.copy(),
+            )
+
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            self.assertFalse(stale_agent.exists())
+            self.assertTrue(unrelated_agent.exists())
+
     def test_uninstall_local_plugin_removes_plugin_symlink_and_leaves_no_agents(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             dest_home = Path(tmpdir) / "home"
@@ -61,6 +92,13 @@ class LocalPluginInstallTests(unittest.TestCase):
             )
             self.assertEqual(install.returncode, 0, install.stderr)
 
+            codex_agents = dest_home / ".codex" / "agents"
+            codex_agents.mkdir(parents=True, exist_ok=True)
+            stale_agent = codex_agents / STALE_AGENT_FILENAMES[1]
+            stale_agent.write_text("stale\n", encoding="utf-8")
+            unrelated_agent = codex_agents / "unrelated.toml"
+            unrelated_agent.write_text("keep\n", encoding="utf-8")
+
             uninstall = subprocess.run(
                 [
                     "python3",
@@ -77,7 +115,8 @@ class LocalPluginInstallTests(unittest.TestCase):
             self.assertEqual(uninstall.returncode, 0, uninstall.stderr)
             self.assertFalse((dest_home / "plugins" / "worldview-panel-codex").exists())
             self.assertFalse((dest_home / ".agents" / "skills" / "worldview-panel-codex").exists())
-            self.assertFalse((dest_home / ".codex" / "agents").exists())
+            self.assertFalse(stale_agent.exists())
+            self.assertTrue(unrelated_agent.exists())
 
 
 if __name__ == "__main__":

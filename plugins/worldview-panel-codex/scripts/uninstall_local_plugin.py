@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 from pathlib import Path
 
 
 PLUGIN_NAME = "worldview-panel-codex"
+PLUGIN_ROOT = Path(__file__).resolve().parents[1]
+PERSONA_INDEX_PATH = PLUGIN_ROOT / "runtime" / "persona-index.json"
 
 
 def parse_args() -> argparse.Namespace:
@@ -26,6 +29,25 @@ def remove_path(path: Path) -> None:
         shutil.rmtree(path)
 
 
+def known_stale_agent_paths(dest_home: Path) -> list[Path]:
+    personas = json.loads(PERSONA_INDEX_PATH.read_text(encoding="utf-8"))
+    agents_root = dest_home / ".codex" / "agents"
+    return [agents_root / f"{persona['name']}.toml" for persona in personas]
+
+
+def prune_empty_directory(path: Path) -> None:
+    if path.is_dir() and not any(path.iterdir()):
+        path.rmdir()
+
+
+def remove_known_stale_agents(dest_home: Path) -> None:
+    agents_root = dest_home / ".codex" / "agents"
+    for agent_path in known_stale_agent_paths(dest_home):
+        if agent_path.exists():
+            agent_path.unlink()
+    prune_empty_directory(agents_root)
+
+
 def main() -> int:
     args = parse_args()
     if not args.dest_home:
@@ -41,6 +63,7 @@ def main() -> int:
 
     remove_path(plugin_dest)
     remove_path(skills_link)
+    remove_known_stale_agents(dest_home)
 
     print(f"Removed local plugin from {dest_home}")
     return 0

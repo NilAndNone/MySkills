@@ -6,8 +6,50 @@
   "properties": {
     "schema_version": {
       "const": "dispatch_ticket_v1"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "persona": {
+      "type": "string"
+    },
+    "ticket_id": {
+      "type": "string"
+    },
+    "packet_id": {
+      "type": "string"
+    },
+    "packet_path": {
+      "type": "string"
+    },
+    "packet_fingerprint": {
+      "type": "string"
+    },
+    "packet_length": {
+      "type": "integer"
+    },
+    "profile_id": {
+      "type": "string"
+    },
+    "profile_version": {
+      "type": "string"
+    },
+    "profile_hash": {
+      "type": "string"
+    },
+    "policy_id": {
+      "type": "string"
+    },
+    "policy_hash": {
+      "type": "string"
+    },
+    "worker_schema_version": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
     }
   },
-  "required": ["schema_version"],
+  "required": ["schema_version", "run_id", "persona", "ticket_id", "packet_id", "packet_path", "packet_fingerprint", "packet_length", "profile_id", "profile_version", "profile_hash", "policy_id", "policy_hash", "worker_schema_version", "state"],
   "additionalProperties": true
 }
