@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 
-from run_log import log_event
+from run_log import log_event, write_audit_event
 
 
 def parse_field(raw_value: str) -> tuple[str, str]:
@@ -31,6 +32,19 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Write only to the per-run attachment unless detailed mode is enabled elsewhere.",
     )
+    parser.add_argument(
+        "--round-root",
+        help="Optional round root that also receives a JSONL audit event.",
+    )
+    parser.add_argument(
+        "--entity-type",
+        default="component",
+        help="Entity type for the optional JSONL audit event.",
+    )
+    parser.add_argument(
+        "--entity-id",
+        help="Entity identifier for the optional JSONL audit event. Defaults to the component name.",
+    )
     parser.add_argument("--json", action="store_true", help="Print structured output.")
     return parser.parse_args()
 
@@ -46,6 +60,17 @@ def main() -> int:
         detail_only=args.detail_only,
         fields=dict(args.field),
     )
+    if args.round_root:
+        write_audit_event(
+            round_root=Path(args.round_root),
+            component=args.component,
+            entity_type=args.entity_type,
+            entity_id=args.entity_id or args.component,
+            stage=args.stage,
+            status=args.status,
+            run_id=payload["run_id"],
+            fingerprints=dict(args.field) or None,
+        )
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:

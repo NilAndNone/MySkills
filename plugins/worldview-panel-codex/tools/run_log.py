@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from worldview_audit import write_audit_event as _write_audit_event
+
 
 LOG_DIR_NAME = "log"
 TOTAL_LOG_NAME = "worldview-panel-codex.log"
@@ -113,6 +115,29 @@ def log_event(
         "run_log_path": str(run_path),
         "total_log_path": str(total_log_path()),
     }
+
+
+def write_audit_event(
+    *,
+    round_root: str | Path,
+    component: str,
+    entity_type: str,
+    entity_id: str,
+    stage: str,
+    status: str,
+    run_id: str | None = None,
+    fingerprints: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    return _write_audit_event(
+        round_root=round_root,
+        component=component,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        stage=stage,
+        status=status,
+        run_id=run_id,
+        fingerprints=fingerprints,
+    )
 
 
 @dataclass(slots=True)
