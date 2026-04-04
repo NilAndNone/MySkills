@@ -136,6 +136,17 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
 
         self.assertTrue((round_root / "dispatch_job.json").is_file())
 
+    def test_build_round_accepts_benign_temporal_phrase(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["question"] = "在此前十年里，这个行业经历了多次波动。"
+        round_root = module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+
+        self.assertTrue((round_root / "dispatch_job.json").is_file())
+
     def test_build_round_accepts_benign_external_material_containing_tldr(self) -> None:
         module = load_worldview_round_builder_module(self)
 
@@ -153,6 +164,22 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
 
         self.assertTrue((round_root / "dispatch_job.json").is_file())
 
+    def test_build_round_rejects_formatted_contaminated_external_material_metadata(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["external_materials"] = [
+            {
+                "title": "TL;DR: 父层摘要",
+                "source": "[人格]：风险经理",
+                "content": "这里只是普通正文，但 metadata 已经泄露了父层或他人格结构。",
+            }
+        ]
+        with self.assertRaisesRegex(ValueError, "forbidden answer or synthesis markers"):
+            module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+
     def test_build_round_rejects_colon_suffixed_imported_answer_header(self) -> None:
         module = load_worldview_round_builder_module(self)
 
@@ -163,7 +190,7 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
             {
                 "title": "用户粘贴内容",
                 "source": "用户粘贴内容",
-                "content": "[人格]：风险经理\n这里看起来像是导入的别的人格回答。",
+                "content": "### [人格]：风险经理\n这里看起来像是导入的别的人格回答。",
             }
         ]
         with self.assertRaisesRegex(ValueError, "forbidden answer or synthesis markers"):
@@ -212,6 +239,16 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
             payload = json.load(handle)
 
         payload["answer_goal"] = "请评估上面的材料是否可靠。"
+        with self.assertRaisesRegex(ValueError, "unresolved reference remains in normalized input"):
+            module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+
+    def test_build_round_rejects_english_unresolved_reference_variants(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["question"] = "Please assess the previous memo before you answer."
         with self.assertRaisesRegex(ValueError, "unresolved reference remains in normalized input"):
             module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
 
