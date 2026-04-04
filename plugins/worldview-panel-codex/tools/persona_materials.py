@@ -79,6 +79,19 @@ def load_persona_index() -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]
     return personas, {persona["name"]: persona for persona in personas}
 
 
+def build_persona_instruction_seed(persona_slug: str) -> dict[str, Any]:
+    _, registry = load_persona_index()
+    persona = registry.get(persona_slug)
+    if persona is None:
+        raise ValueError(f"unknown persona: {persona_slug}")
+
+    return {
+        "persona": persona_slug,
+        "persona_name": persona["chinese_name"],
+        "instruction_seed": persona["persona_brief"].strip(),
+    }
+
+
 def read_markdown(path: Path) -> str:
     return path.read_text(encoding="utf-8").strip()
 
