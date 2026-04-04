@@ -48,11 +48,22 @@ def run_log_path(codex_home: Path, run_id: str) -> Path:
 
 
 class WorldviewAuditTests(unittest.TestCase):
-    def test_write_audit_event_appends_jsonl_line(self) -> None:
+    def test_write_audit_event_requires_run_id_and_preserves_context(self) -> None:
         audit = load_tools_module(self, "worldview_audit")
 
         with tempfile.TemporaryDirectory() as tmpdir:
             round_root = Path(tmpdir) / "round"
+            with self.assertRaises(ValueError):
+                audit.write_audit_event(
+                    round_root=round_root,
+                    run_id="",
+                    component="broker",
+                    entity_type="persona",
+                    entity_id="risk_manager",
+                    stage="worker_dispatch_started",
+                    status="started",
+                )
+
             event = audit.write_audit_event(
                 round_root=round_root,
                 run_id="wv-test",
@@ -63,7 +74,11 @@ class WorldviewAuditTests(unittest.TestCase):
                 status="started",
                 thread_id="thr_test",
                 turn_id="turn_test",
-                fingerprints={"packet_fingerprint": "sha256:test"},
+                fingerprints={
+                    "packet_fingerprint": "sha256:test",
+                    "turn_input_fingerprint": "sha256:turn",
+                },
+                details={"packet_length": 4287, "technical_status": "TECHNICAL_CERTIFIED"},
             )
 
             audit_path = round_root / "audit" / "events.jsonl"
@@ -82,7 +97,17 @@ class WorldviewAuditTests(unittest.TestCase):
             self.assertEqual(payload["status"], "started")
             self.assertEqual(payload["thread_id"], "thr_test")
             self.assertEqual(payload["turn_id"], "turn_test")
-            self.assertEqual(payload["fingerprints"], {"packet_fingerprint": "sha256:test"})
+            self.assertEqual(
+                payload["fingerprints"],
+                {
+                    "packet_fingerprint": "sha256:test",
+                    "turn_input_fingerprint": "sha256:turn",
+                },
+            )
+            self.assertEqual(
+                payload["details"],
+                {"packet_length": 4287, "technical_status": "TECHNICAL_CERTIFIED"},
+            )
             self.assertTrue(payload["event_id"].startswith("evt_"))
             self.assertIn("T", payload["timestamp"])
 
@@ -154,7 +179,6 @@ class WorldviewAuditTests(unittest.TestCase):
             "technical_status",
             "dispatch_started_at",
             "dispatch_completed_at",
-            "turn_input_user_messages",
         }
         self.assertEqual(set(attestation), expected_keys)
         self.assertEqual(attestation["schema_version"], "attestation_v1")
@@ -166,10 +190,7 @@ class WorldviewAuditTests(unittest.TestCase):
             attestation["turn_input_fingerprint"],
             contracts.sha256_prefixed(contracts.canonical_json_bytes(turn_input)),
         )
-        self.assertEqual(attestation["turn_user_text_fingerprint"], attestation["turn_input_user_messages"][0]["fingerprint"])
-        self.assertEqual(attestation["turn_input_user_messages"][0]["text"], "hello")
-        self.assertEqual(attestation["turn_input_user_messages"][0]["source"], "turn_input")
-        self.assertTrue(attestation["turn_input_user_messages"][0]["observed"])
+        self.assertEqual(attestation["turn_user_text_fingerprint"], contracts.sha256_prefixed("hello"))
         self.assertEqual(attestation["renderer_version"], "turn_renderer_v1")
         self.assertEqual(attestation["newline_policy"], "lf")
         self.assertEqual(attestation["encoding"], "utf-8")
