@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Mapping
 from uuid import uuid4
 
-from persona_materials import build_persona_material_packet
+from persona_materials import build_persona_instruction_seed, build_persona_material_packet
 from worldview_contracts import canonical_json_bytes, load_json, sha256_prefixed
 from worldview_identity import write_worker_skill
 
@@ -166,7 +166,8 @@ def _packet_identity(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     profile_id = f"{persona}_{PROFILE_SUFFIX}"
     skill_path = round_root / "identities" / persona / "worker.skill.md"
-    skill = write_worker_skill(skill_path, profile_id, persona_material["packet_material"])
+    identity_seed = build_persona_instruction_seed(persona)
+    skill = write_worker_skill(skill_path, profile_id, identity_seed["instruction_seed"])
 
     policy_hash = sha256_prefixed(canonical_json_bytes(_policy_record()))
     profile = _seal_record(
@@ -215,7 +216,7 @@ def build_round_from_input(input_path: Path | str, output_root: Path | str | Non
         packet_path.write_text(packet_text, encoding="utf-8")
 
         packet_fingerprint = sha256_prefixed(packet_text)
-        packet_length = len(packet_text)
+        packet_length = len(packet_text.encode("utf-8"))
 
         skill, profile = _packet_identity(
             round_root=round_root,
@@ -296,7 +297,7 @@ def build_round_from_input(input_path: Path | str, output_root: Path | str | Non
         "run_id": round_root.name,
         "round_root": str(round_root.resolve()),
         "selected_personas": round_input["selected_personas"],
-        "batch_size": len(round_input["selected_personas"]),
+        "batch_size": min(6, len(round_input["selected_personas"])),
         "dispatch_mode": "strict_all_required",
     }
     _write_json(round_root / "dispatch_job.json", dispatch_job)

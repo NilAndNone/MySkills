@@ -32,6 +32,14 @@ def load_worldview_round_builder_module(test_case: unittest.TestCase):
 
 
 class WorldviewRoundBuilderTests(unittest.TestCase):
+    def _build_round(self, payload: dict[str, object]) -> Path:
+        module = load_worldview_round_builder_module(self)
+
+        tmpdir = Path(tempfile.mkdtemp())
+        input_path = tmpdir / "round_input.json"
+        input_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        return module.build_round_from_input(input_path, output_root=tmpdir)
+
     def test_build_round_from_input_writes_packets_tickets_and_identity_skills(self) -> None:
         module = load_worldview_round_builder_module(self)
 
@@ -56,6 +64,7 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
                 packet_manifest = json.loads((packet_root / "packet_manifest.json").read_text(encoding="utf-8"))
                 ticket = json.loads(ticket_path.read_text(encoding="utf-8"))
                 skill_text = (identity_root / "worker.skill.md").read_text(encoding="utf-8")
+                packet_text = (packet_root / "packet.txt").read_text(encoding="utf-8")
 
                 self.assertEqual(packet_manifest["state"], "SEALED")
                 self.assertEqual(ticket["state"], "SEALED")
@@ -68,6 +77,7 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
                 self.assertTrue(ticket["packet_fingerprint"].startswith("sha256:"))
                 self.assertEqual(len(ticket["packet_fingerprint"]), 71)
                 self.assertIn(persona, skill_text)
+                self.assertEqual(packet_manifest["packet_length"], len(packet_text.encode("utf-8")))
 
             round_manifest = json.loads((round_root / "round_manifest.json").read_text(encoding="utf-8"))
             dispatch_job = json.loads((round_root / "dispatch_job.json").read_text(encoding="utf-8"))
@@ -77,6 +87,24 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
             self.assertEqual(dispatch_job["schema_version"], "dispatch_job_v1")
             self.assertEqual(dispatch_job["round_root"], str(round_root.resolve()))
             self.assertEqual(dispatch_job["selected_personas"], ["risk_manager", "existentialist"])
+
+    def test_same_persona_keeps_identity_hashes_across_domains(self) -> None:
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["selected_personas"] = ["risk_manager"]
+        payload["domain"] = "career"
+        career_root = self._build_round(payload)
+        career_manifest = json.loads((career_root / "packets" / "risk_manager" / "packet_manifest.json").read_text(encoding="utf-8"))
+        career_ticket = json.loads((career_root / "tickets" / "risk_manager.json").read_text(encoding="utf-8"))
+
+        payload["domain"] = "startup"
+        startup_root = self._build_round(payload)
+        startup_manifest = json.loads((startup_root / "packets" / "risk_manager" / "packet_manifest.json").read_text(encoding="utf-8"))
+        startup_ticket = json.loads((startup_root / "tickets" / "risk_manager.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(career_ticket["profile_hash"], startup_ticket["profile_hash"])
+        self.assertEqual(career_manifest["skill_fingerprint"], startup_manifest["skill_fingerprint"])
 
     def test_build_worldview_round_cli_json_reports_round_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -102,6 +130,26 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
             self.assertTrue(round_root.is_dir())
             self.assertEqual(round_root.parent, Path(tmpdir))
             self.assertTrue((round_root / "dispatch_job.json").is_file())
+
+    def test_dispatch_job_batch_size_caps_at_six(self) -> None:
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["domain"] = "other"
+        payload["selected_personas"] = [
+            "risk_manager",
+            "existentialist",
+            "techno_optimist",
+            "collapse_prophet",
+            "baseline_conformist",
+            "modern_mystic",
+            "terminal_jester",
+        ]
+
+        round_root = self._build_round(payload)
+        dispatch_job = json.loads((round_root / "dispatch_job.json").read_text(encoding="utf-8"))
+
+        self.assertEqual(dispatch_job["batch_size"], 6)
 
 
 if __name__ == "__main__":
