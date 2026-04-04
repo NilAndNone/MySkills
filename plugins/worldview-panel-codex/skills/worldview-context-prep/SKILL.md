@@ -5,17 +5,14 @@ description: Build, validate, and persist per-subagent context packets before di
 
 ## Workflow
 
-Use the shared prep CLI for explicit stages:
+Use the broker-v1 round builder:
 
-- `../../tools/prepare_context_packets.py` is the only supported entrypoint
-- `normalize`: normalize round input only
-- `assemble`: build per-subagent packets without persistence
-- `validate`: build and validate packets, return readiness
-- `persist`: build, validate, and persist packet artifacts
-- `all`: run the full preparation flow and write a tmp round directory
+- `../../tools/build_worldview_round.py` is the supported entrypoint for worldview broker v1
+- it validates round input, renders temporary worker identity carriers, and persists sealed round artifacts
+- use `--input <round_input.json>` to build a round
+- optional `--output-root <dir>`: choose the parent directory for the generated round root
+- optional `--json`: return `{"round_root": ...}` instead of plain text
 - optional `--run-id <run_id>`: join the shared worldview panel log for this run
 - optional `--log-detail`: add richer per-run attachment entries without making the total log noisy
 
-Before dispatch, generate the outgoing copy with `../../tools/dispatch_packet_guard.py`.
-
-Do not dispatch any subagent until the CLI reports the batch is ready and the dispatch release step reports `matched=true`.
+Do not use `prepare_context_packets.py` or `dispatch_packet_guard.py` for broker-v1 dispatch. They belong to the legacy parent-controlled flow and are not the authoritative path for sealed worker input.
