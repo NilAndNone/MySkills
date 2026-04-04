@@ -188,7 +188,7 @@ class WorldviewAuditTests(unittest.TestCase):
         self.assertEqual(attestation["ticket_fingerprint"], "sha256:ticket")
         self.assertEqual(
             attestation["turn_input_fingerprint"],
-            contracts.sha256_prefixed(contracts.canonical_json_bytes(turn_input)),
+            contracts.sha256_prefixed(contracts.canonical_json_bytes(turn_input["input"])),
         )
         self.assertEqual(attestation["turn_user_text_fingerprint"], contracts.sha256_prefixed("hello"))
         self.assertEqual(attestation["renderer_version"], "turn_renderer_v1")

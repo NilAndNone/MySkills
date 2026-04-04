@@ -55,16 +55,11 @@ def build_attestation(
     dispatch_started_at: str = "",
     dispatch_completed_at: str = "",
 ) -> dict[str, Any]:
-    turn_input_payload: dict[str, Any] | list[Any]
-    if turn_input is None:
-        turn_input_payload = {}
-    else:
-        turn_input_payload = turn_input
-
-    turn_input_fingerprint = sha256_prefixed(canonical_json_bytes(turn_input_payload))
+    turn_input_items = _turn_input_items(turn_input)
+    turn_input_fingerprint = sha256_prefixed(canonical_json_bytes(turn_input_items))
     observed_user_text_fingerprint = sha256_prefixed(observed_user_text.encode(encoding))
     if input_item_count is None:
-        input_item_count = len(_turn_input_items(turn_input_payload))
+        input_item_count = len(turn_input_items)
 
     return {
         "schema_version": "attestation_v1",
