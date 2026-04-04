@@ -125,6 +125,17 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
 
         self.assertTrue((round_root / "dispatch_job.json").is_file())
 
+    def test_build_round_accepts_benign_prompt_containing_这个方案(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["question"] = "这个方案的主要风险是什么？"
+        round_root = module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+
+        self.assertTrue((round_root / "dispatch_job.json").is_file())
+
     def test_build_round_accepts_benign_external_material_containing_tldr(self) -> None:
         module = load_worldview_round_builder_module(self)
 
@@ -141,6 +152,22 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
         round_root = module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
 
         self.assertTrue((round_root / "dispatch_job.json").is_file())
+
+    def test_build_round_rejects_colon_suffixed_imported_answer_header(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["external_materials"] = [
+            {
+                "title": "用户粘贴内容",
+                "source": "用户粘贴内容",
+                "content": "[人格]：风险经理\n这里看起来像是导入的别的人格回答。",
+            }
+        ]
+        with self.assertRaisesRegex(ValueError, "forbidden answer or synthesis markers"):
+            module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
 
     def test_build_round_rejects_obviously_contaminated_external_material(self) -> None:
         module = load_worldview_round_builder_module(self)
@@ -178,6 +205,16 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "selected_personas entries must be non-empty strings"):
             module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
 
+    def test_build_round_rejects_unresolved_reference_in_answer_goal(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["answer_goal"] = "请评估上面的材料是否可靠。"
+        with self.assertRaisesRegex(ValueError, "unresolved reference remains in normalized input"):
+            module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+
     def test_build_round_rejects_wrong_type_inputs(self) -> None:
         module = load_worldview_round_builder_module(self)
 
@@ -197,6 +234,13 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
                 candidate.update(overrides)
                 with self.assertRaisesRegex(ValueError, message):
                     module.build_round_from_input(self._write_round_input(candidate), output_root=Path(tempfile.mkdtemp()))
+
+    def test_build_round_rejects_top_level_non_object_json(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        input_path = self._write_round_json(["not", "an", "object"])
+        with self.assertRaisesRegex(ValueError, "round input must be a JSON object"):
+            module.build_round_from_input(input_path, output_root=Path(tempfile.mkdtemp()))
 
     def test_build_round_defaults_missing_external_material_labels(self) -> None:
         with FIXTURE_PATH.open(encoding="utf-8") as handle:
@@ -330,6 +374,12 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
         self.assertEqual(dispatch_job["batch_size"], 6)
 
     def _write_round_input(self, payload: dict[str, object]) -> Path:
+        tmpdir = Path(tempfile.mkdtemp())
+        input_path = tmpdir / "round_input.json"
+        input_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        return input_path
+
+    def _write_round_json(self, payload: object) -> Path:
         tmpdir = Path(tempfile.mkdtemp())
         input_path = tmpdir / "round_input.json"
         input_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
