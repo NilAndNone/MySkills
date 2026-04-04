@@ -231,8 +231,8 @@ def run_broker(dispatch_job_path: str | Path, *, app_server_client: Any) -> dict
             raise ValueError(f"unsupported policy: {ticket['policy_id']}")
 
         input_items = [
-            {"type": "skill", "path": str(skill_path)},
-            {"type": "userMessage", "text": packet_text},
+            {"type": "skill", "name": profile["profile_id"], "path": str(skill_path)},
+            {"type": "text", "text": packet_text},
         ]
         dispatch_started_at = _utc_timestamp()
         thread_id = app_server_client.start_thread()

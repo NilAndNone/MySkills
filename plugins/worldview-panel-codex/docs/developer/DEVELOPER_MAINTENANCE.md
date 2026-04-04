@@ -13,6 +13,13 @@ broker v1 只有这一条执行链：
 
 这些步骤之间只交换 round-root 下的 JSON artifacts。
 
+真实运行时约束：
+
+- `run_worldview_broker.py` 直连 `codex app-server --listen ws://127.0.0.1:8787`
+- 传输协议是 WebSocket JSON-RPC，不是同步 REST
+- `WebSocketJsonRpcTransport` 必须抑制默认 `Origin` header；否则本地 app-server 握手会返回 `403`
+- `--fixture-turn-items` 只用于本地 deterministic 测试，不代表生产 transport
+
 ## 主要目录
 
 - `skills/worldview-panel-entry`
@@ -59,6 +66,7 @@ broker v1 只有这一条执行链：
 
 ```sh
 python3 -m unittest discover -s plugins/worldview-panel-codex/tests -p 'test_plugin_layout.py' -q
+python3 -m unittest discover -s plugins/worldview-panel-codex/tests -p 'test_worldview_app_server.py' -q
 python3 -m unittest discover -s plugins/worldview-panel-codex/tests -p 'test_run_worldview_broker.py' -q
 python3 -m unittest discover -s plugins/worldview-panel-codex/tests -p 'test_synthesize_worldview_panel.py' -q
 python3 -m unittest discover -s plugins/worldview-panel-codex/tests -p 'test_verify_worldview_round.py' -q

@@ -119,7 +119,7 @@ class WorldviewAuditTests(unittest.TestCase):
             "thread_id": "thr_test",
             "input": [
                 {"type": "skill", "path": "skills/risk_manager_worker_v1.md"},
-                {"type": "userMessage", "text": "hello"},
+                {"type": "text", "text": "hello"},
             ],
         }
         attestation = attestation_mod.build_attestation(

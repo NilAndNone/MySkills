@@ -69,7 +69,8 @@ python3 ~/plugins/worldview-panel-codex/tools/build_worldview_round.py --input /
 ## broker 派发
 
 ```sh
-python3 ~/plugins/worldview-panel-codex/tools/run_worldview_broker.py --dispatch-job /tmp/worldview-round/<round-id>/dispatch_job.json --json
+codex app-server --listen ws://127.0.0.1:8787
+python3 ~/plugins/worldview-panel-codex/tools/run_worldview_broker.py --dispatch-job /tmp/worldview-round/<round-id>/dispatch_job.json --app-server-url ws://127.0.0.1:8787 --json
 ```
 
 这一步会：
@@ -78,6 +79,12 @@ python3 ~/plugins/worldview-panel-codex/tools/run_worldview_broker.py --dispatch
 2. 注入临时 identity skill
 3. 启动 fresh worker threads
 4. 写出 `attestation.json` 和 `technical_certified_result.json`
+
+如果只是本地自测，不需要起真实 app-server，可以改用 fixture 模式：
+
+```sh
+python3 ~/plugins/worldview-panel-codex/tools/run_worldview_broker.py --dispatch-job /tmp/worldview-round/<round-id>/dispatch_job.json --fixture-turn-items ~/plugins/worldview-panel-codex/tests/fixtures/broker/worker_turn_items.json --json
+```
 
 ## synthesis
 

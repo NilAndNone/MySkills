@@ -5,7 +5,7 @@ import argparse
 import json
 from pathlib import Path
 
-from worldview_app_server import FixtureAppServerClient, RealAppServerClient
+from worldview_app_server import FixtureAppServerClient, JsonRpcAppServerClient
 from worldview_broker import run_broker
 
 
@@ -14,8 +14,8 @@ def main() -> int:
     parser.add_argument("--dispatch-job", required=True, help="Path to dispatch_job.json")
     parser.add_argument("--fixture-turn-items", help="Optional fixture JSON for deterministic local broker tests.")
     parser.add_argument(
-        "--app-server-base-url",
-        help="Base URL for the real app server. Defaults to WORLDVIEW_APP_SERVER_BASE_URL or http://127.0.0.1:8787.",
+        "--app-server-url",
+        help="WebSocket URL for codex app-server. Defaults to WORLDVIEW_APP_SERVER_URL or ws://127.0.0.1:8787.",
     )
     parser.add_argument("--json", action="store_true", help="Emit the broker outcome as JSON.")
     args = parser.parse_args()
@@ -23,10 +23,15 @@ def main() -> int:
     client = (
         FixtureAppServerClient(Path(args.fixture_turn_items))
         if args.fixture_turn_items
-        else RealAppServerClient(args.app_server_base_url) if args.app_server_base_url else RealAppServerClient.from_env()
+        else JsonRpcAppServerClient.connect(args.app_server_url)
+        if args.app_server_url
+        else JsonRpcAppServerClient.connect_from_env()
     )
 
-    outcome = run_broker(Path(args.dispatch_job), app_server_client=client)
+    try:
+        outcome = run_broker(Path(args.dispatch_job), app_server_client=client)
+    finally:
+        client.close()
     if args.json:
         print(json.dumps(outcome, ensure_ascii=False, indent=2))
     else:

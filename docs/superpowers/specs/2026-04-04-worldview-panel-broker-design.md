@@ -120,6 +120,7 @@ Responsibilities:
 
 - load sealed tickets
 - verify sealed packet, identity, and policy state
+- maintain a broker-owned app-server session
 - start app-server threads and turns
 - inject runtime identity through documented mechanisms
 - collect app-server events
@@ -194,6 +195,30 @@ For worker and synthesizer turns in `v1`, and for any future judge turns:
 - no review-mode continuation on these threads
 
 This is not an implementation preference. It is part of the authority boundary.
+
+## Transport Model
+
+`v1` talks to Codex app-server over JSON-RPC on a WebSocket transport.
+
+This design does not assume:
+
+- a synchronous REST `POST /thread/start`
+- a synchronous REST `POST /turn/start`
+- a `codex app-server run` subcommand
+
+The runtime shape is:
+
+1. broker opens a WebSocket connection to `codex app-server --listen ws://127.0.0.1:8787`
+2. broker sends `initialize`
+3. broker sends `thread/start`
+4. broker sends `turn/start`
+5. broker waits for the matching `turn/completed` notification
+6. broker calls `thread/read` with `includeTurns=true`
+7. broker extracts the completed turn's observed items from `thread.turns[*].items`
+
+`turn/start` carries app-server `UserInput` items such as `skill` and `text`. It is an acknowledgement step, not a complete-result step. `Turn.items` is empty on `turn/start` and on `turn/completed`, so observed item extraction must come from `thread/read`.
+
+The broker may wrap this in a local adapter abstraction, but the transport truth remains WebSocket JSON-RPC. Any local shim must preserve the same attestation semantics and may not invent alternate payload authority.
 
 ## Data Contracts
 
@@ -343,8 +368,9 @@ All module boundaries are JSON-only.
 
 The attestation source of truth is:
 
-- the broker-constructed `turn/start` payload
-- app-server `item/*` events
+- the broker-constructed JSON-RPC `turn/start` payload
+- the matching `turn/completed` notification
+- the `thread/read(includeTurns=true)` response that yields the completed turn items
 
 It is not:
 
@@ -356,7 +382,7 @@ The broker must compute and persist:
 
 - `packet_fingerprint`
 - `turn_input_fingerprint = sha256(canonical_json(turn/start.params.input))`
-- `turn_user_text_fingerprint = sha256(extracted_user_message_bytes)`
+- `turn_user_text_fingerprint = sha256(extracted_text_user_input_bytes)`
 
 This allows the system to distinguish:
 
@@ -366,7 +392,7 @@ This allows the system to distinguish:
 
 ## Item Allowlist
 
-`forbidden_tool_use` becomes an explicit item-type rule.
+`forbidden_tool_use` becomes an explicit item-type rule computed from observed thread items.
 
 ### Allowed In v1
 

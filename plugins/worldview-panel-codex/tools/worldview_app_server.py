@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 import os
+from collections import deque
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Protocol
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+
+from websocket import create_connection
 
 
 class AppServerClient(Protocol):
@@ -23,6 +24,16 @@ class AppServerClient(Protocol):
         sandbox_policy: str,
         approval_policy: str,
     ) -> dict[str, Any]: ...
+
+    def close(self) -> None: ...
+
+
+class JsonRpcTransport(Protocol):
+    def send(self, payload: dict[str, Any]) -> None: ...
+
+    def receive(self) -> dict[str, Any]: ...
+
+    def close(self) -> None: ...
 
 
 def _extract_persona_from_input_items(input_items: list[dict[str, Any]]) -> str:
@@ -40,6 +51,65 @@ def _extract_persona_from_input_items(input_items: list[dict[str, Any]]) -> str:
             stem = stem[:-6]
         return stem.replace("_worker", "")
     return ""
+
+
+def _extract_result_from_items(items: list[dict[str, Any]]) -> dict[str, Any]:
+    agent_messages = [
+        item
+        for item in items
+        if isinstance(item, dict) and item.get("type") == "agentMessage" and isinstance(item.get("text"), str)
+    ]
+    if not agent_messages:
+        raise RuntimeError("thread/read returned no agentMessage items")
+
+    preferred = next((item for item in reversed(agent_messages) if item.get("phase") == "final_answer"), agent_messages[-1])
+    try:
+        parsed = json.loads(preferred["text"])
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("final agentMessage text is not valid JSON") from exc
+    if not isinstance(parsed, dict):
+        raise RuntimeError("final agentMessage JSON payload must be an object")
+    return parsed
+
+
+def _sandbox_policy_payload(sandbox_policy: str) -> dict[str, Any]:
+    if sandbox_policy == "read-only":
+        return {"type": "readOnly", "networkAccess": False}
+    raise RuntimeError(f"unsupported sandbox policy: {sandbox_policy}")
+
+
+class ScriptedTransport:
+    def __init__(self, responses: list[dict[str, Any]]) -> None:
+        self._responses = deque(deepcopy(responses))
+        self.requests: list[dict[str, Any]] = []
+
+    def send(self, payload: dict[str, Any]) -> None:
+        self.requests.append(deepcopy(payload))
+
+    def receive(self) -> dict[str, Any]:
+        if not self._responses:
+            raise RuntimeError("scripted transport ran out of responses")
+        return self._responses.popleft()
+
+    def close(self) -> None:
+        self._responses.clear()
+
+
+class WebSocketJsonRpcTransport:
+    def __init__(self, ws_url: str, timeout_seconds: float) -> None:
+        self._socket = create_connection(ws_url, timeout=timeout_seconds, suppress_origin=True)
+
+    def send(self, payload: dict[str, Any]) -> None:
+        self._socket.send(json.dumps(payload, ensure_ascii=False))
+
+    def receive(self) -> dict[str, Any]:
+        raw_message = self._socket.recv()
+        if not isinstance(raw_message, str):
+            raise RuntimeError("app-server websocket returned a non-text frame")
+        return json.loads(raw_message)
+
+    def close(self) -> None:
+        self._socket.close()
 
 
 class FixtureAppServerClient:
@@ -80,7 +150,7 @@ class FixtureAppServerClient:
         if isinstance(result, dict) and persona and result.get("persona") in ("", "__from_input__"):
             result["persona"] = persona
 
-        observed_items = deepcopy(self.fixture.get("observed_items") or self.fixture.get("items") or [])
+        observed_items = deepcopy(self.fixture.get("observed_items") or self.fixture.get("items") or self.fixture.get("output_items") or [])
         return {
             "thread_id": thread_id,
             "turn_id": self.fixture["turn_id"],
@@ -89,45 +159,90 @@ class FixtureAppServerClient:
             "effective_model": self.fixture.get("effective_model"),
         }
 
+    def close(self) -> None:
+        return None
 
-class RealAppServerClient:
-    def __init__(self, base_url: str, *, api_key: str | None = None, timeout_seconds: float = 30.0) -> None:
-        self.base_url = base_url.rstrip("/")
-        self.api_key = api_key
-        self.timeout_seconds = timeout_seconds
+
+class JsonRpcAppServerClient:
+    def __init__(self, transport: JsonRpcTransport) -> None:
+        self._transport = transport
+        self._next_id = 1
+        self._initialized = False
+        self._buffer: list[dict[str, Any]] = []
+        self._thread_models: dict[str, str] = {}
 
     @classmethod
-    def from_env(cls) -> "RealAppServerClient":
-        return cls(
-            os.environ.get("WORLDVIEW_APP_SERVER_BASE_URL", "http://127.0.0.1:8787"),
-            api_key=os.environ.get("WORLDVIEW_APP_SERVER_TOKEN"),
+    def connect(cls, ws_url: str, *, timeout_seconds: float = 30.0) -> "JsonRpcAppServerClient":
+        return cls(WebSocketJsonRpcTransport(ws_url, timeout_seconds))
+
+    @classmethod
+    def connect_from_env(cls) -> "JsonRpcAppServerClient":
+        return cls.connect(
+            os.environ.get("WORLDVIEW_APP_SERVER_URL", "ws://127.0.0.1:8787"),
             timeout_seconds=float(os.environ.get("WORLDVIEW_APP_SERVER_TIMEOUT_SECONDS", "30")),
         )
 
-    def _post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-        request = Request(
-            f"{self.base_url}{path}",
-            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-            headers=headers,
-            method="POST",
+    def close(self) -> None:
+        self._transport.close()
+
+    def _next_request_id(self) -> str:
+        request_id = f"req-{self._next_id}"
+        self._next_id += 1
+        return request_id
+
+    def _pop_buffered(self, predicate) -> dict[str, Any] | None:
+        for index, message in enumerate(self._buffer):
+            if predicate(message):
+                return self._buffer.pop(index)
+        return None
+
+    def _recv_until(self, predicate) -> dict[str, Any]:
+        buffered = self._pop_buffered(predicate)
+        if buffered is not None:
+            return buffered
+        while True:
+            message = self._transport.receive()
+            if predicate(message):
+                return message
+            self._buffer.append(message)
+
+    def _request(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
+        request_id = self._next_request_id()
+        self._transport.send({"jsonrpc": "2.0", "id": request_id, "method": method, "params": params})
+        message = self._recv_until(lambda payload: payload.get("id") == request_id)
+        if "error" in message:
+            raise RuntimeError(f"app-server {method} failed: {json.dumps(message['error'], ensure_ascii=False)}")
+        result = message.get("result")
+        if not isinstance(result, dict):
+            raise RuntimeError(f"app-server {method} response missing result object")
+        return result
+
+    def _ensure_initialized(self) -> None:
+        if self._initialized:
+            return
+        self._request(
+            "initialize",
+            {
+                "clientInfo": {
+                    "name": "worldview-panel-broker",
+                    "version": "1",
+                }
+            },
         )
-        try:
-            with urlopen(request, timeout=self.timeout_seconds) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="replace") if exc.fp else ""
-            raise RuntimeError(f"app server POST {path} failed with HTTP {exc.code}: {body}") from exc
-        except URLError as exc:
-            raise RuntimeError(f"app server POST {path} failed: {exc.reason}") from exc
+        self._initialized = True
 
     def start_thread(self) -> str:
-        payload = self._post("/thread/start", {})
-        thread_id = payload.get("thread_id")
+        self._ensure_initialized()
+        result = self._request("thread/start", {})
+        thread = result.get("thread")
+        if not isinstance(thread, dict):
+            raise RuntimeError("thread/start response missing thread object")
+        thread_id = thread.get("id")
         if not isinstance(thread_id, str) or not thread_id:
-            raise RuntimeError("app server /thread/start response missing thread_id")
+            raise RuntimeError("thread/start response missing thread.id")
+        model = result.get("model")
+        if isinstance(model, str) and model:
+            self._thread_models[thread_id] = model
         return thread_id
 
     def start_turn(
@@ -139,13 +254,57 @@ class RealAppServerClient:
         sandbox_policy: str,
         approval_policy: str,
     ) -> dict[str, Any]:
-        return self._post(
-            "/turn/start",
+        self._ensure_initialized()
+        turn_start_result = self._request(
+            "turn/start",
             {
-                "thread_id": thread_id,
+                "threadId": thread_id,
                 "input": input_items,
                 "outputSchema": output_schema,
-                "sandboxPolicy": sandbox_policy,
+                "sandboxPolicy": _sandbox_policy_payload(sandbox_policy),
                 "approvalPolicy": approval_policy,
             },
         )
+        turn = turn_start_result.get("turn")
+        if not isinstance(turn, dict):
+            raise RuntimeError("turn/start response missing turn object")
+        turn_id = turn.get("id")
+        if not isinstance(turn_id, str) or not turn_id:
+            raise RuntimeError("turn/start response missing turn.id")
+
+        completed = self._recv_until(
+            lambda payload: payload.get("method") == "turn/completed"
+            and payload.get("params", {}).get("threadId") == thread_id
+            and payload.get("params", {}).get("turn", {}).get("id") == turn_id
+        )
+        turn_params = completed.get("params")
+        if not isinstance(turn_params, dict):
+            raise RuntimeError("turn/completed notification missing params")
+        completed_turn = turn_params.get("turn")
+        if not isinstance(completed_turn, dict):
+            raise RuntimeError("turn/completed notification missing turn")
+        if completed_turn.get("status") != "completed":
+            error = completed_turn.get("error")
+            raise RuntimeError(f"turn did not complete successfully: {json.dumps(error, ensure_ascii=False)}")
+
+        thread_read = self._request("thread/read", {"threadId": thread_id, "includeTurns": True})
+        thread_payload = thread_read.get("thread")
+        if not isinstance(thread_payload, dict):
+            raise RuntimeError("thread/read response missing thread object")
+        turns = thread_payload.get("turns")
+        if not isinstance(turns, list):
+            raise RuntimeError("thread/read response missing thread.turns")
+        observed_turn = next((item for item in turns if isinstance(item, dict) and item.get("id") == turn_id), None)
+        if not isinstance(observed_turn, dict):
+            raise RuntimeError("thread/read response missing completed turn items")
+        observed_items = observed_turn.get("items")
+        if not isinstance(observed_items, list):
+            raise RuntimeError("thread/read response missing turn items")
+
+        return {
+            "thread_id": thread_id,
+            "turn_id": turn_id,
+            "observed_items": observed_items,
+            "result": _extract_result_from_items(observed_items),
+            "effective_model": self._thread_models.get(thread_id),
+        }

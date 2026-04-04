@@ -66,6 +66,9 @@ class TestRunWorldviewBroker(unittest.TestCase):
         self.assertEqual(fixture_client.thread_start_calls[0]["thread_id"], "thr_fixture_1")
         self.assertEqual(len(fixture_client.turn_start_calls), 1)
         self.assertEqual(fixture_client.turn_start_calls[0]["thread_id"], "thr_fixture_1")
+        self.assertEqual(fixture_client.turn_start_calls[0]["input_items"][0]["type"], "skill")
+        self.assertEqual(fixture_client.turn_start_calls[0]["input_items"][1]["type"], "text")
+        self.assertIn("name", fixture_client.turn_start_calls[0]["input_items"][0])
 
         persona_root = round_root / "results" / "risk_manager"
         self.assertTrue((persona_root / "raw_result.json").is_file())
@@ -81,8 +84,12 @@ class TestRunWorldviewBroker(unittest.TestCase):
         audit_events = [json.loads(line) for line in audit_lines]
 
         expected_input_items = [
-            {"type": "skill", "path": str((round_root / profile["skill_path"]).resolve())},
-            {"type": "userMessage", "text": packet_text},
+            {
+                "type": "skill",
+                "name": profile["profile_id"],
+                "path": str((round_root / profile["skill_path"]).resolve()),
+            },
+            {"type": "text", "text": packet_text},
         ]
         self.assertEqual(attestation["schema_version"], "attestation_v1")
         self.assertEqual(attestation["run_id"], round_root.name)

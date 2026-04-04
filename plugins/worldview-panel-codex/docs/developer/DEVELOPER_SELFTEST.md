@@ -13,6 +13,7 @@ python3 -m unittest discover -s plugins/worldview-panel-codex/tests -p 'test_loc
 ```sh
 python3 -m unittest discover -s plugins/worldview-panel-codex/tests -p 'test_plugin_layout.py' -q
 python3 -m unittest discover -s plugins/worldview-panel-codex/tests -p 'test_worldview_audit.py' -q
+python3 -m unittest discover -s plugins/worldview-panel-codex/tests -p 'test_worldview_app_server.py' -q
 python3 -m unittest discover -s plugins/worldview-panel-codex/tests -p 'test_run_worldview_broker.py' -q
 python3 -m unittest discover -s plugins/worldview-panel-codex/tests -p 'test_synthesize_worldview_panel.py' -q
 python3 -m unittest discover -s plugins/worldview-panel-codex/tests -p 'test_verify_worldview_round.py' -q
@@ -33,8 +34,16 @@ python3 plugins/worldview-panel-codex/tools/synthesize_worldview_panel.py --roun
 python3 plugins/worldview-panel-codex/tools/verify_worldview_round.py --round-root "$RUN_ROOT" --json
 ```
 
+真实 app-server smoke:
+
+```sh
+codex app-server --listen ws://127.0.0.1:8787
+python3 plugins/worldview-panel-codex/tools/run_worldview_broker.py --dispatch-job "$RUN_ROOT/dispatch_job.json" --app-server-url ws://127.0.0.1:8787 --json
+```
+
 ## 5. 重点核对
 
 - 文档里不能再出现 legacy prompt-side dispatch 入口
 - 入口 skill 只能讲 broker v1
+- app-server 接入描述必须是 WebSocket JSON-RPC
 - `audit/`、`results/`、`synthesis/` artifacts 都能落盘
