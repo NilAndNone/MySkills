@@ -165,22 +165,38 @@ def _packet_identity(
     persona_material: dict[str, Any],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     profile_id = f"{persona}_{PROFILE_SUFFIX}"
+    identities_root = round_root / "identities" / persona
+    profile_path = identities_root / "profile.json"
     skill_path = round_root / "identities" / persona / "worker.skill.md"
     identity_seed = build_persona_instruction_seed(persona)
-    skill = write_worker_skill(skill_path, profile_id, identity_seed["instruction_seed"])
 
     policy_hash = sha256_prefixed(canonical_json_bytes(_policy_record()))
-    profile = _seal_record(
-        _profile_record(
-            persona=persona,
-            persona_name=persona_material["persona_name"],
-            profile_id=profile_id,
-            profile_version=PROFILE_VERSION,
-            skill_path=skill_path.relative_to(round_root),
-            skill_fingerprint=skill["skill_fingerprint"],
-            policy_hash=policy_hash,
-        )
-    )
+    profile_payload = {
+        "schema_version": "worldview_identity_profile_v1",
+        "identity_source": "profile_json",
+        "persona": persona,
+        "persona_name": persona_material["persona_name"],
+        "profile_id": profile_id,
+        "profile_version": PROFILE_VERSION,
+        "instruction_text": identity_seed["instruction_seed"],
+        "policy_id": POLICY_ID,
+        "policy_hash": policy_hash,
+        "output_schema_version": WORKER_SCHEMA_VERSION,
+        "worker_schema_version": WORKER_SCHEMA_VERSION,
+        "model_binding": "gpt-5-codex",
+        "skill_carrier": "skill_file",
+        "skill_path": str(skill_path.relative_to(round_root)),
+    }
+    profile_bytes = canonical_json_bytes(profile_payload)
+    identities_root.mkdir(parents=True, exist_ok=True)
+    profile_path.write_bytes(profile_bytes)
+    profile_hash = sha256_prefixed(profile_bytes)
+
+    profile = json.loads(profile_bytes.decode("utf-8"))
+    profile["profile_hash"] = profile_hash
+
+    skill = write_worker_skill(skill_path, profile_id, profile["instruction_text"])
+    profile["skill_fingerprint"] = skill["skill_fingerprint"]
 
     return skill, profile
 
@@ -213,10 +229,12 @@ def build_round_from_input(input_path: Path | str, output_root: Path | str | Non
         packet_root = round_root / "packets" / persona
         packet_root.mkdir(parents=True, exist_ok=True)
         packet_path = packet_root / "packet.txt"
-        packet_path.write_text(packet_text, encoding="utf-8")
+        packet_bytes = packet_text.encode("utf-8")
+        packet_path.write_bytes(packet_bytes)
+        persisted_packet_bytes = packet_path.read_bytes()
 
-        packet_fingerprint = sha256_prefixed(packet_text)
-        packet_length = len(packet_text.encode("utf-8"))
+        packet_fingerprint = sha256_prefixed(persisted_packet_bytes)
+        packet_length = len(persisted_packet_bytes)
 
         skill, profile = _packet_identity(
             round_root=round_root,

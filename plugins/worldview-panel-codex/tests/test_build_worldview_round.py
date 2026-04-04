@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 import subprocess
 import sys
@@ -64,7 +65,7 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
                 packet_manifest = json.loads((packet_root / "packet_manifest.json").read_text(encoding="utf-8"))
                 ticket = json.loads(ticket_path.read_text(encoding="utf-8"))
                 skill_text = (identity_root / "worker.skill.md").read_text(encoding="utf-8")
-                packet_text = (packet_root / "packet.txt").read_text(encoding="utf-8")
+                packet_bytes = (packet_root / "packet.txt").read_bytes()
 
                 self.assertEqual(packet_manifest["state"], "SEALED")
                 self.assertEqual(ticket["state"], "SEALED")
@@ -77,7 +78,11 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
                 self.assertTrue(ticket["packet_fingerprint"].startswith("sha256:"))
                 self.assertEqual(len(ticket["packet_fingerprint"]), 71)
                 self.assertIn(persona, skill_text)
-                self.assertEqual(packet_manifest["packet_length"], len(packet_text.encode("utf-8")))
+                self.assertEqual(packet_manifest["packet_length"], len(packet_bytes))
+                self.assertEqual(
+                    packet_manifest["packet_fingerprint"],
+                    f"sha256:{hashlib.sha256(packet_bytes).hexdigest()}",
+                )
 
             round_manifest = json.loads((round_root / "round_manifest.json").read_text(encoding="utf-8"))
             dispatch_job = json.loads((round_root / "dispatch_job.json").read_text(encoding="utf-8"))
@@ -97,14 +102,33 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
         career_root = self._build_round(payload)
         career_manifest = json.loads((career_root / "packets" / "risk_manager" / "packet_manifest.json").read_text(encoding="utf-8"))
         career_ticket = json.loads((career_root / "tickets" / "risk_manager.json").read_text(encoding="utf-8"))
+        career_profile_bytes = (career_root / "identities" / "risk_manager" / "profile.json").read_bytes()
+        career_profile = json.loads((career_root / "identities" / "risk_manager" / "profile.json").read_text(encoding="utf-8"))
 
         payload["domain"] = "startup"
         startup_root = self._build_round(payload)
         startup_manifest = json.loads((startup_root / "packets" / "risk_manager" / "packet_manifest.json").read_text(encoding="utf-8"))
         startup_ticket = json.loads((startup_root / "tickets" / "risk_manager.json").read_text(encoding="utf-8"))
+        startup_profile_bytes = (startup_root / "identities" / "risk_manager" / "profile.json").read_bytes()
+        startup_profile = json.loads((startup_root / "identities" / "risk_manager" / "profile.json").read_text(encoding="utf-8"))
 
         self.assertEqual(career_ticket["profile_hash"], startup_ticket["profile_hash"])
         self.assertEqual(career_manifest["skill_fingerprint"], startup_manifest["skill_fingerprint"])
+        self.assertTrue((career_root / "identities" / "risk_manager" / "profile.json").is_file())
+        self.assertTrue((startup_root / "identities" / "risk_manager" / "profile.json").is_file())
+        self.assertEqual(career_profile["identity_source"], "profile_json")
+        self.assertEqual(career_profile["profile_id"], "risk_manager_worker_v3")
+        self.assertEqual(career_profile["profile_version"], "3")
+        self.assertEqual(career_profile["instruction_text"], startup_profile["instruction_text"])
+        self.assertEqual(career_profile["policy_id"], "readonly_locked_v1")
+        self.assertEqual(career_profile["output_schema_version"], "worldview_worker_result_v1")
+        self.assertEqual(career_profile["model_binding"], "gpt-5-codex")
+        self.assertEqual(career_profile["skill_carrier"], "skill_file")
+        self.assertEqual(career_profile_bytes, startup_profile_bytes)
+        self.assertEqual(
+            career_ticket["profile_hash"],
+            f"sha256:{hashlib.sha256(career_profile_bytes).hexdigest()}",
+        )
 
     def test_build_worldview_round_cli_json_reports_round_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
