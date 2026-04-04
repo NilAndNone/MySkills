@@ -20,7 +20,52 @@ POLICY_VERSION = "1"
 WORKER_SCHEMA_VERSION = "worldview_worker_result_v1"
 PROFILE_VERSION = "3"
 PROFILE_SUFFIX = "worker_v3"
-UNRESOLVED_REFERENCE_TOKENS = ("这个", "那个", "上面", "刚才", "该方案", "该材料")
+UNRESOLVED_REFERENCE_PHRASES = (
+    "上面那份",
+    "上面这份",
+    "上面的",
+    "上文",
+    "前文",
+    "前面那份",
+    "前面的",
+    "前述",
+    "上述",
+    "刚才",
+    "刚刚",
+    "该材料",
+    "该方案",
+    "该内容",
+    "该问题",
+    "该文件",
+    "该文本",
+    "该回答",
+    "这份材料",
+    "那份材料",
+    "这份方案",
+    "那份方案",
+    "这份内容",
+    "那份内容",
+    "这份文件",
+    "那份文件",
+    "这个材料",
+    "那个材料",
+    "这个方案",
+    "那个方案",
+    "这个内容",
+    "那个内容",
+    "这个问题",
+    "那个问题",
+    "这个文件",
+    "那个文件",
+    "这个文本",
+    "那个文本",
+    "这个回答",
+    "那个回答",
+    "这个部分",
+    "那个部分",
+    "这段材料",
+    "那段材料",
+)
 OTHER_ANSWER_SECTION_HEADERS = ("[人格]", "[核心判断]", "[问题诊断]", "[行动主张]", "[语言风格]", "[最大盲区]", "[过度采用的风险]", "[签名句]")
 PARENT_SYNTHESIS_MARKERS = ("TL;DR", "主推建议", "面板观点", "对照式整理", "可执行下一步")
 
@@ -28,33 +73,17 @@ PARENT_SYNTHESIS_MARKERS = ("TL;DR", "主推建议", "面板观点", "对照式�
 def _normalize_round_input(payload: Mapping[str, Any] | dict[str, Any]) -> dict[str, Any]:
     data = dict(payload)
 
-    question = str(data.get("question") or "").strip()
-    answer_goal = str(data.get("answer_goal") or "").strip()
-    domain = str(data.get("domain") or "").strip()
-    selected_personas = [str(item).strip() for item in data.get("selected_personas") or [] if str(item).strip()]
-    hard_constraints = [str(item).strip() for item in data.get("hard_constraints") or [] if str(item).strip()]
-    external_materials = list(data.get("external_materials") or [])
+    question = _require_nonempty_string(data, "question")
+    answer_goal = _require_nonempty_string(data, "answer_goal")
+    domain = _require_nonempty_string(data, "domain")
+    selected_personas = _require_string_list(data, "selected_personas", allow_empty=False)
+    hard_constraints = _require_string_list(data, "hard_constraints", allow_empty=True)
+    external_materials = _require_external_materials(data)
 
-    if not question or not answer_goal or not domain:
-        raise ValueError("question, answer_goal, and domain are required")
-    if not selected_personas:
-        raise ValueError("selected_personas must be a non-empty list of strings")
     if len(set(selected_personas)) != len(selected_personas):
         raise ValueError("selected_personas must not contain duplicate personas")
 
     _reject_unresolved_references([question, *hard_constraints])
-    _reject_forbidden_external_materials(external_materials)
-
-    normalized_materials: list[dict[str, str]] = []
-    for material in external_materials:
-        if not isinstance(material, dict):
-            raise ValueError("external_materials must contain objects")
-        title = str(material.get("title") or "用户粘贴内容").strip() or "用户粘贴内容"
-        source = str(material.get("source") or "用户粘贴内容").strip() or "用户粘贴内容"
-        content = str(material.get("content") or "").strip()
-        if not content:
-            raise ValueError("external material content cannot be empty")
-        normalized_materials.append({"title": title, "source": source, "content": content})
 
     return {
         "question": question,
@@ -62,13 +91,13 @@ def _normalize_round_input(payload: Mapping[str, Any] | dict[str, Any]) -> dict[
         "domain": domain,
         "hard_constraints": hard_constraints,
         "selected_personas": selected_personas,
-        "external_materials": normalized_materials,
+        "external_materials": external_materials,
     }
 
 
 def _reject_unresolved_references(values: list[str]) -> None:
     joined = "\n".join(values)
-    if any(token in joined for token in UNRESOLVED_REFERENCE_TOKENS):
+    if any(phrase in joined for phrase in UNRESOLVED_REFERENCE_PHRASES):
         raise ValueError("unresolved reference remains in normalized input")
 
 
@@ -85,6 +114,79 @@ def _reject_forbidden_external_materials(materials: list[dict[str, Any]]) -> Non
 
 def _posix_path_text(path: Path | str) -> str:
     return str(path).replace("\\", "/")
+
+
+def _require_nonempty_string(payload: Mapping[str, Any], field_name: str) -> str:
+    value = payload.get(field_name)
+    if not isinstance(value, str):
+        raise ValueError(f"{field_name} must be a string")
+
+    text = value.strip()
+    if not text:
+        raise ValueError(f"{field_name} must be a non-empty string")
+    return text
+
+
+def _require_string_list(
+    payload: Mapping[str, Any],
+    field_name: str,
+    *,
+    allow_empty: bool,
+) -> list[str]:
+    value = payload.get(field_name)
+    if not isinstance(value, list):
+        raise ValueError(f"{field_name} must be a list of strings")
+
+    items: list[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            raise ValueError(f"{field_name} must be a list of strings")
+        text = item.strip()
+        if text:
+            items.append(text)
+
+    if not items and not allow_empty:
+        raise ValueError(f"{field_name} must be a non-empty list of strings")
+
+    return items
+
+
+def _require_external_materials(payload: Mapping[str, Any]) -> list[dict[str, str]]:
+    value = payload.get("external_materials")
+    if value is None:
+        materials: list[Any] = []
+    elif isinstance(value, list):
+        materials = value
+    else:
+        raise ValueError("external_materials must be a list of objects")
+
+    normalized_materials: list[dict[str, str]] = []
+    for material in materials:
+        if not isinstance(material, dict):
+            raise ValueError("external_materials must contain objects")
+
+        title = material.get("title")
+        source = material.get("source")
+        content = material.get("content")
+        if not isinstance(title, str) or not isinstance(source, str) or not isinstance(content, str):
+            raise ValueError("external material fields must be strings")
+
+        normalized_title = title.strip() or "用户粘贴内容"
+        normalized_source = source.strip() or "用户粘贴内容"
+        normalized_content = content.strip()
+        if not normalized_content:
+            raise ValueError("external material content cannot be empty")
+
+        normalized_materials.append(
+            {
+                "title": normalized_title,
+                "source": normalized_source,
+                "content": normalized_content,
+            }
+        )
+
+    _reject_forbidden_external_materials(normalized_materials)
+    return normalized_materials
 
 
 def _render_packet_text(round_input: dict[str, Any], persona_material: dict[str, Any], *, profile_id: str) -> str:

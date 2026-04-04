@@ -100,7 +100,7 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
         with FIXTURE_PATH.open(encoding="utf-8") as handle:
             payload = json.load(handle)
 
-        payload["question"] = "请评估上面的方案是否可靠。"
+        payload["question"] = "请评估上面那份材料是否可靠。"
         with self.assertRaisesRegex(ValueError, "unresolved reference remains in normalized input"):
             module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
 
@@ -115,6 +115,17 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "forbidden answer or synthesis markers"):
             module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
 
+    def test_build_round_accepts_benign_prompt_containing_这个(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["question"] = "这个世界会更好吗？"
+        round_root = module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+
+        self.assertTrue((round_root / "dispatch_job.json").is_file())
+
     def test_build_round_rejects_duplicate_selected_personas(self) -> None:
         module = load_worldview_round_builder_module(self)
 
@@ -125,15 +136,25 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate personas"):
             module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
 
-    def test_build_round_rejects_non_object_external_materials(self) -> None:
+    def test_build_round_rejects_wrong_type_inputs(self) -> None:
         module = load_worldview_round_builder_module(self)
 
         with FIXTURE_PATH.open(encoding="utf-8") as handle:
             payload = json.load(handle)
 
-        payload["external_materials"] = ["bad"]
-        with self.assertRaisesRegex(ValueError, "external_materials must contain objects"):
-            module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+        cases = [
+            ({"question": 123}, "question must be a string"),
+            ({"selected_personas": "risk_manager"}, "selected_personas must be a list of strings"),
+            ({"hard_constraints": "只用中文"}, "hard_constraints must be a list of strings"),
+            ({"external_materials": {"title": "bad"}}, "external_materials must be a list of objects"),
+        ]
+
+        for overrides, message in cases:
+            with self.subTest(overrides=overrides):
+                candidate = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+                candidate.update(overrides)
+                with self.assertRaisesRegex(ValueError, message):
+                    module.build_round_from_input(self._write_round_input(candidate), output_root=Path(tempfile.mkdtemp()))
 
     def test_posix_path_serializer_normalizes_platform_separators(self) -> None:
         module = load_worldview_round_builder_module(self)
