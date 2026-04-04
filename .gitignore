@@ -1,6 +1,7 @@
 /.claude/
 /.obsidian/
 /.codex/
+/.worktrees/
 
 __pycache__/
 *.py[cod]
