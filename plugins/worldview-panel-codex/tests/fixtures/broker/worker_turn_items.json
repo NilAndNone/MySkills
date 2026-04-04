@@ -10,7 +10,7 @@
   ],
   "result": {
     "schema_version": "worldview_worker_result_v1",
-    "persona": "risk_manager",
+    "persona": "__from_input__",
     "judgment": {
       "factual": "f",
       "value": "v",
