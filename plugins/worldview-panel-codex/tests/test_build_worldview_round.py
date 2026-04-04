@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from pathlib import PureWindowsPath
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -93,6 +94,49 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
             self.assertEqual(dispatch_job["round_root"], str(round_root.resolve()))
             self.assertEqual(dispatch_job["selected_personas"], ["risk_manager", "existentialist"])
 
+    def test_build_round_rejects_unresolved_references_and_forbidden_external_material(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["question"] = "请评估上面的方案是否可靠。"
+        with self.assertRaisesRegex(ValueError, "unresolved reference remains in normalized input"):
+            module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+
+        payload = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+        payload["external_materials"] = [
+            {
+                "title": "用户粘贴内容",
+                "source": "用户粘贴内容",
+                "content": "[人格]\nTL;DR\n这里混入了别的人格回答和父层摘要。",
+            }
+        ]
+        with self.assertRaisesRegex(ValueError, "forbidden answer or synthesis markers"):
+            module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+
+    def test_build_round_rejects_duplicate_selected_personas(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["selected_personas"] = ["risk_manager", "risk_manager"]
+        with self.assertRaisesRegex(ValueError, "duplicate personas"):
+            module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+
+    def test_posix_path_serializer_normalizes_platform_separators(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        self.assertEqual(
+            module._posix_path_text(Path("identities") / "risk_manager" / "profile.json"),
+            "identities/risk_manager/profile.json",
+        )
+        self.assertEqual(
+            module._posix_path_text(PureWindowsPath("identities\\risk_manager\\worker.skill.md")),
+            "identities/risk_manager/worker.skill.md",
+        )
+
     def test_same_persona_keeps_identity_hashes_across_domains(self) -> None:
         module = load_worldview_round_builder_module(self)
 
@@ -149,6 +193,14 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
         )
         self.assertEqual(career_profile_bytes, startup_profile_bytes)
 
+    def test_import_does_not_define_eager_temp_parent(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        self.assertFalse(hasattr(module, "DEFAULT_OUTPUT_PARENT"))
+
+        round_root = module.build_round_from_input(FIXTURE_PATH)
+        self.assertTrue(round_root.parent.is_dir())
+
     def test_build_worldview_round_cli_json_reports_round_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             proc = subprocess.run(
@@ -191,8 +243,13 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
 
         round_root = self._build_round(payload)
         dispatch_job = json.loads((round_root / "dispatch_job.json").read_text(encoding="utf-8"))
-
         self.assertEqual(dispatch_job["batch_size"], 6)
+
+    def _write_round_input(self, payload: dict[str, object]) -> Path:
+        tmpdir = Path(tempfile.mkdtemp())
+        input_path = tmpdir / "round_input.json"
+        input_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        return input_path
 
 
 if __name__ == "__main__":

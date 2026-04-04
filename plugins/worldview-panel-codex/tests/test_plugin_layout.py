@@ -148,7 +148,6 @@ class PluginLayoutTests(unittest.TestCase):
 
     def test_broker_v1_placeholder_clis_fail_loudly(self) -> None:
         for tool_name in {
-            "build_worldview_round.py",
             "run_worldview_broker.py",
             "synthesize_worldview_panel.py",
             "verify_worldview_round.py",
@@ -161,6 +160,17 @@ class PluginLayoutTests(unittest.TestCase):
             )
             self.assertNotEqual(proc.returncode, 0, tool_name)
             self.assertIn("broker-v1 stub", proc.stderr + proc.stdout, tool_name)
+
+    def test_build_worldview_round_cli_is_no_longer_a_placeholder_stub(self) -> None:
+        proc = subprocess.run(
+            ["python3", str(PLUGIN_ROOT / "tools" / "build_worldview_round.py"), "--help"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr + proc.stdout)
+        self.assertIn("usage:", proc.stdout.lower())
+        self.assertNotIn("broker-v1 stub", proc.stderr + proc.stdout)
 
     def test_plugin_root_keeps_existing_skills_and_runtime_inputs(self) -> None:
         expected_skills = {

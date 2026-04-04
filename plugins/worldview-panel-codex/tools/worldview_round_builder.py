@@ -20,7 +20,9 @@ POLICY_VERSION = "1"
 WORKER_SCHEMA_VERSION = "worldview_worker_result_v1"
 PROFILE_VERSION = "3"
 PROFILE_SUFFIX = "worker_v3"
-DEFAULT_OUTPUT_PARENT = Path(tempfile.mkdtemp(prefix="worldview-rounds-"))
+UNRESOLVED_REFERENCE_TOKENS = ("这个", "那个", "上面", "刚才", "该方案", "该材料")
+OTHER_ANSWER_SECTION_HEADERS = ("[人格]", "[核心判断]", "[问题诊断]", "[行动主张]", "[语言风格]", "[最大盲区]", "[过度采用的风险]", "[签名句]")
+PARENT_SYNTHESIS_MARKERS = ("TL;DR", "主推建议", "面板观点", "对照式整理", "可执行下一步")
 
 
 def _normalize_round_input(payload: Mapping[str, Any] | dict[str, Any]) -> dict[str, Any]:
@@ -37,6 +39,11 @@ def _normalize_round_input(payload: Mapping[str, Any] | dict[str, Any]) -> dict[
         raise ValueError("question, answer_goal, and domain are required")
     if not selected_personas:
         raise ValueError("selected_personas must be a non-empty list of strings")
+    if len(set(selected_personas)) != len(selected_personas):
+        raise ValueError("selected_personas must not contain duplicate personas")
+
+    _reject_unresolved_references([question, *hard_constraints])
+    _reject_forbidden_external_materials(external_materials)
 
     normalized_materials: list[dict[str, str]] = []
     for material in external_materials:
@@ -57,6 +64,25 @@ def _normalize_round_input(payload: Mapping[str, Any] | dict[str, Any]) -> dict[
         "selected_personas": selected_personas,
         "external_materials": normalized_materials,
     }
+
+
+def _reject_unresolved_references(values: list[str]) -> None:
+    joined = "\n".join(values)
+    if any(token in joined for token in UNRESOLVED_REFERENCE_TOKENS):
+        raise ValueError("unresolved reference remains in normalized input")
+
+
+def _reject_forbidden_external_materials(materials: list[dict[str, Any]]) -> None:
+    for material in materials:
+        content = str(material.get("content") or "")
+        if any(marker in content for marker in OTHER_ANSWER_SECTION_HEADERS):
+            raise ValueError("external material contains forbidden answer or synthesis markers")
+        if any(marker in content for marker in PARENT_SYNTHESIS_MARKERS):
+            raise ValueError("external material contains forbidden answer or synthesis markers")
+
+
+def _posix_path_text(path: Path | str) -> str:
+    return str(path).replace("\\", "/")
 
 
 def _render_packet_text(round_input: dict[str, Any], persona_material: dict[str, Any], *, profile_id: str) -> str:
@@ -186,7 +212,7 @@ def _packet_identity(
         "output_schema_version": WORKER_SCHEMA_VERSION,
         "worker_schema_version": WORKER_SCHEMA_VERSION,
         "model_binding": "gpt-5-codex",
-        "skill_path": str(skill_path.relative_to(round_root)),
+        "skill_path": _posix_path_text(skill_path.relative_to(round_root)),
         "skill_fingerprint": skill["skill_fingerprint"],
     }
     profile_hash = sha256_prefixed(canonical_json_bytes(profile_payload))
@@ -204,15 +230,17 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def _resolve_round_parent(output_root: Path | str | None) -> Path:
+    if output_root is not None:
+        return Path(output_root).expanduser().resolve()
+    return Path(tempfile.mkdtemp(prefix="worldview-rounds-"))
+
+
 def build_round_from_input(input_path: Path | str, output_root: Path | str | None = None) -> Path:
     input_path = Path(input_path).expanduser().resolve()
     round_input = _normalize_round_input(load_json(input_path))
 
-    round_parent = (
-        Path(output_root).expanduser().resolve()
-        if output_root is not None
-        else DEFAULT_OUTPUT_PARENT
-    )
+    round_parent = _resolve_round_parent(output_root)
     round_parent.mkdir(parents=True, exist_ok=True)
     round_root = round_parent / f"wv-round-{uuid4().hex}"
     round_root.mkdir(parents=True, exist_ok=True)
@@ -245,7 +273,7 @@ def build_round_from_input(input_path: Path | str, output_root: Path | str | Non
             "run_id": round_root.name,
             "persona": persona,
             "packet_id": f"pkt-{persona}-v1",
-            "packet_path": str(Path("packets") / persona / "packet.txt"),
+            "packet_path": _posix_path_text(Path("packets") / persona / "packet.txt"),
             "packet_fingerprint": packet_fingerprint,
             "packet_length": packet_length,
             "profile_id": profile["profile_id"],
@@ -255,7 +283,7 @@ def build_round_from_input(input_path: Path | str, output_root: Path | str | Non
             "policy_hash": profile["policy_hash"],
             "worker_schema_version": profile["worker_schema_version"],
             "state": ROUND_STATE_SEALED,
-            "skill_path": str(Path("identities") / persona / "worker.skill.md"),
+            "skill_path": _posix_path_text(Path("identities") / persona / "worker.skill.md"),
             "skill_fingerprint": skill["skill_fingerprint"],
         }
         _write_json(packet_root / "packet_manifest.json", packet_manifest)
