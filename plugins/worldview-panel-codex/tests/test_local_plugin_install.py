@@ -118,6 +118,48 @@ class LocalPluginInstallTests(unittest.TestCase):
             self.assertFalse(stale_agent.exists())
             self.assertTrue(unrelated_agent.exists())
 
+    def test_uninstall_from_installed_copy_removes_stale_agents_before_plugin_tree_disappears(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dest_home = Path(tmpdir) / "home"
+            install = subprocess.run(
+                [
+                    "python3",
+                    str(INSTALLER),
+                    "--dest-home",
+                    str(dest_home),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=os.environ.copy(),
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+
+            installed_plugin = dest_home / "plugins" / "worldview-panel-codex"
+            installed_uninstaller = installed_plugin / "scripts" / "uninstall_local_plugin.py"
+
+            codex_agents = dest_home / ".codex" / "agents"
+            codex_agents.mkdir(parents=True, exist_ok=True)
+            stale_agent = codex_agents / STALE_AGENT_FILENAMES[2]
+            stale_agent.write_text("stale\n", encoding="utf-8")
+
+            uninstall = subprocess.run(
+                [
+                    "python3",
+                    str(installed_uninstaller),
+                    "--dest-home",
+                    str(dest_home),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=os.environ.copy(),
+            )
+
+            self.assertEqual(uninstall.returncode, 0, uninstall.stderr)
+            self.assertFalse((dest_home / "plugins" / "worldview-panel-codex").exists())
+            self.assertFalse(stale_agent.exists())
+
 
 if __name__ == "__main__":
     unittest.main()

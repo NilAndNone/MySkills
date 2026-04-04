@@ -29,20 +29,19 @@ def remove_path(path: Path) -> None:
         shutil.rmtree(path)
 
 
-def known_stale_agent_paths(dest_home: Path) -> list[Path]:
-    personas = json.loads(PERSONA_INDEX_PATH.read_text(encoding="utf-8"))
-    agents_root = dest_home / ".codex" / "agents"
-    return [agents_root / f"{persona['name']}.toml" for persona in personas]
-
-
 def prune_empty_directory(path: Path) -> None:
     if path.is_dir() and not any(path.iterdir()):
         path.rmdir()
 
 
-def remove_known_stale_agents(dest_home: Path) -> None:
+def stale_agent_paths(dest_home: Path, persona_names: list[str]) -> list[Path]:
     agents_root = dest_home / ".codex" / "agents"
-    for agent_path in known_stale_agent_paths(dest_home):
+    return [agents_root / f"{persona_name}.toml" for persona_name in persona_names]
+
+
+def remove_known_stale_agents(dest_home: Path, persona_names: list[str]) -> None:
+    agents_root = dest_home / ".codex" / "agents"
+    for agent_path in stale_agent_paths(dest_home, persona_names):
         if agent_path.exists():
             agent_path.unlink()
     prune_empty_directory(agents_root)
@@ -54,6 +53,7 @@ def main() -> int:
         raise SystemExit("error: destination home is required")
 
     dest_home = Path(args.dest_home).expanduser().resolve()
+    persona_names = [persona["name"] for persona in json.loads(PERSONA_INDEX_PATH.read_text(encoding="utf-8"))]
     plugin_dest = dest_home / "plugins" / PLUGIN_NAME
     skills_link = dest_home / ".agents" / "skills" / PLUGIN_NAME
     actions = [f"remove {plugin_dest}", f"remove {skills_link}"]
@@ -63,7 +63,7 @@ def main() -> int:
 
     remove_path(plugin_dest)
     remove_path(skills_link)
-    remove_known_stale_agents(dest_home)
+    remove_known_stale_agents(dest_home, persona_names)
 
     print(f"Removed local plugin from {dest_home}")
     return 0
