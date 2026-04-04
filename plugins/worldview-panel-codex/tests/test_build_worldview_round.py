@@ -76,6 +76,7 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
                 self.assertEqual(ticket["profile_version"], "3")
                 self.assertEqual(ticket["profile_id"], f"{persona}_worker_v3")
                 self.assertEqual(ticket["policy_id"], "readonly_locked_v1")
+                self.assertEqual(ticket["packet_path"], str((packet_root / "packet.txt").resolve()))
                 self.assertTrue(ticket["packet_fingerprint"].startswith("sha256:"))
                 self.assertEqual(len(ticket["packet_fingerprint"]), 71)
                 self.assertIn(persona, skill_text)
@@ -206,7 +207,7 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
             {
                 "title": "用户粘贴内容",
                 "source": "用户粘贴内容",
-                "content": "**TL;DR**\n1) [人格]\n这里看起来像是被 markdown 包装过的污染块。",
+                "content": "**TL;DR**: 父层摘要\n> **[人格]**：风险经理\n这里看起来像是被 markdown 包装过的污染块。",
             }
         ]
         with self.assertRaisesRegex(ValueError, "forbidden answer or synthesis markers"):
@@ -291,6 +292,16 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
 
         payload = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
         payload["question"] = "Please assess the above content before answering."
+        with self.assertRaisesRegex(ValueError, "unresolved reference remains in normalized input"):
+            module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+
+        payload = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+        payload["question"] = "Please assess the plan mentioned above."
+        with self.assertRaisesRegex(ValueError, "unresolved reference remains in normalized input"):
+            module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+
+        payload = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+        payload["question"] = "Please assess the proposal from earlier in the thread."
         with self.assertRaisesRegex(ValueError, "unresolved reference remains in normalized input"):
             module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
 

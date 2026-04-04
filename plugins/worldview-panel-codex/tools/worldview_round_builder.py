@@ -27,6 +27,8 @@ UNRESOLVED_REFERENCE_PATTERNS = (
     re.compile(r"(?:刚才|刚刚|之前|前面|此前|先前)(?:的|所)?(?:那份|这份|该份|此份|那段|这段|该段|此段|那篇|这篇|该篇|此篇|那条|这条|该条|此条|那项|这项|该项|此项)?(?:材料|方案|内容|文件|文本|回答|论证|论点|观点|结论|提法|建议|说法|论述|判断|分析|论据)"),
     re.compile(r"\b(?:above|aforementioned|previous|prior|earlier)\s+(?:argument|arguments|analysis|answer|answers|proposal|proposals|plan|plans|memo|memos|claim|claims|point|points|material|materials|content|contents|text|texts|draft|drafts|summary|summaries|section|sections|conclusion|conclusions|discussion|discussions)\b", re.IGNORECASE),
     re.compile(r"\b(?:the\s+)?above\s+(?:argument|arguments|analysis|answer|answers|proposal|proposals|plan|plans|memo|memos|claim|claims|point|points|material|materials|content|contents|text|texts|draft|drafts|summary|summaries|section|sections|conclusion|conclusions|discussion|discussions)\b", re.IGNORECASE),
+    re.compile(r"\b(?:plan|plans|proposal|proposals|memo|memos|material|materials|content|contents|text|texts)\s+mentioned\s+above\b", re.IGNORECASE),
+    re.compile(r"\b(?:proposal|proposals|plan|plans|memo|memos|material|materials|content|contents)\s+from\s+(?:earlier|previous)(?:\s+in\s+the\s+(?:thread|conversation|discussion))?\b", re.IGNORECASE),
 )
 OTHER_ANSWER_SECTION_HEADERS = ("[人格]", "[核心判断]", "[问题诊断]", "[行动主张]", "[语言风格]", "[最大盲区]", "[过度采用的风险]", "[签名句]")
 OTHER_ANSWER_SECTION_HEADER_PATTERN = re.compile(
@@ -108,6 +110,11 @@ def _normalize_marker_candidate(raw_line: str) -> str:
             if line.startswith(wrapper) and line.endswith(wrapper) and len(line) > len(wrapper) * 2:
                 line = line[len(wrapper):-len(wrapper)].strip()
                 changed = True
+            elif line.startswith(wrapper):
+                closing = line.find(wrapper, len(wrapper))
+                if closing > len(wrapper):
+                    line = (line[len(wrapper):closing] + line[closing + len(wrapper):]).strip()
+                    changed = True
         if not changed:
             return line
     return ""
@@ -398,7 +405,7 @@ def build_round_from_input(input_path: Path | str, output_root: Path | str | Non
             "run_id": round_root.name,
             "persona": persona,
             "packet_id": f"pkt-{persona}-v1",
-            "packet_path": _posix_path_text(Path("packets") / persona / "packet.txt"),
+            "packet_path": _posix_path_text(packet_path.resolve()),
             "packet_fingerprint": packet_fingerprint,
             "packet_length": packet_length,
             "profile_id": profile["profile_id"],
