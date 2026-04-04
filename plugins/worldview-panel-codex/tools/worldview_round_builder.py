@@ -37,6 +37,7 @@ OTHER_ANSWER_SECTION_HEADER_PATTERN = re.compile(
 PARENT_SYNTHESIS_LINE_MARKERS = ("TL;DR", "主推建议", "面板观点", "对照式整理", "可执行下一步")
 MARKDOWN_PREFIX_RE = re.compile(r"^(?:#{1,6}|[-*+]|>|\d+[.)])\s*")
 LINE_BREAK_RE = re.compile(r"[\r\n]")
+FORBIDDEN_PACKET_SECTION_HEADERS = ("[round_input]", "[hard_constraints]", "[external_materials]", "[persona_material]")
 
 
 def _normalize_round_input(payload: Mapping[str, Any] | dict[str, Any]) -> dict[str, Any]:
@@ -89,6 +90,8 @@ def _contains_forbidden_external_material_markers(material: Mapping[str, Any]) -
         line = _normalize_marker_candidate(raw_line)
         if not line:
             continue
+        if line in FORBIDDEN_PACKET_SECTION_HEADERS:
+            return True
         if line in OTHER_ANSWER_SECTION_HEADERS:
             return True
         if OTHER_ANSWER_SECTION_HEADER_PATTERN.match(line):

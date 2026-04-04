@@ -181,7 +181,6 @@ class PluginLayoutTests(unittest.TestCase):
         actual_skills = {path.name for path in (PLUGIN_ROOT / "skills").iterdir() if path.is_dir()}
         self.assertEqual(actual_skills, expected_skills)
 
-        self.assertTrue((PLUGIN_ROOT / "tools" / "prepare_context_packets.py").is_file())
         self.assertTrue((PLUGIN_ROOT / "tools" / "write_run_log.py").is_file())
         self.assertTrue((PLUGIN_ROOT / "tools" / "run_log.py").is_file())
         self.assertTrue((PLUGIN_ROOT / "runtime" / "persona-index.json").is_file())
@@ -197,8 +196,8 @@ class PluginLayoutTests(unittest.TestCase):
         self.assertIn("worldview-context-prep", entry_text)
         self.assertIn("worldview-panel-logging", entry_text)
         self.assertNotIn("worldview-panel-report-ui", entry_text)
-        self.assertIn("prepare_context_packets.py", prep_text)
-        self.assertIn("dispatch_packet_guard.py", prep_text)
+        self.assertIn("build_worldview_round.py", prep_text)
+        self.assertIn("Do not use `prepare_context_packets.py` or `dispatch_packet_guard.py`", prep_text)
         self.assertIn("write_run_log.py", logging_text)
         self.assertIn("run_log.py", logging_text)
         self.assertNotIn("render_panel_site.py", entry_text)

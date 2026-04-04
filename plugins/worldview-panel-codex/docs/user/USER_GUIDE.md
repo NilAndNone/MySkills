@@ -50,8 +50,8 @@ python3 plugins/worldview-panel-codex/scripts/install_local_plugin.py --dest-hom
 1. `~/.agents/skills/worldview-panel-codex` 已经存在
 2. `~/.codex/agents/` 下面已经有 24 个人格文件
 3. `~/plugins/worldview-panel-codex/tools/` 下面能看到这些工具：
-   - `prepare_context_packets.py`
-   - `dispatch_packet_guard.py`
+   - `build_worldview_round.py`
+   - `run_worldview_broker.py`
    - `write_run_log.py`
    - `run_log.py`
    - `persona_materials.py`
@@ -83,20 +83,19 @@ $worldview-panel-entry 分析：大模型创业还有没有意义？
 
 ## Context Prep Only
 
-如果你只想先准备上下文，不马上 dispatch，可以直接要求：
+如果你只想先准备 sealed round，不马上 dispatch，可以直接要求：
 
 ```text
 Context prep only.
-先准备全部 subagent 的上下文。
-逐份校验。
-落盘到 tmp。
-不要 dispatch。
+先准备 sealed round。
+写出票据和身份载体。
+不要直接 dispatch。
 ```
 
 底层对应的工具是：
 
 ```sh
-python3 ~/plugins/worldview-panel-codex/tools/prepare_context_packets.py --input /path/to/round.json --stage all --json --run-id demo-run
+python3 ~/plugins/worldview-panel-codex/tools/build_worldview_round.py --input /path/to/round.json --output-root /tmp/worldview-round --json
 ```
 
 ## 日志怎么看
@@ -117,22 +116,24 @@ python3 ~/plugins/worldview-panel-codex/tools/prepare_context_packets.py --input
 
 你如果只查一趟运行，先看 `runs/<run-id>.log`。
 
-## 派发前的最后一道校验
+## Broker v1 派发
 
-真正发给 subagent 之前，要经过：
+真正发给 worker subagent 的唯一支持路径是 broker：
 
 ```sh
-python3 ~/plugins/worldview-panel-codex/tools/dispatch_packet_guard.py --round-root /tmp/codex-context-packets/<round-id> --persona risk_manager --json --run-id demo-run
+python3 ~/plugins/worldview-panel-codex/tools/run_worldview_broker.py --dispatch-job /tmp/worldview-round/<round-id>/dispatch_job.json --json
 ```
 
-这个步骤会做两件事：
+这个步骤会做几件事：
 
-1. 生成一份 outgoing copy
-2. 确认 outgoing copy 和落盘的 `packet.txt` 完全一致
+1. 只按 sealed ticket 读取 `packet.txt`
+2. 为每个 persona 注入临时 identity skill
+3. 通过 broker 启动 worker thread/turn
+4. 写出 `attestation.json` 和 `technical_certified_result.json`
 
-只有看到 `matched=true`，才允许继续发。
+不要再用 `prepare_context_packets.py` 或 `dispatch_packet_guard.py` 手工放行 prompt。
 
-如果不一致，固定按这条处理：
+如果 broker 报告 hash mismatch、schema invalid、或结果未认证，固定按失败处理：
 
 `这次请求已作废，请重新发准备好的上下文。`
 

@@ -131,26 +131,27 @@ class PersonaMaterialsTests(unittest.TestCase):
 
         self.assertEqual(len(runtime_dirs), 24)
         self.assertTrue((REPO_ROOT / "tools" / "persona_materials.py").is_file())
-        self.assertTrue((REPO_ROOT / "tools" / "prepare_context_packets.py").is_file())
+        self.assertTrue((REPO_ROOT / "tools" / "build_worldview_round.py").is_file())
+        self.assertTrue((REPO_ROOT / "tools" / "run_worldview_broker.py").is_file())
         self.assertTrue((REPO_ROOT / "tools" / "write_run_log.py").is_file())
         self.assertTrue((REPO_ROOT / "tools" / "run_log.py").is_file())
-        self.assertTrue((REPO_ROOT / "tools" / "dispatch_packet_guard.py").is_file())
         self.assertTrue((REPO_ROOT / "skills" / "worldview-context-prep" / "SKILL.md").is_file())
 
     def test_user_guide_mentions_context_prep_cli(self) -> None:
         guide_text = USER_GUIDE_PATH.read_text(encoding="utf-8")
 
         self.assertIn("Context prep only", guide_text)
-        self.assertIn("prepare_context_packets.py", guide_text)
+        self.assertIn("build_worldview_round.py", guide_text)
+        self.assertIn("run_worldview_broker.py", guide_text)
         self.assertIn("worldview-panel-codex.log", guide_text)
         self.assertIn("runs/<run-id>.log", guide_text)
         self.assertIn("有 `run_end` 才算完整结束", guide_text)
         self.assertIn("没有 `run_end` 就是未完成", guide_text)
         self.assertIn("单次日志优先", guide_text)
-        self.assertIn("dispatch_packet_guard.py", guide_text)
+        self.assertIn("不要再用 `prepare_context_packets.py` 或 `dispatch_packet_guard.py`", guide_text)
         self.assertIn("这次请求已作废，请重新发准备好的上下文。", guide_text)
-        self.assertIn("matched=true", guide_text)
-        self.assertIn("outgoing copy", guide_text)
+        self.assertIn("technical_certified_result.json", guide_text)
+        self.assertIn("attestation.json", guide_text)
 
     def test_skill_makes_runtime_backed_material_injection_mandatory(self) -> None:
         skill_text = SKILL_PATH.read_text(encoding="utf-8")
@@ -203,10 +204,10 @@ class PersonaMaterialsTests(unittest.TestCase):
     def test_skill_documents_exact_packet_dispatch_contract(self) -> None:
         skill_text = SKILL_PATH.read_text(encoding="utf-8")
 
-        self.assertIn("只允许从已准备好的成品包里取内容，不要临时手写一个缩略版再 dispatch。", skill_text)
-        self.assertIn("派发前必须先核对将要发送的文本与落盘 `packet.txt` 完全一致。", skill_text)
-        self.assertIn("只要不一致，就立刻中止整轮并要求用户重新发准备好的上下文。", skill_text)
-        self.assertIn("只有拿到 `matched=true` 的结果，才允许把该副本发给 subagent。", skill_text)
+        self.assertIn("只允许从已准备好的 sealed round / ticket 里取内容，不要临时手写一个缩略版再 dispatch。", skill_text)
+        self.assertIn("派发时只允许调用 `../../tools/run_worldview_broker.py` 读取 sealed `dispatch_job.json` / tickets，不要自己重新拼 prompt", skill_text)
+        self.assertIn("只有 broker 写出 `technical_certified_result.json`，才允许把该 persona 计入后续汇总", skill_text)
+        self.assertIn("只要 broker 报告 hash mismatch、schema invalid 或 uncertified result，就立刻中止整轮并要求用户重新发准备好的上下文。", skill_text)
 
     def test_build_persona_material_packet_includes_profile_anchor_block(self) -> None:
         module = load_persona_materials_module(self)
@@ -222,13 +223,13 @@ class PersonaMaterialsTests(unittest.TestCase):
         self.assertIn("成长心态(Dweck)", psychology_anchor)
         self.assertIn("认知模式：倾向把模糊困境重新编码为可优化问题", psychology_anchor)
 
-    def test_default_prompt_requires_release_gate_not_claim_only(self) -> None:
+    def test_default_prompt_requires_broker_dispatch_gate(self) -> None:
         prompt_text = OPENAI_AGENT_PATH.read_text(encoding="utf-8")
         prep_skill_text = (REPO_ROOT / "skills" / "worldview-context-prep" / "SKILL.md").read_text(encoding="utf-8")
 
-        self.assertIn("create an outgoing copy", prompt_text)
-        self.assertIn("must produce a `matched=true` result before any subagent send", prompt_text)
-        self.assertIn("Do not dispatch any subagent until the CLI reports the batch is ready and the dispatch release step reports `matched=true`.", prep_skill_text)
+        self.assertIn("Build sealed worker inputs with ../../tools/build_worldview_round.py and dispatch only through ../../tools/run_worldview_broker.py.", prompt_text)
+        self.assertIn("Only technically certified broker results may enter synthesis", prompt_text)
+        self.assertIn("`../../tools/build_worldview_round.py` is the supported entrypoint for worldview broker v1", prep_skill_text)
 
 
 if __name__ == "__main__":

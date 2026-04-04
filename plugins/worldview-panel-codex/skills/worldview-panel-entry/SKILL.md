@@ -106,7 +106,7 @@ Each section header is a plain-text label in square brackets (e.g. `[人格]`). 
    - 立刻补一条 `question_classify`，至少带上 `domain`、`intent`、`risk`
    - 再补一条 `panel_select`，至少带上 `persona_total`、`group_scope`
    - 主线程关键动作只写简要阶段日志，不把整段人格回答落进日志
-   - 本地调用 `../../tools/persona_materials.py`、`../../tools/prepare_context_packets.py`、`../../tools/dispatch_packet_guard.py` 时，把同一个 `--run-id <run_id>` 传进去
+   - 本地调用 `../../tools/persona_materials.py`、`../../tools/build_worldview_round.py`、`../../tools/run_worldview_broker.py` 时，把同一个 `--run-id <run_id>` 传进去
    - 只有用户明确要求“详细日志”或“调试模式”时，才额外传 `--log-detail`
    - 总日志固定写到 `~/.codex/log/worldview-panel-codex.log`
    - 单次附件固定写到 `~/.codex/log/worldview-panel-codex/runs/<run_id>.log`
@@ -122,7 +122,7 @@ Each section header is a plain-text label in square brackets (e.g. `[人格]`). 
    - 如果任务包缺少 `[人格底盘材料]` 或 `[当前领域材料]`，视为主线程协议违规：不要分发 subagent，先补材料再 dispatch。
    - 只保留 subagent 回答所需的变量；不要把整段聊天历史塞进去
    - 不要把其他人格答案或主线程综合判断混进任务包
-   - 只允许从已准备好的成品包里取内容，不要临时手写一个缩略版再 dispatch。
+   - 只允许从已准备好的 sealed round / ticket 里取内容，不要临时手写一个缩略版再 dispatch。
    - 任务包格式参见 `references/task-packet.md`
 
 4. Decide panel scope:
@@ -139,10 +139,10 @@ Each section header is a plain-text label in square brackets (e.g. `[人格]`). 
    - 对 worldview persona subagents，使用 `fork_context = false`
    - 下发内容只包含任务包本身，不附带整段 thread history
    - 不要要求 subagent 自己去读文件、搜资料、调用工具
-   - 派发时必须先用 `../../tools/dispatch_packet_guard.py --round-root <round_root> --persona <slug>` 生成并验包待发送副本，不要自己重新拼 prompt
-   - 只有拿到 `matched=true` 的结果，才允许把该副本发给 subagent。
-   - 派发前必须先核对将要发送的文本与落盘 `packet.txt` 完全一致。
-   - 只要不一致，就立刻中止整轮并要求用户重新发准备好的上下文。
+   - 派发时只允许调用 `../../tools/run_worldview_broker.py` 读取 sealed `dispatch_job.json` / tickets，不要自己重新拼 prompt
+   - 主线程只能交付 ticket / round root，不能直接手写 worker message
+   - 只有 broker 写出 `technical_certified_result.json`，才允许把该 persona 计入后续汇总
+   - 只要 broker 报告 hash mismatch、schema invalid 或 uncertified result，就立刻中止整轮并要求用户重新发准备好的上下文。
    - 在第一批真正发出前，先补一条 `dispatch_ready`，至少带上 `ready`、`persona_total`、`batch_total`
    - 每批开始都写 `batch_start`，至少带上 `batch`、`batch_total`、`batch_size`、`personas`
    - 某个 subagent 返回时，在单次日志里写一条 `agent_result`，至少带上 `batch`、`persona`、`result`
