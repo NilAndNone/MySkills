@@ -75,6 +75,39 @@ class LocalPluginInstallTests(unittest.TestCase):
             self.assertFalse(stale_agent.exists())
             self.assertTrue(unrelated_agent.exists())
 
+    def test_installed_run_worldview_broker_help_executes_from_installed_copy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dest_home = Path(tmpdir) / "home"
+            install = subprocess.run(
+                [
+                    "python3",
+                    str(INSTALLER),
+                    "--dest-home",
+                    str(dest_home),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=os.environ.copy(),
+            )
+            self.assertEqual(install.returncode, 0, install.stderr)
+
+            installed_cli = dest_home / "plugins" / "worldview-panel-codex" / "tools" / "run_worldview_broker.py"
+            help_proc = subprocess.run(
+                [
+                    "python3",
+                    str(installed_cli),
+                    "--help",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=os.environ.copy(),
+            )
+
+            self.assertEqual(help_proc.returncode, 0, help_proc.stderr)
+            self.assertIn("--app-server-url", help_proc.stdout)
+
     def test_uninstall_local_plugin_removes_plugin_symlink_and_leaves_no_agents(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             dest_home = Path(tmpdir) / "home"
