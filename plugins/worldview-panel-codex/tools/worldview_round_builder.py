@@ -33,7 +33,8 @@ OTHER_ANSWER_SECTION_HEADER_PATTERN = re.compile(
     r"^\[(人格|核心判断|问题诊断|行动主张|语言风格|最大盲区|过度采用的风险|签名句)\](?:\s*[:：-].*)?$"
 )
 PARENT_SYNTHESIS_LINE_MARKERS = ("TL;DR", "主推建议", "面板观点", "对照式整理", "可执行下一步")
-MARKDOWN_PREFIX_RE = re.compile(r"^(?:#{1,6}|[-*+]|>|\d+\.)\s*")
+MARKDOWN_PREFIX_RE = re.compile(r"^(?:#{1,6}|[-*+]|>|\d+[.)])\s*")
+LINE_BREAK_RE = re.compile(r"[\r\n]")
 
 
 def _normalize_round_input(payload: Mapping[str, Any] | dict[str, Any]) -> dict[str, Any]:
@@ -98,10 +99,17 @@ def _contains_forbidden_external_material_markers(material: Mapping[str, Any]) -
 def _normalize_marker_candidate(raw_line: str) -> str:
     line = raw_line.strip()
     while line:
+        changed = False
         normalized = MARKDOWN_PREFIX_RE.sub("", line, count=1).strip()
-        if normalized == line:
+        if normalized != line:
+            line = normalized
+            changed = True
+        for wrapper in ("**", "__", "~~", "`", "*", "_"):
+            if line.startswith(wrapper) and line.endswith(wrapper) and len(line) > len(wrapper) * 2:
+                line = line[len(wrapper):-len(wrapper)].strip()
+                changed = True
+        if not changed:
             return line
-        line = normalized
     return ""
 
 
@@ -126,6 +134,8 @@ def _require_nonempty_string(payload: Mapping[str, Any], field_name: str) -> str
     text = value.strip()
     if not text:
         raise ValueError(f"{field_name} must be a non-empty string")
+    if LINE_BREAK_RE.search(text):
+        raise ValueError(f"{field_name} must be a single-line string")
     return text
 
 
@@ -146,6 +156,8 @@ def _require_string_list(
         text = item.strip()
         if not text:
             raise ValueError(f"{field_name} entries must be non-empty strings")
+        if LINE_BREAK_RE.search(text):
+            raise ValueError(f"{field_name} entries must be single-line strings")
         items.append(text)
 
     if not items and not allow_empty:
@@ -180,6 +192,8 @@ def _require_external_materials(payload: Mapping[str, Any]) -> list[dict[str, st
 
         normalized_title = (title or "用户粘贴内容").strip() or "用户粘贴内容"
         normalized_source = (source or "用户粘贴内容").strip() or "用户粘贴内容"
+        if LINE_BREAK_RE.search(normalized_title) or LINE_BREAK_RE.search(normalized_source):
+            raise ValueError("external material title and source must be single-line strings")
         normalized_content = content.strip()
         if not normalized_content:
             raise ValueError("external material content cannot be empty")

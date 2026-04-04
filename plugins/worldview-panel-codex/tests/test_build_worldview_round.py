@@ -193,6 +193,22 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
                 "content": "正文看起来普通，但 metadata 被拆成了多行。",
             }
         ]
+        with self.assertRaisesRegex(ValueError, "single-line strings"):
+            module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+
+    def test_build_round_rejects_markdown_wrapped_contamination_markers(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["external_materials"] = [
+            {
+                "title": "用户粘贴内容",
+                "source": "用户粘贴内容",
+                "content": "**TL;DR**\n1) [人格]\n这里看起来像是被 markdown 包装过的污染块。",
+            }
+        ]
         with self.assertRaisesRegex(ValueError, "forbidden answer or synthesis markers"):
             module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
 
@@ -289,6 +305,22 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
             ({"selected_personas": "risk_manager"}, "selected_personas must be a list of strings"),
             ({"hard_constraints": "只用中文"}, "hard_constraints must be a list of strings"),
             ({"external_materials": {"title": "bad"}}, "external_materials must be a list of objects"),
+        ]
+
+        for overrides, message in cases:
+            with self.subTest(overrides=overrides):
+                candidate = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+                candidate.update(overrides)
+                with self.assertRaisesRegex(ValueError, message):
+                    module.build_round_from_input(self._write_round_input(candidate), output_root=Path(tempfile.mkdtemp()))
+
+    def test_build_round_rejects_multiline_inline_fields(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        cases = [
+            ({"question": "原始问题\nTL;DR"}, "question must be a single-line string"),
+            ({"answer_goal": "请判断\n上面的材料"}, "answer_goal must be a single-line string"),
+            ({"hard_constraints": ["只用中文\n[persona_material]"]}, "hard_constraints entries must be single-line strings"),
         ]
 
         for overrides, message in cases:
