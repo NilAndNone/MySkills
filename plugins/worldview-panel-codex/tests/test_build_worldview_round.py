@@ -94,6 +94,8 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
             self.assertEqual(dispatch_job["selected_personas"], ["risk_manager", "existentialist"])
 
     def test_same_persona_keeps_identity_hashes_across_domains(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
         with FIXTURE_PATH.open(encoding="utf-8") as handle:
             payload = json.load(handle)
 
@@ -117,18 +119,35 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
         self.assertTrue((career_root / "identities" / "risk_manager" / "profile.json").is_file())
         self.assertTrue((startup_root / "identities" / "risk_manager" / "profile.json").is_file())
         self.assertEqual(career_profile["identity_source"], "profile_json")
+        self.assertEqual(career_profile["identity_runtime_carrier"], "skill_file")
         self.assertEqual(career_profile["profile_id"], "risk_manager_worker_v3")
         self.assertEqual(career_profile["profile_version"], "3")
         self.assertEqual(career_profile["instruction_text"], startup_profile["instruction_text"])
         self.assertEqual(career_profile["policy_id"], "readonly_locked_v1")
         self.assertEqual(career_profile["output_schema_version"], "worldview_worker_result_v1")
         self.assertEqual(career_profile["model_binding"], "gpt-5-codex")
-        self.assertEqual(career_profile["skill_carrier"], "skill_file")
-        self.assertEqual(career_profile_bytes, startup_profile_bytes)
+        self.assertIn("profile_hash", career_profile)
+        career_profile_without_hash = dict(career_profile)
+        startup_profile_without_hash = dict(startup_profile)
+        career_profile_without_hash.pop("profile_hash")
+        startup_profile_without_hash.pop("profile_hash")
         self.assertEqual(
-            career_ticket["profile_hash"],
-            f"sha256:{hashlib.sha256(career_profile_bytes).hexdigest()}",
+            career_profile["profile_hash"],
+            startup_profile["profile_hash"],
         )
+        self.assertEqual(
+            career_profile["profile_hash"],
+            career_ticket["profile_hash"],
+        )
+        self.assertEqual(
+            career_profile["profile_hash"],
+            f"sha256:{hashlib.sha256(module.canonical_json_bytes(career_profile_without_hash)).hexdigest()}",
+        )
+        self.assertEqual(
+            startup_profile["profile_hash"],
+            f"sha256:{hashlib.sha256(module.canonical_json_bytes(startup_profile_without_hash)).hexdigest()}",
+        )
+        self.assertEqual(career_profile_bytes, startup_profile_bytes)
 
     def test_build_worldview_round_cli_json_reports_round_root(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

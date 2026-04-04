@@ -170,10 +170,12 @@ def _packet_identity(
     skill_path = round_root / "identities" / persona / "worker.skill.md"
     identity_seed = build_persona_instruction_seed(persona)
 
+    skill = write_worker_skill(skill_path, profile_id, identity_seed["instruction_seed"])
     policy_hash = sha256_prefixed(canonical_json_bytes(_policy_record()))
     profile_payload = {
         "schema_version": "worldview_identity_profile_v1",
         "identity_source": "profile_json",
+        "identity_runtime_carrier": "skill_file",
         "persona": persona,
         "persona_name": persona_material["persona_name"],
         "profile_id": profile_id,
@@ -184,19 +186,15 @@ def _packet_identity(
         "output_schema_version": WORKER_SCHEMA_VERSION,
         "worker_schema_version": WORKER_SCHEMA_VERSION,
         "model_binding": "gpt-5-codex",
-        "skill_carrier": "skill_file",
         "skill_path": str(skill_path.relative_to(round_root)),
+        "skill_fingerprint": skill["skill_fingerprint"],
     }
-    profile_bytes = canonical_json_bytes(profile_payload)
-    identities_root.mkdir(parents=True, exist_ok=True)
-    profile_path.write_bytes(profile_bytes)
-    profile_hash = sha256_prefixed(profile_bytes)
-
-    profile = json.loads(profile_bytes.decode("utf-8"))
+    profile_hash = sha256_prefixed(canonical_json_bytes(profile_payload))
+    profile = dict(profile_payload)
     profile["profile_hash"] = profile_hash
 
-    skill = write_worker_skill(skill_path, profile_id, profile["instruction_text"])
-    profile["skill_fingerprint"] = skill["skill_fingerprint"]
+    identities_root.mkdir(parents=True, exist_ok=True)
+    _write_json(profile_path, profile)
 
     return skill, profile
 
