@@ -1,127 +1,151 @@
-# Worldview Panel Production Broker Design
+# Worldview Panel Broker Design
 
 Date: 2026-04-04
-Status: Approved for planning
+Status: Revised after review
 Scope: `plugins/worldview-panel-codex`
 
-## Summary
+## TL;DR
 
-This design replaces the current parent-orchestrated worldview panel dispatch path with a production broker architecture built on Codex app-server. The root fix is not another guard before dispatch. The root fix is removing child-prompt authority from the parent model entirely.
+This design fixes the actual root cause of the incident: the parent planner must no longer control the final bytes sent to worker turns.
 
-The new system is JSON-first across module boundaries, fail-closed by default, and audit-heavy in early versions. Worker, judge, and synthesizer turns are all broker-controlled app-server turns with explicit policy, schema, attestation, and event logging.
+The runtime is split into phases:
 
-## Problem Statement
+- `v1`: fix authority boundary and exact input attestation
+- `v1.1`: add infra retry and audit governance
+- `v2`: add quality governance
 
-The current system can prepare correct `packet.txt` artifacts and still dispatch different content to child agents. That means the existing trust model is wrong. File-side validation proves only that a correct packet exists on disk. It does not prove that the same bytes were actually sent to the child.
+The first version is intentionally narrow. It does not try to solve prompt integrity, worker quality, reliability tuning, and governance all at once.
 
-The incident root cause is therefore:
+## Root Cause Framing
 
-- the parent planner still controls final child input bytes
-- validation and dispatch authority live in the same model-controlled path
-- the system has no runtime boundary that prevents payload substitution at dispatch time
+The incident was not caused by missing packet generation. It was caused by the fact that the parent planner still held final dispatch authority.
 
-This design treats that as an authority-boundary failure, not a missing check.
+The old system could prove that:
 
-## Goals
+- a correct `packet.txt` existed on disk
+- packet validation had passed
 
-- Remove raw child-prompt dispatch authority from the parent planner.
-- Make broker dispatch deterministic and ticket-based.
-- Make every module boundary JSON-only.
-- Make all 24 personas first-class runtime identities.
-- Require schema, policy, and quality attestation before a result becomes certified.
-- Keep full incident-grade auditability for early versions.
+But it could not prove that:
+
+- the same bytes were actually delivered into the worker turn
+
+This is an authority-boundary failure. File-side validation is not sufficient if final turn input is still mutable in the parent-controlled path.
+
+## Design Objectives
+
+- Remove raw child-input authority from the parent planner.
+- Make dispatch ticket-only.
+- Make module boundaries JSON-only.
+- Prove exact turn input, not only sealed packet existence.
+- Keep v1 small enough to land without creating a new availability incident.
+- Preserve enough audit evidence to debug early versions.
 
 ## Non-Goals
 
-- No compatibility layer for the old dispatch path.
-- No reuse of prompt-level guardrails as the primary enforcement mechanism.
-- No automatic retry in v1.
-- No group-coverage constraint in v1.
-- No lightweight logging mode in early versions.
+- No compatibility path for the old dispatch model.
+- No hook-based enforcement boundary.
+- No quality-gated synthesis in v1.
+- No percentage threshold gate in v1.
+- No partial panel mode in v1.
 
-## Final Design Decisions
+## Versioned Rollout
 
-- There are 24 independent worker identities. Persona differentiation is a core runtime feature, not a packet-only illusion.
-- The parent planner becomes as deterministic as practical. It does not select prompt text, does not directly launch worker turns, and does not hold child-input authority.
-- The synthesizer is still model-based, but it is also broker-controlled and may consume only certified results.
-- Certification requires two layers:
-  - rules/schema/policy attestation
-  - independent quality judgment
-- The quality judge sees persona profile, sealed packet, and worker result.
-- If a worker, judge, or synthesizer turn fails, there is no automatic retry in v1.
-- A run may continue only when certified success rate is at least 80 percent.
-- Profile and policy are part of the seal chain and must be written into tickets and attestations.
-- Early versions (`v1` through `v3`) use heavy audit logging by default.
+### v1: Authority Boundary Fix
 
-## System Architecture
+`v1` includes only the mechanisms required to fix the root cause:
 
-The system is split into five units with hard boundaries.
+- build round artifacts
+- seal packet, identity, and policy
+- dispatch by ticket only
+- use fresh thread per attempt
+- forbid steer, resume, rollback, compact, and review-mode continuation
+- attest exact turn input
+- validate worker output schema
+- synthesize only if every requested persona is `TECHNICAL_CERTIFIED`
 
-### 1. Parent Planner
+### v1.1: Reliability And Governance
+
+`v1.1` adds:
+
+- one idempotent infra retry
+- effective requirements snapshot in attestation
+- retention TTL
+- redaction policy
+- access control scope
+- export and delete workflow
+- optional future product semantics such as `PARTIAL_PANEL`
+
+### v2: Quality Governance
+
+`v2` adds:
+
+- quality judge
+- persona-faithfulness rubric
+- `QUALITY_PASSED`
+- quality-aware synthesis logic
+- stratified audit modes
+
+## System Units
+
+### Parent Planner
 
 Responsibilities:
 
-- normalize user intent into `round_input.json`
-- compute deterministic persona selection and batching
-- submit a `dispatch_job.json` to the broker runtime
-- request final synthesis from certified results only
+- normalize the user request into round input
+- choose personas deterministically
+- choose batching deterministically
+- create a `dispatch_job.json`
+- request synthesis only from technically certified results
 
 Forbidden:
 
-- creating raw child prompts
-- directly calling `spawn_agent(message=...)`
-- reading uncertified worker outputs during synthesis
+- constructing raw worker prompt text
+- calling worker dispatch directly
+- reading uncertified worker outputs
 
-### 2. Round Builder
+### Round Builder
 
 Responsibilities:
 
-- build persona-specific sealed packets
+- materialize persona packets
 - materialize packet manifests
 - materialize dispatch tickets
-- seal packet, profile, and policy fingerprints into round artifacts
+- freeze seal data into the round
 
-Output ends at `SEALED`. It never dispatches.
+The builder never dispatches.
 
-### 3. App-Server Broker
-
-Responsibilities:
-
-- load tickets
-- verify packet/profile/policy seal data
-- create app-server threads and turns
-- inject effective model, policy, schema, and worker identity
-- collect raw structured outputs
-- write audit events and attestation artifacts
-- certify or reject results
-
-This is the only component allowed to convert sealed packet bytes into child turn input.
-
-### 4. Quality Judge
+### Broker
 
 Responsibilities:
 
-- inspect persona profile, sealed packet, and worker result
-- determine whether the result is substantively on-task and sufficiently persona-faithful
-- produce structured judgment JSON
+- load sealed tickets
+- verify sealed packet, identity, and policy state
+- start app-server threads and turns
+- inject runtime identity through documented mechanisms
+- collect app-server events
+- write attestation and audit artifacts
+- certify or fail worker results
+- invoke synthesizer only when strict gate passes
 
-Judge failure affects only that persona. The overall run still follows the 80 percent certification threshold.
+The broker is the only component that may convert sealed packet bytes into turn input.
 
-### 5. Synthesizer
+### Synthesizer
 
 Responsibilities:
 
-- consume certified persona results only
-- generate the final user-facing worldview panel
-- emit structured synthesis output and synthesis attestation
+- consume only technically certified worker results
+- generate final panel output
+- write synthesis attestation
 
-The synthesizer is also broker-controlled. It is not a free parent-model step.
+In `v1`, the synthesizer is not quality-gated. It is integrity-gated.
 
-## Runtime Identity Model
+## Identity Model
 
-Each persona is a distinct runtime identity.
+Persona differentiation is a first-class runtime feature.
 
-Identity data lives in versioned broker-side JSON profiles, not in repo-local agent files. A persona identity includes:
+There are 24 independent worker identities. Identity data is maintained as versioned JSON profiles under broker control.
+
+Each profile includes at least:
 
 - `profile_id`
 - `profile_version`
@@ -129,20 +153,51 @@ Identity data lives in versioned broker-side JSON profiles, not in repo-local ag
 - policy binding
 - output schema binding
 - model binding
-- persona-specific system instruction content
+- persona instruction content
 
-Repo-local persona source material remains in:
+### Runtime Injection Mechanism
 
-- `runtime/personas/`
-- `runtime/persona-index.json`
+`v1` does not assume an undocumented broker-side developer/system profile API.
 
-Repo-local runtime agent files are removed from the execution path.
+Instead:
+
+1. the broker reads the versioned persona JSON profile
+2. the broker renders a temporary persona skill file
+3. the broker injects that skill into the worker turn via the documented `skill` input item path
+
+This gives the design a concrete mechanism that aligns with documented app-server capabilities.
+
+### Identity Attestation Fields
+
+Identity attestation must include:
+
+- `identity_source = profile_json`
+- `identity_runtime_carrier = skill_file`
+- `profile_id`
+- `profile_version`
+- `profile_hash`
+- `skill_path`
+- `skill_fingerprint`
+
+## Fresh-Thread Rule
+
+Post-seal mutation paths must be closed explicitly.
+
+For worker and synthesizer turns in `v1`, and for any future judge turns:
+
+- every attempt uses a fresh thread
+- no thread reuse across attempts
+- no `turn/steer`
+- no `thread/resume`
+- no `thread/rollback`
+- no `thread/compact/start`
+- no review-mode continuation on these threads
+
+This is not an implementation preference. It is part of the authority boundary.
 
 ## Data Contracts
 
-All cross-module interfaces are JSON. Text exists only where the model must ultimately receive text input.
-
-### Core Artifacts
+All module boundaries are JSON-only.
 
 ```text
 <round_root>/
@@ -158,9 +213,8 @@ All cross-module interfaces are JSON. Text exists only where the model must ulti
   results/
     <persona>/
       raw_result.json
-      quality_judgment.json
       attestation.json
-      certified_result.json
+      technical_certified_result.json
   synthesis/
     synthesis_input.json
     synthesis_raw_result.json
@@ -173,11 +227,9 @@ All cross-module interfaces are JSON. Text exists only where the model must ulti
     diagnostic_bundle.json
 ```
 
+## Core Artifacts
+
 ### Dispatch Job
-
-`dispatch_job.json` is the parent-to-broker entrypoint.
-
-Example shape:
 
 ```json
 {
@@ -186,14 +238,11 @@ Example shape:
   "round_root": "/abs/path/to/round_root",
   "selected_personas": ["risk_manager", "stoic_pragmatist"],
   "batch_size": 6,
-  "dispatch_mode": "strict_thresholded_fail_closed",
-  "min_certified_success_rate": 0.8
+  "dispatch_mode": "strict_all_required"
 }
 ```
 
 ### Dispatch Ticket
-
-Each persona has one ticket. The broker API accepts tickets, never raw prompt text.
 
 ```json
 {
@@ -206,18 +255,16 @@ Each persona has one ticket. The broker API accepts tickets, never raw prompt te
   "packet_fingerprint": "sha256:...",
   "packet_length": 4287,
   "profile_id": "risk_manager_worker_v3",
+  "profile_version": "3",
   "profile_hash": "sha256:...",
   "policy_id": "readonly_locked_v1",
   "policy_hash": "sha256:...",
   "worker_schema_version": "worldview_worker_result_v1",
-  "attempt": 1,
   "state": "SEALED"
 }
 ```
 
 ### Worker Result
-
-Worker output is schema-first JSON, not a natural-language interface contract.
 
 ```json
 {
@@ -238,23 +285,9 @@ Worker output is schema-first JSON, not a natural-language interface contract.
 }
 ```
 
-### Quality Judgment
-
-```json
-{
-  "schema_version": "quality_judgment_v1",
-  "run_id": "wv-e70f63811dfd",
-  "persona": "risk_manager",
-  "judge_status": "passed",
-  "persona_faithful": true,
-  "task_faithful": true,
-  "substantive_enough": true,
-  "issues": [],
-  "judge_summary": "..."
-}
-```
-
 ### Attestation
+
+`v1` attestation must prove exact turn input, not just packet existence.
 
 ```json
 {
@@ -267,111 +300,179 @@ Worker output is schema-first JSON, not a natural-language interface contract.
   "ticket_id": "tkt-risk_manager-v1",
   "ticket_fingerprint": "sha256:...",
   "profile_id": "risk_manager_worker_v3",
+  "profile_version": "3",
   "profile_hash": "sha256:...",
+  "skill_fingerprint": "sha256:...",
   "policy_id": "readonly_locked_v1",
   "policy_hash": "sha256:...",
   "thread_id": "thr_...",
   "turn_id": "turn_...",
+  "turn_input_fingerprint": "sha256:...",
+  "turn_user_text_fingerprint": "sha256:...",
+  "renderer_version": "turn_renderer_v1",
+  "newline_policy": "lf",
+  "encoding": "utf-8",
+  "input_item_count": 2,
   "effective_model": "gpt-5-codex",
   "effective_output_schema_version": "worldview_worker_result_v1",
   "schema_valid": true,
-  "policy_valid": true,
-  "forbidden_tool_use": false,
-  "quality_valid": true,
-  "status": "CERTIFIED",
+  "item_allowlist_valid": true,
+  "technical_status": "TECHNICAL_CERTIFIED",
   "dispatch_started_at": "2026-04-04T12:00:00Z",
   "dispatch_completed_at": "2026-04-04T12:00:18Z"
 }
 ```
 
-### Certified Result
-
-This is the only persona result the synthesizer may consume.
+### Technical Certified Result
 
 ```json
 {
-  "schema_version": "certified_result_v1",
+  "schema_version": "technical_certified_result_v1",
   "run_id": "wv-e70f63811dfd",
   "persona": "risk_manager",
   "packet_fingerprint": "sha256:...",
   "result_fingerprint": "sha256:...",
   "attestation_fingerprint": "sha256:...",
-  "certification_status": "certified",
+  "technical_status": "TECHNICAL_CERTIFIED",
   "certified_at": "2026-04-04T12:00:19Z",
   "result": {}
 }
 ```
 
-## Runtime State Machine
+## Exact Input Attestation
 
-Each persona follows a hard lifecycle:
+The attestation source of truth is:
 
-`DRAFT -> PREPARED -> VALIDATED -> SEALED -> DISPATCH_RESERVED -> DISPATCHED -> RESULT_RECEIVED -> RESULT_SCHEMA_VALID -> QUALITY_VALIDATED -> ATTESTED -> CERTIFIED`
+- the broker-constructed `turn/start` payload
+- app-server `item/*` events
 
-Failure may occur at any step and moves the persona into `FAILED`.
+It is not:
 
-Run-level behavior:
+- model self-report
+- parent planner log text
+- ad hoc human-readable summaries
 
-- synthesis may begin only if certified success rate is at least `0.8`
-- below `0.8`, the run fails closed
-- no automatic retry in v1
+The broker must compute and persist:
 
-## Broker Execution Flow
+- `packet_fingerprint`
+- `turn_input_fingerprint = sha256(canonical_json(turn/start.params.input))`
+- `turn_user_text_fingerprint = sha256(extracted_user_message_bytes)`
 
-The broker flow is:
+This allows the system to distinguish:
 
-1. validate `dispatch_job.json`
-2. load all referenced tickets
-3. verify sealed packet, profile, and policy hashes
-4. reserve a batch
-5. for each persona in the batch:
-   - start thread
-   - start turn with broker-injected packet bytes, profile, policy, and output schema
-   - collect worker result
-   - validate schema
-   - run quality judge
-   - write attestation
-   - write certified result or failure record
-6. compute certification rate
-7. if rate is at least `0.8`, start synthesizer turn
-8. certify synthesis output
-9. write run summary
+- sealed packet correctness
+- broker render correctness
+- app-server observed input correctness
 
-The parent never injects child bytes directly.
+## Item Allowlist
 
-## App-Server Mapping
+`forbidden_tool_use` becomes an explicit item-type rule.
 
-The broker uses Codex app-server as the runtime substrate.
+### Allowed In v1
 
-- `thread/start` creates isolated sessions for worker, judge, and synthesizer turns
-- `turn/start` is where the broker injects packet text and effective runtime controls
-- per-turn `approvalPolicy` and `sandboxPolicy` are set by the broker, not trusted from static repo config
-- per-turn `outputSchema` is mandatory for worker, judge, and synthesizer turns
-- app-server event streams are captured into audit artifacts
+- `userMessage`
+- `agentMessage`
 
-This matches the design requirement that the runtime, not the parent model, enforces the protocol.
+### Optional But Disabled By Default
 
-## Logging and Audit Design
+- `reasoning`
+- `plan`
 
-Early versions are intentionally heavy on audit data.
+### Forbidden In v1
 
-### Heavy Audit Rule
+- `commandExecution`
+- `mcpToolCall`
+- `dynamicToolCall`
+- `collabToolCall`
+- `webSearch`
+- `imageView`
+- any future item type not on the allowlist
 
-`v1` through `v3` run with heavy audit by default. This is not a debug option. It is the standard operating mode.
+`item_allowlist_valid` is computed from observed app-server item types, not inferred from output text.
 
-### Audit Layers
+## Certification Model
 
-1. `audit/events.jsonl`
-   - append-only machine-readable event stream
-   - every critical state transition is recorded
-2. attestation artifacts
-   - per-persona and synthesis proofs
-3. run summary artifacts
-   - operator-facing diagnosis and counts
-4. global navigation index
-   - lightweight cross-run locator only
+### v1 Technical Certification
 
-### Audit Event Requirements
+`TECHNICAL_CERTIFIED` means all of the following are true:
+
+- packet fingerprint matches
+- profile hash matches
+- policy hash matches
+- exact turn input fingerprints were recorded
+- app-server item events align with allowed types
+- output schema is valid
+- attestation is complete
+
+### v2 Quality Status
+
+`QUALITY_PASSED` is introduced later and is not part of the `v1` gate.
+
+## Run Gate
+
+`v1` uses strict mode.
+
+If the user requested a persona, that persona must be `TECHNICAL_CERTIFIED`.
+
+Run-level rule:
+
+- all requested personas technically certified -> synthesis may start
+- any requested persona not technically certified -> run fails closed
+
+There is no:
+
+- 80 percent threshold in `v1`
+- `PARTIAL_PANEL` in `v1`
+- quality gate in `v1`
+
+## Reliability Policy
+
+### v1
+
+- no retry
+
+### v1.1
+
+- one infra retry is allowed
+- retry is idempotent only
+- retry must reuse the same sealed ticket, packet hash, profile hash, and policy hash
+- retry must use a fresh thread
+
+Infra retry applies only to transient infrastructure failures such as transport or upstream disconnects.
+
+It does not apply to:
+
+- schema failure
+- item allowlist violation
+- packet mismatch
+- profile mismatch
+- policy mismatch
+
+## Logging And Audit
+
+Early versions remain audit-heavy, but audit must be governed.
+
+### Heavy Audit In Early Versions
+
+`v1` through `v3` retain detailed operational evidence, including:
+
+- sealed packets
+- packet manifests
+- dispatch tickets
+- raw worker outputs
+- app-server critical event snapshots
+- synthesis inputs and raw outputs
+
+### Audit Structure
+
+```text
+audit/
+  events.jsonl
+  run_summary.json
+  diagnostic_bundle.json
+```
+
+### Event Rules
 
 Each event contains at least:
 
@@ -384,7 +485,7 @@ Each event contains at least:
 - `entity_id`
 - `stage`
 - `status`
-- relevant hash references
+- relevant fingerprints
 - thread and turn ids when applicable
 
 Suggested stages:
@@ -394,13 +495,11 @@ Suggested stages:
 - `packet_prepared`
 - `packet_sealed`
 - `ticket_issued`
-- `batch_reserved`
 - `worker_dispatch_started`
 - `worker_dispatched`
 - `worker_result_received`
 - `worker_schema_validated`
-- `worker_quality_validated`
-- `worker_certified`
+- `worker_technical_certified`
 - `worker_failed`
 - `synth_dispatch_started`
 - `synth_result_received`
@@ -408,167 +507,92 @@ Suggested stages:
 - `run_completed`
 - `run_failed`
 
-### Heavy Audit Payload Retention
+### Governance Additions In v1.1
 
-Early versions retain:
+Heavy audit must be paired with:
 
-- sealed packets
-- packet manifests
-- dispatch tickets
-- worker raw structured outputs
-- quality judge inputs and outputs
-- synthesis inputs and raw outputs
-- app-server critical event snapshots
+- retention TTL
+- redaction policy
+- access scope and authorization rules
+- export workflow
+- delete workflow
+- audit mode options such as `full`, `redacted`, or `metadata-only`
 
-The audit design avoids putting full text bodies inside `events.jsonl`. Event logs store identifiers, hashes, lengths, schema versions, and error codes. Full content stays in dedicated artifacts.
-
-### Global Run Index
-
-The global log becomes a lightweight navigation index only:
-
-```text
-~/.codex/log/worldview-panel-codex/run_index.jsonl
-```
-
-Each record includes:
-
-- `run_id`
-- `round_root`
-- start and end timestamps
-- run status
-- certified persona count
-- certification success rate
-
-Full diagnosis always happens from `round_root/audit/`, not from global logs.
-
-## Certification Rules
-
-A worker result becomes certified only if all of the following are true:
-
-- packet seal verifies
-- profile seal verifies
-- policy seal verifies
-- worker output matches schema
-- no forbidden tool or collaboration behavior is detected
-- quality judge passes
-- attestation is complete
-
-Anything less than this is not certifiable.
-
-## Failure Policy
-
-### Persona-Level Failure
-
-A persona is marked `FAILED` when any of the following occurs:
-
-- packet hash mismatch
-- profile hash mismatch
-- policy hash mismatch
-- missing or invalid packet artifact
-- app-server runtime mismatch
-- schema invalid output
-- forbidden tool or collaboration usage
-- quality judge timeout, error, or failure
-- missing attestation
-
-### Run-Level Failure
-
-- If certified success rate is below 80 percent, the run fails closed.
-- If certified success rate is at least 80 percent, synthesis may proceed.
-- There is no automatic retry in v1.
-
-## File-Level Refactor Plan
+## File-Level Refactor
 
 ### Keep
 
 - `plugins/worldview-panel-codex/runtime/personas/`
 - `plugins/worldview-panel-codex/runtime/persona-index.json`
 - `plugins/worldview-panel-codex/tools/persona_materials.py`
-- logging helpers only if rewritten to support the new JSON audit model
 
 ### Remove From Execution Path
 
 - `plugins/worldview-panel-codex/tools/dispatch_packet_guard.py`
 - `plugins/worldview-panel-codex/runtime/agents/*.toml`
-- old natural-language worker interface assumptions
-- old prompt-level worldview dispatch orchestration
+- old prompt-level dispatch orchestration
+- old natural-language subagent interface contracts
 
-### Replace Or Rewrite
+### Rewrite
 
 - `plugins/worldview-panel-codex/skills/worldview-panel-entry/SKILL.md`
 - `plugins/worldview-panel-codex/skills/worldview-panel-entry/agents/openai.yaml`
 - `plugins/worldview-panel-codex/tools/context_packet_common.py`
 - `plugins/worldview-panel-codex/tools/prepare_context_packets.py`
-- current logging contract and log format
+- logging helpers and log format
 
-### New Core Entrypoints
+### New Entrypoints
 
 - `plugins/worldview-panel-codex/tools/build_worldview_round.py`
 - `plugins/worldview-panel-codex/tools/run_worldview_broker.py`
 - `plugins/worldview-panel-codex/tools/synthesize_worldview_panel.py`
 - `plugins/worldview-panel-codex/tools/verify_worldview_round.py`
 
-### New Schema Directory
+### New Schemas
 
-- `plugins/worldview-panel-codex/schemas/round_input_v1.json`
-- `plugins/worldview-panel-codex/schemas/round_manifest_v1.json`
 - `plugins/worldview-panel-codex/schemas/dispatch_job_v1.json`
 - `plugins/worldview-panel-codex/schemas/dispatch_ticket_v1.json`
 - `plugins/worldview-panel-codex/schemas/worldview_worker_result_v1.json`
-- `plugins/worldview-panel-codex/schemas/quality_judgment_v1.json`
 - `plugins/worldview-panel-codex/schemas/attestation_v1.json`
-- `plugins/worldview-panel-codex/schemas/certified_result_v1.json`
-- `plugins/worldview-panel-codex/schemas/synthesis_result_v1.json`
+- `plugins/worldview-panel-codex/schemas/technical_certified_result_v1.json`
 - `plugins/worldview-panel-codex/schemas/audit_event_v1.json`
 
-## Test and Acceptance Plan
+## Acceptance Criteria
 
-### Interface Acceptance
+### v1
 
-- every cross-module interface is validated against versioned JSON schema
-- broker APIs reject raw prompt input
-- synthesizer rejects uncertified persona results
+- parent planner cannot submit raw worker input
+- broker accepts tickets, not prompts
+- worker identity is injected through rendered skill files
+- every worker attempt uses a fresh thread
+- steer, resume, rollback, compact, and review-mode continuation are blocked by policy
+- attestation includes packet, turn-input, and observed user-text fingerprints
+- worker item types outside allowlist fail certification
+- synthesis starts only if every requested persona is technically certified
 
-### Boundary Acceptance
+### v1.1
 
-- parent cannot directly dispatch worker turns
-- broker rejects any packet/profile/policy mismatch
-- every worker, judge, and synthesizer turn leaves attestation
+- one infra retry works without changing sealed artifacts
+- effective requirements snapshot is recorded with attestation or run metadata
+- audit TTL exists
+- redaction policy exists
+- access control policy exists
 
-### End-to-End Acceptance
+### v2
 
-- 24 persona / 4 batch runs succeed only when certified success rate is at least 80 percent
-- schema-invalid worker output is rejected
-- quality-invalid worker output is rejected
-- synthesis starts only after certification threshold passes
+- quality status is computed separately from technical certification
+- synthesis can consume quality metadata without replacing technical integrity as the root gate
 
-### Incident Regression Acceptance
+## Locked Decisions
 
-- recreating the prior simplified-prompt behavior is impossible through the supported interface
-- tampering with packet, profile, or policy artifacts causes broker rejection
-- removing attestation causes synthesis rejection
+The following decisions are fixed for planning:
 
-## Implementation Boundaries For Planning
-
-This spec is for architecture and planning only.
-
-Implementation planning should assume:
-
-- a hard cut from the old dispatch model
-- no compatibility bridge
-- no fallback to prompt-level controls
-- heavy audit remains enabled through the first three runtime versions unless explicitly redesigned later
-
-## Open Assumptions Locked By Approval
-
-The following are now fixed inputs for implementation planning:
-
-- production end-state app-server broker, not MCP-first
-- JSON-only module interfaces
-- 24 independent worker identities
-- deterministic parent planner direction
-- model-based synthesizer under broker control
-- 80 percent certification threshold
-- no automatic retries in v1
-- no group-coverage constraint in v1
-- heavy audit logging by default in early versions
+- production end-state uses app-server broker
+- module boundaries are JSON-only
+- worker identities are first-class
+- runtime identity injection uses temporary skill files in `v1`
+- exact turn-input attestation is mandatory
+- every attempt uses a fresh thread
+- `v1` uses strict all-required technical gate
+- retry, data governance, and partial-panel semantics are deferred out of `v1`
+- quality governance is deferred to `v2`
