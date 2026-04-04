@@ -94,7 +94,7 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
             self.assertEqual(dispatch_job["round_root"], str(round_root.resolve()))
             self.assertEqual(dispatch_job["selected_personas"], ["risk_manager", "existentialist"])
 
-    def test_build_round_rejects_unresolved_references_and_forbidden_external_material(self) -> None:
+    def test_build_round_rejects_unresolved_references(self) -> None:
         module = load_worldview_round_builder_module(self)
 
         with FIXTURE_PATH.open(encoding="utf-8") as handle:
@@ -104,7 +104,50 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unresolved reference remains in normalized input"):
             module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
 
-        payload = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))
+    def test_build_round_rejects_english_dangling_reference(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["question"] = "Please assess the above argument for hidden assumptions."
+        with self.assertRaisesRegex(ValueError, "unresolved reference remains in normalized input"):
+            module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+
+    def test_build_round_accepts_benign_prompt_containing_这个问题(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["question"] = "这个问题需要从伦理和策略两个层面回答。"
+        round_root = module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+
+        self.assertTrue((round_root / "dispatch_job.json").is_file())
+
+    def test_build_round_accepts_benign_external_material_containing_tldr(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["external_materials"] = [
+            {
+                "title": "用户粘贴内容",
+                "source": "用户粘贴内容",
+                "content": "我们经常在文档里写 TL;DR 作为简短摘要，但这里并不是结构化回答。",
+            }
+        ]
+        round_root = module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+
+        self.assertTrue((round_root / "dispatch_job.json").is_file())
+
+    def test_build_round_rejects_obviously_contaminated_external_material(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
         payload["external_materials"] = [
             {
                 "title": "用户粘贴内容",
@@ -115,17 +158,6 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "forbidden answer or synthesis markers"):
             module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
 
-    def test_build_round_accepts_benign_prompt_containing_这个(self) -> None:
-        module = load_worldview_round_builder_module(self)
-
-        with FIXTURE_PATH.open(encoding="utf-8") as handle:
-            payload = json.load(handle)
-
-        payload["question"] = "这个世界会更好吗？"
-        round_root = module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
-
-        self.assertTrue((round_root / "dispatch_job.json").is_file())
-
     def test_build_round_rejects_duplicate_selected_personas(self) -> None:
         module = load_worldview_round_builder_module(self)
 
@@ -134,6 +166,16 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
 
         payload["selected_personas"] = ["risk_manager", "risk_manager"]
         with self.assertRaisesRegex(ValueError, "duplicate personas"):
+            module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+
+    def test_build_round_rejects_blank_selected_persona_entry(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["selected_personas"] = ["risk_manager", "   "]
+        with self.assertRaisesRegex(ValueError, "selected_personas entries must be non-empty strings"):
             module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
 
     def test_build_round_rejects_wrong_type_inputs(self) -> None:
