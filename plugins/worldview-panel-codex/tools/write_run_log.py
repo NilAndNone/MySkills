@@ -63,12 +63,12 @@ def main() -> int:
     if args.round_root:
         write_audit_event(
             round_root=Path(args.round_root),
+            run_id=payload["run_id"],
             component=args.component,
             entity_type=args.entity_type,
             entity_id=args.entity_id or args.component,
             stage=args.stage,
             status=args.status,
-            run_id=payload["run_id"],
             fingerprints=dict(args.field) or None,
         )
     if args.json:

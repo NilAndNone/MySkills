@@ -120,23 +120,29 @@ def log_event(
 def write_audit_event(
     *,
     round_root: str | Path,
+    run_id: str,
     component: str,
     entity_type: str,
     entity_id: str,
     stage: str,
     status: str,
-    run_id: str | None = None,
+    thread_id: str | None = None,
+    turn_id: str | None = None,
     fingerprints: dict[str, str] | None = None,
+    details: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     return _write_audit_event(
         round_root=round_root,
+        run_id=run_id,
         component=component,
         entity_type=entity_type,
         entity_id=entity_id,
         stage=stage,
         status=status,
-        run_id=run_id,
+        thread_id=thread_id,
+        turn_id=turn_id,
         fingerprints=fingerprints,
+        details=details,
     )
 
 
