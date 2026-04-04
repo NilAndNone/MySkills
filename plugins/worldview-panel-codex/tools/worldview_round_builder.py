@@ -74,6 +74,8 @@ def _reject_unresolved_references(values: list[str]) -> None:
 
 def _reject_forbidden_external_materials(materials: list[dict[str, Any]]) -> None:
     for material in materials:
+        if not isinstance(material, dict):
+            raise ValueError("external_materials must contain objects")
         content = str(material.get("content") or "")
         if any(marker in content for marker in OTHER_ANSWER_SECTION_HEADERS):
             raise ValueError("external material contains forbidden answer or synthesis markers")

@@ -125,6 +125,16 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicate personas"):
             module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
 
+    def test_build_round_rejects_non_object_external_materials(self) -> None:
+        module = load_worldview_round_builder_module(self)
+
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        payload["external_materials"] = ["bad"]
+        with self.assertRaisesRegex(ValueError, "external_materials must contain objects"):
+            module.build_round_from_input(self._write_round_input(payload), output_root=Path(tempfile.mkdtemp()))
+
     def test_posix_path_serializer_normalizes_platform_separators(self) -> None:
         module = load_worldview_round_builder_module(self)
 
