@@ -45,6 +45,10 @@ def parse_args() -> argparse.Namespace:
         "--entity-id",
         help="Entity identifier for the optional JSONL audit event. Defaults to the component name.",
     )
+    parser.add_argument("--emitter", help="Emitter identity for the optional JSONL audit event.")
+    parser.add_argument("--source-process", help="Source process for the optional JSONL audit event.")
+    parser.add_argument("--source-session-id", help="Source session id for the optional JSONL audit event.")
+    parser.add_argument("--synthetic", action="store_true", help="Mark the optional JSONL audit event as synthetic.")
     parser.add_argument("--json", action="store_true", help="Print structured output.")
     return parser.parse_args()
 
@@ -61,14 +65,20 @@ def main() -> int:
         fields=dict(args.field),
     )
     if args.round_root:
+        if not args.emitter:
+            raise ValueError("--emitter is required when --round-root is provided")
         write_audit_event(
             round_root=Path(args.round_root),
             run_id=payload["run_id"],
             component=args.component,
+            emitter=args.emitter,
             entity_type=args.entity_type,
             entity_id=args.entity_id or args.component,
             stage=args.stage,
             status=args.status,
+            source_process=args.source_process,
+            source_session_id=args.source_session_id,
+            synthetic=args.synthetic,
             fingerprints=dict(args.field) or None,
         )
     if args.json:

@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from persona_materials import build_persona_instruction_seed, build_persona_material_packet
 from worldview_contracts import canonical_json_bytes, load_json, sha256_prefixed
+from worldview_governance import write_governance_artifacts
 from worldview_identity import write_worker_skill
 
 
@@ -480,5 +481,24 @@ def build_round_from_input(input_path: Path | str, output_root: Path | str | Non
         "dispatch_mode": "strict_all_required",
     }
     _write_json(round_root / "dispatch_job.json", dispatch_job)
+
+    topology = {
+        "round_manifest_fingerprint": sha256_prefixed(canonical_json_bytes(round_manifest)),
+        "dispatch_job_fingerprint": sha256_prefixed(canonical_json_bytes(dispatch_job)),
+        "tickets": {
+            persona: sha256_prefixed(
+                canonical_json_bytes(load_json(round_root / "tickets" / f"{persona}.json"))
+            )
+            for persona in round_input["selected_personas"]
+        },
+        "selected_personas": list(round_input["selected_personas"]),
+        "dispatch_mode": dispatch_job["dispatch_mode"],
+        "batch_size": dispatch_job["batch_size"],
+    }
+    write_governance_artifacts(
+        round_root=round_root,
+        run_id=round_root.name,
+        topology=topology,
+    )
 
     return round_root

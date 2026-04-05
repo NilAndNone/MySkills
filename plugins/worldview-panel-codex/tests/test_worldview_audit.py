@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -13,6 +14,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TOOLS_DIR = REPO_ROOT / "tools"
 WRITE_RUN_LOG_CLI = TOOLS_DIR / "write_run_log.py"
+ROUND_INPUT_FIXTURE = REPO_ROOT / "tests" / "fixtures" / "context_packets" / "round_input.json"
 
 
 def load_tools_module(test_case: unittest.TestCase, module_name: str):
@@ -48,6 +50,19 @@ def run_log_path(codex_home: Path, run_id: str) -> Path:
 
 
 class WorldviewAuditTests(unittest.TestCase):
+    def _build_round(self) -> Path:
+        round_builder = load_tools_module(self, "worldview_round_builder")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            payload = json.loads(ROUND_INPUT_FIXTURE.read_text(encoding="utf-8"))
+            payload["selected_personas"] = ["risk_manager"]
+            round_input_path = Path(tmpdir) / "round_input.json"
+            round_input_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+            round_root = round_builder.build_round_from_input(round_input_path, output_root=Path(tmpdir))
+            persisted = Path(tempfile.mkdtemp()) / round_root.name
+            shutil.copytree(round_root, persisted)
+            return persisted
+
     def test_write_audit_event_requires_run_id_and_preserves_context(self) -> None:
         audit = load_tools_module(self, "worldview_audit")
 
@@ -58,6 +73,7 @@ class WorldviewAuditTests(unittest.TestCase):
                     round_root=round_root,
                     run_id="",
                     component="broker",
+                    emitter="broker",
                     entity_type="persona",
                     entity_id="risk_manager",
                     stage="worker_dispatch_started",
@@ -68,10 +84,14 @@ class WorldviewAuditTests(unittest.TestCase):
                 round_root=round_root,
                 run_id="wv-test",
                 component="broker",
+                emitter="broker",
                 entity_type="persona",
                 entity_id="risk_manager",
                 stage="worker_dispatch_started",
                 status="started",
+                source_process="pytest",
+                source_session_id="session-1",
+                synthetic=False,
                 thread_id="thr_test",
                 turn_id="turn_test",
                 fingerprints={
@@ -91,10 +111,14 @@ class WorldviewAuditTests(unittest.TestCase):
             self.assertEqual(payload["schema_version"], "audit_event_v1")
             self.assertEqual(payload["run_id"], "wv-test")
             self.assertEqual(payload["component"], "broker")
+            self.assertEqual(payload["emitter"], "broker")
             self.assertEqual(payload["entity_type"], "persona")
             self.assertEqual(payload["entity_id"], "risk_manager")
             self.assertEqual(payload["stage"], "worker_dispatch_started")
             self.assertEqual(payload["status"], "started")
+            self.assertEqual(payload["source_process"], "pytest")
+            self.assertEqual(payload["source_session_id"], "session-1")
+            self.assertFalse(payload["synthetic"])
             self.assertEqual(payload["thread_id"], "thr_test")
             self.assertEqual(payload["turn_id"], "turn_test")
             self.assertEqual(
@@ -206,8 +230,8 @@ class WorldviewAuditTests(unittest.TestCase):
     def test_write_run_log_cli_can_emit_audit_event_without_breaking_text_logs(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             codex_home = Path(tmpdir) / ".codex"
-            round_root = Path(tmpdir) / "round"
-            run_id = "panel-demo"
+            round_root = self._build_round()
+            run_id = round_root.name
 
             proc = subprocess.run(
                 [
@@ -227,6 +251,12 @@ class WorldviewAuditTests(unittest.TestCase):
                     "packet_fingerprint=sha256:test",
                     "--round-root",
                     str(round_root),
+                    "--emitter",
+                    "orchestrator",
+                    "--source-process",
+                    "pytest",
+                    "--source-session-id",
+                    "session-1",
                     "--entity-type",
                     "persona",
                     "--entity-id",
@@ -250,15 +280,63 @@ class WorldviewAuditTests(unittest.TestCase):
             audit_text = (round_root / "audit" / "events.jsonl").read_text(encoding="utf-8")
             audit_event = json.loads(audit_text.splitlines()[0])
 
-            self.assertIn("run=panel-demo", total_text)
+            self.assertIn(f"run={run_id}", total_text)
             self.assertIn("starting panel run", run_text)
             self.assertEqual(audit_event["run_id"], run_id)
             self.assertEqual(audit_event["component"], "worldview_panel")
+            self.assertEqual(audit_event["emitter"], "orchestrator")
             self.assertEqual(audit_event["entity_type"], "persona")
             self.assertEqual(audit_event["entity_id"], "risk_manager")
+            self.assertEqual(audit_event["source_process"], "pytest")
+            self.assertEqual(audit_event["source_session_id"], "session-1")
+            self.assertFalse(audit_event["synthetic"])
             self.assertNotIn("thread_id", audit_event)
             self.assertNotIn("turn_id", audit_event)
-            self.assertEqual(audit_event["fingerprints"], {"packet_fingerprint": "sha256:test"})
+
+    def test_write_run_log_cli_rejects_unauthorized_top_level_emitter(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            codex_home = Path(tmpdir) / ".codex"
+            round_root = self._build_round()
+
+            proc = subprocess.run(
+                [
+                    "python3",
+                    str(WRITE_RUN_LOG_CLI),
+                    "--component",
+                    "worldview_panel",
+                    "--run-id",
+                    round_root.name,
+                    "--stage",
+                    "run_start",
+                    "--status",
+                    "started",
+                    "--message",
+                    "starting panel run",
+                    "--round-root",
+                    str(round_root),
+                    "--emitter",
+                    "manual_backfill",
+                    "--source-process",
+                    "pytest",
+                    "--source-session-id",
+                    "session-2",
+                    "--entity-type",
+                    "component",
+                    "--entity-id",
+                    "worldview_panel",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=base_env(codex_home),
+            )
+
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertIn("unauthorized emitter", proc.stderr)
+
+            governance_status = json.loads((round_root / "governance_status.json").read_text(encoding="utf-8"))
+            self.assertEqual(governance_status["state"], "INVALID")
+            self.assertEqual(governance_status["violations"][0]["type"], "unauthorized_emitter")
 
 
 if __name__ == "__main__":

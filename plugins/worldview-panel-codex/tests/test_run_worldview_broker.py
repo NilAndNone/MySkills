@@ -134,6 +134,44 @@ class TestRunWorldviewBroker(unittest.TestCase):
         self.assertTrue(any(event["stage"] == "dispatch_started" for event in audit_events))
         self.assertTrue(any(event["stage"] == "dispatch_failed" for event in audit_events))
 
+    def test_run_worldview_broker_invalidates_round_when_extra_dispatch_job_exists(self) -> None:
+        broker = load_tools_module(self, "worldview_broker")
+        app_server = load_tools_module(self, "worldview_app_server")
+
+        dispatch_job_path, round_root = self._build_round()
+        (round_root / "dispatch_job.techno_only.json").write_text('{"schema_version":"dispatch_job_v1"}\n', encoding="utf-8")
+
+        with self.assertRaisesRegex(ValueError, "governance violation"):
+            broker.run_broker(
+                dispatch_job_path,
+                app_server_client=app_server.FixtureAppServerClient(ALLOWED_FIXTURE),
+            )
+
+        governance_status = json.loads((round_root / "governance_status.json").read_text(encoding="utf-8"))
+        self.assertEqual(governance_status["state"], "INVALID")
+        self.assertEqual(governance_status["violations"][0]["type"], "topology_drift")
+
+    def test_run_worldview_broker_invalidates_round_when_protected_repo_file_drifts(self) -> None:
+        broker = load_tools_module(self, "worldview_broker")
+        app_server = load_tools_module(self, "worldview_app_server")
+
+        dispatch_job_path, round_root = self._build_round()
+        protected_path = REPO_ROOT / "skills" / "worldview-panel-entry" / "SKILL.md"
+        original = protected_path.read_text(encoding="utf-8")
+        protected_path.write_text(original + "\n<!-- drift -->\n", encoding="utf-8")
+        try:
+            with self.assertRaisesRegex(ValueError, "governance violation"):
+                broker.run_broker(
+                    dispatch_job_path,
+                    app_server_client=app_server.FixtureAppServerClient(ALLOWED_FIXTURE),
+                )
+        finally:
+            protected_path.write_text(original, encoding="utf-8")
+
+        governance_status = json.loads((round_root / "governance_status.json").read_text(encoding="utf-8"))
+        self.assertEqual(governance_status["state"], "INVALID")
+        self.assertEqual(governance_status["violations"][0]["type"], "protected_repo_drift")
+
 
 if __name__ == "__main__":
     unittest.main()

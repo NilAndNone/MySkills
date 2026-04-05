@@ -53,10 +53,8 @@ class TestSynthesizeWorldviewPanel(unittest.TestCase):
         synthesis = load_tools_module(self, "worldview_synthesis")
 
         dispatch_job_path, round_root = self._build_round(["risk_manager", "existentialist"])
-        dispatch_job = json.loads(dispatch_job_path.read_text(encoding="utf-8"))
-        dispatch_job["selected_personas"] = ["risk_manager"]
-        dispatch_job_path.write_text(json.dumps(dispatch_job, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         self._dispatch_round(dispatch_job_path)
+        (round_root / "results" / "existentialist" / "technical_certified_result.json").unlink()
 
         with self.assertRaisesRegex(ValueError, "strict gate failed"):
             synthesis.synthesize_round(round_root)
@@ -80,6 +78,21 @@ class TestSynthesizeWorldviewPanel(unittest.TestCase):
         self.assertEqual(final_panel["run_id"], round_root.name)
         self.assertEqual(final_panel["personas"], ["risk_manager", "existentialist"])
         self.assertEqual(set(final_panel["technical_results"]), {"risk_manager", "existentialist"})
+
+    def test_synthesis_refuses_invalid_round_before_strict_gate(self) -> None:
+        synthesis = load_tools_module(self, "worldview_synthesis")
+        governance = load_tools_module(self, "worldview_governance")
+
+        _dispatch_job_path, round_root = self._build_round(["risk_manager"])
+        governance.invalidate_round(
+            round_root,
+            violation_type="topology_drift",
+            message="extra dispatch job",
+            updated_by_component="test",
+        )
+
+        with self.assertRaisesRegex(ValueError, "round is INVALID"):
+            synthesis.synthesize_round(round_root)
 
 
 if __name__ == "__main__":

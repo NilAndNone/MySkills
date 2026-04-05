@@ -52,6 +52,8 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
             self.assertEqual(round_root.parent, Path(tmpdir))
             self.assertTrue((round_root / "dispatch_job.json").is_file())
             self.assertTrue((round_root / "round_manifest.json").is_file())
+            self.assertTrue((round_root / "governance_seal.json").is_file())
+            self.assertTrue((round_root / "governance_status.json").is_file())
 
             for persona in ("risk_manager", "existentialist"):
                 packet_root = round_root / "packets" / persona
@@ -88,12 +90,28 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
 
             round_manifest = json.loads((round_root / "round_manifest.json").read_text(encoding="utf-8"))
             dispatch_job = json.loads((round_root / "dispatch_job.json").read_text(encoding="utf-8"))
+            governance_seal = json.loads((round_root / "governance_seal.json").read_text(encoding="utf-8"))
+            governance_status = json.loads((round_root / "governance_status.json").read_text(encoding="utf-8"))
 
             self.assertEqual(round_manifest["state"], "SEALED")
             self.assertEqual(round_manifest["selected_personas"], ["risk_manager", "existentialist"])
             self.assertEqual(dispatch_job["schema_version"], "dispatch_job_v1")
             self.assertEqual(dispatch_job["round_root"], str(round_root.resolve()))
             self.assertEqual(dispatch_job["selected_personas"], ["risk_manager", "existentialist"])
+            self.assertEqual(governance_seal["schema_version"], "governance_seal_v1")
+            self.assertEqual(governance_seal["run_id"], round_root.name)
+            self.assertEqual(
+                governance_seal["topology"]["dispatch_job_fingerprint"],
+                f"sha256:{hashlib.sha256(module.canonical_json_bytes(dispatch_job)).hexdigest()}",
+            )
+            self.assertEqual(
+                governance_seal["topology"]["round_manifest_fingerprint"],
+                f"sha256:{hashlib.sha256(module.canonical_json_bytes(round_manifest)).hexdigest()}",
+            )
+            self.assertEqual(governance_status["schema_version"], "governance_status_v1")
+            self.assertEqual(governance_status["state"], "SEALED")
+            self.assertEqual(governance_status["terminal_reason"], None)
+            self.assertEqual(governance_status["violations"], [])
 
     def test_build_round_rejects_unresolved_references(self) -> None:
         module = load_worldview_round_builder_module(self)

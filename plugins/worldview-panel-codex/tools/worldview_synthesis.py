@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from worldview_contracts import load_json
+from worldview_governance import load_governance_status, mark_governance_state
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -27,6 +28,10 @@ def collect_technical_results(round_root: str | Path) -> dict[str, dict[str, Any
 
 def synthesize_round(round_root: str | Path) -> Path:
     root = Path(round_root)
+    governance_status = load_governance_status(root)
+    if governance_status.get("state") == "INVALID":
+        raise ValueError("round is INVALID")
+
     manifest = load_json(root / "round_manifest.json")
     certified = collect_technical_results(root)
     missing = [
@@ -92,5 +97,6 @@ def synthesize_round(round_root: str | Path) -> Path:
             ]
         )
     (synthesis_root / "final_panel.md").write_text("\n".join(markdown_lines).rstrip() + "\n", encoding="utf-8")
+    mark_governance_state(root, state="SYNTHESIS_COMPLETED", updated_by_component="synthesizer")
 
     return synthesis_root

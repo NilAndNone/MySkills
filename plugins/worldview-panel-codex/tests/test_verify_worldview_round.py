@@ -66,6 +66,51 @@ class TestVerifyWorldviewRound(unittest.TestCase):
         self.assertEqual(report["status"], "completed")
         self.assertEqual(report["errors"], [])
 
+    def test_verify_worldview_round_reports_invalid_status_and_violations(self) -> None:
+        verifier = load_tools_module(self, "verify_worldview_round")
+        governance = load_tools_module(self, "worldview_governance")
+
+        _dispatch_job_path, round_root = self._build_round()
+        governance.invalidate_round(
+            round_root,
+            violation_type="topology_drift",
+            message="extra dispatch job",
+            updated_by_component="test",
+        )
+
+        report = verifier.verify_round(round_root)
+
+        self.assertEqual(report["status"], "invalid")
+        self.assertEqual(report["violations"][0]["type"], "topology_drift")
+        self.assertIn("extra dispatch job", report["errors"][0])
+
+    def test_verify_worldview_round_rejects_synthetic_top_level_audit_events(self) -> None:
+        verifier = load_tools_module(self, "verify_worldview_round")
+        broker = load_tools_module(self, "worldview_broker")
+        app_server = load_tools_module(self, "worldview_app_server")
+        audit = load_tools_module(self, "worldview_audit")
+
+        dispatch_job_path, round_root = self._build_round()
+        broker.run_broker(dispatch_job_path, app_server_client=app_server.FixtureAppServerClient(BROKER_FIXTURE))
+        audit.write_audit_event(
+            round_root=round_root,
+            run_id=round_root.name,
+            component="worldview_panel",
+            emitter="orchestrator",
+            entity_type="component",
+            entity_id="worldview_panel",
+            stage="run_end",
+            status="completed",
+            source_process="pytest",
+            source_session_id="session-synth",
+            synthetic=True,
+        )
+
+        report = verifier.verify_round(round_root)
+
+        self.assertEqual(report["status"], "invalid")
+        self.assertIn("synthetic audit event", report["errors"][0])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -10,6 +10,12 @@ from typing import Any, Mapping
 from worldview_attestation import build_attestation
 from worldview_audit import write_audit_event
 from worldview_contracts import canonical_json_bytes, load_json, sha256_prefixed, validate_dispatch_job
+from worldview_governance import (
+    GovernanceViolation,
+    invalidate_round,
+    mark_governance_state,
+    precheck_dispatch_governance,
+)
 
 
 ALLOWED_OBSERVED_ITEM_TYPES = {"userMessage", "agentMessage"}
@@ -184,10 +190,13 @@ def _audit_failure(
         round_root=round_root,
         run_id=run_id,
         component="broker",
+        emitter="broker",
         entity_type="persona",
         entity_id=persona,
         stage=stage,
         status="failed",
+        source_process="worldview_broker",
+        source_session_id=run_id,
         thread_id=thread_id,
         turn_id=turn_id,
         fingerprints={"packet_fingerprint": ticket["packet_fingerprint"]},
@@ -200,14 +209,29 @@ def run_broker(dispatch_job_path: str | Path, *, app_server_client: Any) -> dict
     round_root = Path(dispatch_job["round_root"]).resolve()
     run_id = dispatch_job["run_id"]
 
+    try:
+        precheck_dispatch_governance(round_root, dispatch_job_path=dispatch_job_path)
+    except GovernanceViolation as exc:
+        invalidate_round(
+            round_root,
+            violation_type=exc.violation_type,
+            message=str(exc),
+            updated_by_component="broker",
+        )
+        raise ValueError(f"governance violation: {exc}") from exc
+
+    mark_governance_state(round_root, state="PRECHECK_PASSED", updated_by_component="broker")
     write_audit_event(
         round_root=round_root,
         run_id=run_id,
         component="broker",
+        emitter="broker",
         entity_type="dispatch_job",
         entity_id=run_id,
         stage="dispatch_started",
         status="started",
+        source_process="worldview_broker",
+        source_session_id=run_id,
         fingerprints={
             "dispatch_job_fingerprint": sha256_prefixed(canonical_json_bytes(dispatch_job)),
         },
@@ -220,6 +244,17 @@ def run_broker(dispatch_job_path: str | Path, *, app_server_client: Any) -> dict
 
     certified_results: list[dict[str, Any]] = []
     for persona in dispatch_job["selected_personas"]:
+        try:
+            precheck_dispatch_governance(round_root, dispatch_job_path=dispatch_job_path)
+        except GovernanceViolation as exc:
+            invalidate_round(
+                round_root,
+                violation_type=exc.violation_type,
+                message=str(exc),
+                updated_by_component="broker",
+            )
+            raise ValueError(f"governance violation: {exc}") from exc
+        mark_governance_state(round_root, state="ACTIVE_DISPATCH", updated_by_component="broker")
         ticket = _load_ticket(round_root, persona)
         profile = _load_profile(round_root, persona)
         packet_text = _verify_packet(ticket)
@@ -240,10 +275,13 @@ def run_broker(dispatch_job_path: str | Path, *, app_server_client: Any) -> dict
             round_root=round_root,
             run_id=run_id,
             component="broker",
+            emitter="broker",
             entity_type="persona",
             entity_id=persona,
             stage="dispatch_started",
             status="started",
+            source_process="worldview_broker",
+            source_session_id=run_id,
             thread_id=thread_id,
             fingerprints={
                 "packet_fingerprint": ticket["packet_fingerprint"],
@@ -275,10 +313,13 @@ def run_broker(dispatch_job_path: str | Path, *, app_server_client: Any) -> dict
                 round_root=round_root,
                 run_id=run_id,
                 component="broker",
+                emitter="broker",
                 entity_type="persona",
                 entity_id=persona,
                 stage="result_received",
                 status="received",
+                source_process="worldview_broker",
+                source_session_id=run_id,
                 thread_id=thread_id,
                 turn_id=turn_id,
                 fingerprints={"packet_fingerprint": ticket["packet_fingerprint"]},
@@ -334,10 +375,13 @@ def run_broker(dispatch_job_path: str | Path, *, app_server_client: Any) -> dict
                 round_root=round_root,
                 run_id=run_id,
                 component="broker",
+                emitter="broker",
                 entity_type="persona",
                 entity_id=persona,
                 stage="technical_certified",
                 status="completed",
+                source_process="worldview_broker",
+                source_session_id=run_id,
                 thread_id=thread_id,
                 turn_id=turn_id,
                 fingerprints={
@@ -364,6 +408,7 @@ def run_broker(dispatch_job_path: str | Path, *, app_server_client: Any) -> dict
             )
             raise
 
+    mark_governance_state(round_root, state="BROKER_COMPLETED", updated_by_component="broker")
     return {
         "schema_version": "worldview_broker_run_v1",
         "run_id": run_id,
