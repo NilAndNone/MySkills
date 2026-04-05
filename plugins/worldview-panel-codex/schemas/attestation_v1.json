@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "attestation_v1",
+  "title": "attestation_v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "attestation_v1"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "persona": {
+      "type": "string"
+    },
+    "packet_id": {
+      "type": "string"
+    },
+    "packet_fingerprint": {
+      "type": "string"
+    },
+    "packet_length": {
+      "type": "integer"
+    },
+    "ticket_id": {
+      "type": "string"
+    },
+    "ticket_fingerprint": {
+      "type": "string"
+    },
+    "profile_id": {
+      "type": "string"
+    },
+    "profile_version": {
+      "type": "string"
+    },
+    "profile_hash": {
+      "type": "string"
+    },
+    "skill_fingerprint": {
+      "type": "string"
+    },
+    "policy_id": {
+      "type": "string"
+    },
+    "policy_hash": {
+      "type": "string"
+    },
+    "thread_id": {
+      "type": "string"
+    },
+    "turn_id": {
+      "type": "string"
+    },
+    "turn_input_fingerprint": {
+      "type": "string"
+    },
+    "turn_user_text_fingerprint": {
+      "type": "string"
+    },
+    "renderer_version": {
+      "type": "string"
+    },
+    "newline_policy": {
+      "type": "string"
+    },
+    "encoding": {
+      "type": "string"
+    },
+    "input_item_count": {
+      "type": "integer"
+    },
+    "effective_model": {
+      "type": "string"
+    },
+    "effective_output_schema_version": {
+      "type": "string"
+    },
+    "schema_valid": {
+      "type": "boolean"
+    },
+    "item_allowlist_valid": {
+      "type": "boolean"
+    },
+    "technical_status": {
+      "type": "string"
+    },
+    "dispatch_started_at": {
+      "type": "string"
+    },
+    "dispatch_completed_at": {
+      "type": "string"
+    }
+  },
+  "required": ["schema_version", "run_id", "persona", "packet_id", "packet_fingerprint", "packet_length", "ticket_id", "ticket_fingerprint", "profile_id", "profile_version", "profile_hash", "skill_fingerprint", "policy_id", "policy_hash", "thread_id", "turn_id", "turn_input_fingerprint", "turn_user_text_fingerprint", "renderer_version", "newline_policy", "encoding", "input_item_count", "effective_model", "effective_output_schema_version", "schema_valid", "item_allowlist_valid", "technical_status", "dispatch_started_at", "dispatch_completed_at"],
+  "additionalProperties": true
+}

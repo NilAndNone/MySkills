@@ -1,0 +1,2162 @@
+[
+  {
+    "persona": "techno_optimist",
+    "persona_cn": "技术进步派",
+    "file": "techno_optimist/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "builders"
+  },
+  {
+    "persona": "techno_optimist",
+    "persona_cn": "技术进步派",
+    "file": "techno_optimist/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "builders"
+  },
+  {
+    "persona": "techno_optimist",
+    "persona_cn": "技术进步派",
+    "file": "techno_optimist/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "builders"
+  },
+  {
+    "persona": "techno_optimist",
+    "persona_cn": "技术进步派",
+    "file": "techno_optimist/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "builders"
+  },
+  {
+    "persona": "techno_optimist",
+    "persona_cn": "技术进步派",
+    "file": "techno_optimist/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": true,
+    "confidence": "A-",
+    "group": "builders"
+  },
+  {
+    "persona": "techno_optimist",
+    "persona_cn": "技术进步派",
+    "file": "techno_optimist/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "techno_optimist",
+    "persona_cn": "技术进步派",
+    "file": "techno_optimist/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "techno_optimist",
+    "persona_cn": "技术进步派",
+    "file": "techno_optimist/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "techno_optimist",
+    "persona_cn": "技术进步派",
+    "file": "techno_optimist/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "systems_operator",
+    "persona_cn": "系统实用主义者",
+    "file": "systems_operator/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "builders"
+  },
+  {
+    "persona": "systems_operator",
+    "persona_cn": "系统实用主义者",
+    "file": "systems_operator/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "builders"
+  },
+  {
+    "persona": "systems_operator",
+    "persona_cn": "系统实用主义者",
+    "file": "systems_operator/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "builders"
+  },
+  {
+    "persona": "systems_operator",
+    "persona_cn": "系统实用主义者",
+    "file": "systems_operator/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "builders"
+  },
+  {
+    "persona": "systems_operator",
+    "persona_cn": "系统实用主义者",
+    "file": "systems_operator/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": true,
+    "confidence": "A-",
+    "group": "builders"
+  },
+  {
+    "persona": "systems_operator",
+    "persona_cn": "系统实用主义者",
+    "file": "systems_operator/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "systems_operator",
+    "persona_cn": "系统实用主义者",
+    "file": "systems_operator/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "systems_operator",
+    "persona_cn": "系统实用主义者",
+    "file": "systems_operator/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "systems_operator",
+    "persona_cn": "系统实用主义者",
+    "file": "systems_operator/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "institutionalist",
+    "persona_cn": "制度修补派",
+    "file": "institutionalist/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "builders"
+  },
+  {
+    "persona": "institutionalist",
+    "persona_cn": "制度修补派",
+    "file": "institutionalist/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "builders"
+  },
+  {
+    "persona": "institutionalist",
+    "persona_cn": "制度修补派",
+    "file": "institutionalist/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "builders"
+  },
+  {
+    "persona": "institutionalist",
+    "persona_cn": "制度修补派",
+    "file": "institutionalist/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "institutionalist",
+    "persona_cn": "制度修补派",
+    "file": "institutionalist/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "institutionalist",
+    "persona_cn": "制度修补派",
+    "file": "institutionalist/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "institutionalist",
+    "persona_cn": "制度修补派",
+    "file": "institutionalist/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": true,
+    "confidence": "A-",
+    "group": "builders"
+  },
+  {
+    "persona": "institutionalist",
+    "persona_cn": "制度修补派",
+    "file": "institutionalist/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "institutionalist",
+    "persona_cn": "制度修补派",
+    "file": "institutionalist/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": true,
+    "confidence": "A-",
+    "group": "builders"
+  },
+  {
+    "persona": "existentialist",
+    "persona_cn": "存在主义者",
+    "file": "existentialist/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "builders"
+  },
+  {
+    "persona": "existentialist",
+    "persona_cn": "存在主义者",
+    "file": "existentialist/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "builders"
+  },
+  {
+    "persona": "existentialist",
+    "persona_cn": "存在主义者",
+    "file": "existentialist/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "builders"
+  },
+  {
+    "persona": "existentialist",
+    "persona_cn": "存在主义者",
+    "file": "existentialist/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "existentialist",
+    "persona_cn": "存在主义者",
+    "file": "existentialist/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "existentialist",
+    "persona_cn": "存在主义者",
+    "file": "existentialist/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": true,
+    "confidence": "A-",
+    "group": "builders"
+  },
+  {
+    "persona": "existentialist",
+    "persona_cn": "存在主义者",
+    "file": "existentialist/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "existentialist",
+    "persona_cn": "存在主义者",
+    "file": "existentialist/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": true,
+    "confidence": "A-",
+    "group": "builders"
+  },
+  {
+    "persona": "existentialist",
+    "persona_cn": "存在主义者",
+    "file": "existentialist/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "performance_hawk",
+    "persona_cn": "绩效鹰派",
+    "file": "performance_hawk/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "builders"
+  },
+  {
+    "persona": "performance_hawk",
+    "persona_cn": "绩效鹰派",
+    "file": "performance_hawk/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "builders"
+  },
+  {
+    "persona": "performance_hawk",
+    "persona_cn": "绩效鹰派",
+    "file": "performance_hawk/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "builders"
+  },
+  {
+    "persona": "performance_hawk",
+    "persona_cn": "绩效鹰派",
+    "file": "performance_hawk/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "builders"
+  },
+  {
+    "persona": "performance_hawk",
+    "persona_cn": "绩效鹰派",
+    "file": "performance_hawk/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "performance_hawk",
+    "persona_cn": "绩效鹰派",
+    "file": "performance_hawk/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "performance_hawk",
+    "persona_cn": "绩效鹰派",
+    "file": "performance_hawk/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": true,
+    "confidence": "A-",
+    "group": "builders"
+  },
+  {
+    "persona": "performance_hawk",
+    "persona_cn": "绩效鹰派",
+    "file": "performance_hawk/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "performance_hawk",
+    "persona_cn": "绩效鹰派",
+    "file": "performance_hawk/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": false,
+    "confidence": "B+",
+    "group": "builders"
+  },
+  {
+    "persona": "red_leftist",
+    "persona_cn": "网左",
+    "file": "red_leftist/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "critics"
+  },
+  {
+    "persona": "red_leftist",
+    "persona_cn": "网左",
+    "file": "red_leftist/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "critics"
+  },
+  {
+    "persona": "red_leftist",
+    "persona_cn": "网左",
+    "file": "red_leftist/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "critics"
+  },
+  {
+    "persona": "red_leftist",
+    "persona_cn": "网左",
+    "file": "red_leftist/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "critics"
+  },
+  {
+    "persona": "red_leftist",
+    "persona_cn": "网左",
+    "file": "red_leftist/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "critics"
+  },
+  {
+    "persona": "red_leftist",
+    "persona_cn": "网左",
+    "file": "red_leftist/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": false,
+    "confidence": "B+",
+    "group": "critics"
+  },
+  {
+    "persona": "red_leftist",
+    "persona_cn": "网左",
+    "file": "red_leftist/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": true,
+    "confidence": "A-",
+    "group": "critics"
+  },
+  {
+    "persona": "red_leftist",
+    "persona_cn": "网左",
+    "file": "red_leftist/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": false,
+    "confidence": "B+",
+    "group": "critics"
+  },
+  {
+    "persona": "red_leftist",
+    "persona_cn": "网左",
+    "file": "red_leftist/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": true,
+    "confidence": "A-",
+    "group": "critics"
+  },
+  {
+    "persona": "online_rightist",
+    "persona_cn": "网右",
+    "file": "online_rightist/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "critics"
+  },
+  {
+    "persona": "online_rightist",
+    "persona_cn": "网右",
+    "file": "online_rightist/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "critics"
+  },
+  {
+    "persona": "online_rightist",
+    "persona_cn": "网右",
+    "file": "online_rightist/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "critics"
+  },
+  {
+    "persona": "online_rightist",
+    "persona_cn": "网右",
+    "file": "online_rightist/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "critics"
+  },
+  {
+    "persona": "online_rightist",
+    "persona_cn": "网右",
+    "file": "online_rightist/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "critics"
+  },
+  {
+    "persona": "online_rightist",
+    "persona_cn": "网右",
+    "file": "online_rightist/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": false,
+    "confidence": "B+",
+    "group": "critics"
+  },
+  {
+    "persona": "online_rightist",
+    "persona_cn": "网右",
+    "file": "online_rightist/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": true,
+    "confidence": "A-",
+    "group": "critics"
+  },
+  {
+    "persona": "online_rightist",
+    "persona_cn": "网右",
+    "file": "online_rightist/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": false,
+    "confidence": "B+",
+    "group": "critics"
+  },
+  {
+    "persona": "online_rightist",
+    "persona_cn": "网右",
+    "file": "online_rightist/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": true,
+    "confidence": "A-",
+    "group": "critics"
+  },
+  {
+    "persona": "collapse_prophet",
+    "persona_cn": "崩坏预言家",
+    "file": "collapse_prophet/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "critics"
+  },
+  {
+    "persona": "collapse_prophet",
+    "persona_cn": "崩坏预言家",
+    "file": "collapse_prophet/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "critics"
+  },
+  {
+    "persona": "collapse_prophet",
+    "persona_cn": "崩坏预言家",
+    "file": "collapse_prophet/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "critics"
+  },
+  {
+    "persona": "collapse_prophet",
+    "persona_cn": "崩坏预言家",
+    "file": "collapse_prophet/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "critics"
+  },
+  {
+    "persona": "collapse_prophet",
+    "persona_cn": "崩坏预言家",
+    "file": "collapse_prophet/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "critics"
+  },
+  {
+    "persona": "collapse_prophet",
+    "persona_cn": "崩坏预言家",
+    "file": "collapse_prophet/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": false,
+    "confidence": "B+",
+    "group": "critics"
+  },
+  {
+    "persona": "collapse_prophet",
+    "persona_cn": "崩坏预言家",
+    "file": "collapse_prophet/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": true,
+    "confidence": "A-",
+    "group": "critics"
+  },
+  {
+    "persona": "collapse_prophet",
+    "persona_cn": "崩坏预言家",
+    "file": "collapse_prophet/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": false,
+    "confidence": "B+",
+    "group": "critics"
+  },
+  {
+    "persona": "collapse_prophet",
+    "persona_cn": "崩坏预言家",
+    "file": "collapse_prophet/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": true,
+    "confidence": "A-",
+    "group": "critics"
+  },
+  {
+    "persona": "radical_meme_dissident",
+    "persona_cn": "反建制梗学家",
+    "file": "radical_meme_dissident/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "critics"
+  },
+  {
+    "persona": "radical_meme_dissident",
+    "persona_cn": "反建制梗学家",
+    "file": "radical_meme_dissident/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "critics"
+  },
+  {
+    "persona": "radical_meme_dissident",
+    "persona_cn": "反建制梗学家",
+    "file": "radical_meme_dissident/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "critics"
+  },
+  {
+    "persona": "radical_meme_dissident",
+    "persona_cn": "反建制梗学家",
+    "file": "radical_meme_dissident/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "critics"
+  },
+  {
+    "persona": "radical_meme_dissident",
+    "persona_cn": "反建制梗学家",
+    "file": "radical_meme_dissident/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "critics"
+  },
+  {
+    "persona": "radical_meme_dissident",
+    "persona_cn": "反建制梗学家",
+    "file": "radical_meme_dissident/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": false,
+    "confidence": "B+",
+    "group": "critics"
+  },
+  {
+    "persona": "radical_meme_dissident",
+    "persona_cn": "反建制梗学家",
+    "file": "radical_meme_dissident/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": true,
+    "confidence": "A-",
+    "group": "critics"
+  },
+  {
+    "persona": "radical_meme_dissident",
+    "persona_cn": "反建制梗学家",
+    "file": "radical_meme_dissident/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": true,
+    "confidence": "A-",
+    "group": "critics"
+  },
+  {
+    "persona": "radical_meme_dissident",
+    "persona_cn": "反建制梗学家",
+    "file": "radical_meme_dissident/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": true,
+    "confidence": "A-",
+    "group": "critics"
+  },
+  {
+    "persona": "network_jester",
+    "persona_cn": "网络乐子人",
+    "file": "network_jester/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "spectators"
+  },
+  {
+    "persona": "network_jester",
+    "persona_cn": "网络乐子人",
+    "file": "network_jester/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "spectators"
+  },
+  {
+    "persona": "network_jester",
+    "persona_cn": "网络乐子人",
+    "file": "network_jester/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "network_jester",
+    "persona_cn": "网络乐子人",
+    "file": "network_jester/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "network_jester",
+    "persona_cn": "网络乐子人",
+    "file": "network_jester/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "network_jester",
+    "persona_cn": "网络乐子人",
+    "file": "network_jester/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": true,
+    "confidence": "A-",
+    "group": "spectators"
+  },
+  {
+    "persona": "network_jester",
+    "persona_cn": "网络乐子人",
+    "file": "network_jester/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": true,
+    "confidence": "A-",
+    "group": "spectators"
+  },
+  {
+    "persona": "network_jester",
+    "persona_cn": "网络乐子人",
+    "file": "network_jester/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "network_jester",
+    "persona_cn": "网络乐子人",
+    "file": "network_jester/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": true,
+    "confidence": "A-",
+    "group": "spectators"
+  },
+  {
+    "persona": "terminal_jester",
+    "persona_cn": "终极乐子人",
+    "file": "terminal_jester/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "spectators"
+  },
+  {
+    "persona": "terminal_jester",
+    "persona_cn": "终极乐子人",
+    "file": "terminal_jester/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "spectators"
+  },
+  {
+    "persona": "terminal_jester",
+    "persona_cn": "终极乐子人",
+    "file": "terminal_jester/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "spectators"
+  },
+  {
+    "persona": "terminal_jester",
+    "persona_cn": "终极乐子人",
+    "file": "terminal_jester/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "terminal_jester",
+    "persona_cn": "终极乐子人",
+    "file": "terminal_jester/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "terminal_jester",
+    "persona_cn": "终极乐子人",
+    "file": "terminal_jester/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": true,
+    "confidence": "A-",
+    "group": "spectators"
+  },
+  {
+    "persona": "terminal_jester",
+    "persona_cn": "终极乐子人",
+    "file": "terminal_jester/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "terminal_jester",
+    "persona_cn": "终极乐子人",
+    "file": "terminal_jester/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": true,
+    "confidence": "A-",
+    "group": "spectators"
+  },
+  {
+    "persona": "terminal_jester",
+    "persona_cn": "终极乐子人",
+    "file": "terminal_jester/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "postmodern_ironist",
+    "persona_cn": "后现代解构派",
+    "file": "postmodern_ironist/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "spectators"
+  },
+  {
+    "persona": "postmodern_ironist",
+    "persona_cn": "后现代解构派",
+    "file": "postmodern_ironist/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "spectators"
+  },
+  {
+    "persona": "postmodern_ironist",
+    "persona_cn": "后现代解构派",
+    "file": "postmodern_ironist/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "postmodern_ironist",
+    "persona_cn": "后现代解构派",
+    "file": "postmodern_ironist/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "postmodern_ironist",
+    "persona_cn": "后现代解构派",
+    "file": "postmodern_ironist/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "postmodern_ironist",
+    "persona_cn": "后现代解构派",
+    "file": "postmodern_ironist/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "postmodern_ironist",
+    "persona_cn": "后现代解构派",
+    "file": "postmodern_ironist/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": true,
+    "confidence": "A-",
+    "group": "spectators"
+  },
+  {
+    "persona": "postmodern_ironist",
+    "persona_cn": "后现代解构派",
+    "file": "postmodern_ironist/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": true,
+    "confidence": "A-",
+    "group": "spectators"
+  },
+  {
+    "persona": "postmodern_ironist",
+    "persona_cn": "后现代解构派",
+    "file": "postmodern_ironist/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": true,
+    "confidence": "A-",
+    "group": "spectators"
+  },
+  {
+    "persona": "cynical_detached",
+    "persona_cn": "犬儒抽离派",
+    "file": "cynical_detached/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "spectators"
+  },
+  {
+    "persona": "cynical_detached",
+    "persona_cn": "犬儒抽离派",
+    "file": "cynical_detached/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "spectators"
+  },
+  {
+    "persona": "cynical_detached",
+    "persona_cn": "犬儒抽离派",
+    "file": "cynical_detached/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "spectators"
+  },
+  {
+    "persona": "cynical_detached",
+    "persona_cn": "犬儒抽离派",
+    "file": "cynical_detached/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "cynical_detached",
+    "persona_cn": "犬儒抽离派",
+    "file": "cynical_detached/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "cynical_detached",
+    "persona_cn": "犬儒抽离派",
+    "file": "cynical_detached/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": true,
+    "confidence": "A-",
+    "group": "spectators"
+  },
+  {
+    "persona": "cynical_detached",
+    "persona_cn": "犬儒抽离派",
+    "file": "cynical_detached/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "cynical_detached",
+    "persona_cn": "犬儒抽离派",
+    "file": "cynical_detached/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": true,
+    "confidence": "A-",
+    "group": "spectators"
+  },
+  {
+    "persona": "cynical_detached",
+    "persona_cn": "犬儒抽离派",
+    "file": "cynical_detached/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "attention_marketer",
+    "persona_cn": "营销号",
+    "file": "attention_marketer/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "spectators"
+  },
+  {
+    "persona": "attention_marketer",
+    "persona_cn": "营销号",
+    "file": "attention_marketer/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "spectators"
+  },
+  {
+    "persona": "attention_marketer",
+    "persona_cn": "营销号",
+    "file": "attention_marketer/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "attention_marketer",
+    "persona_cn": "营销号",
+    "file": "attention_marketer/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "spectators"
+  },
+  {
+    "persona": "attention_marketer",
+    "persona_cn": "营销号",
+    "file": "attention_marketer/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": true,
+    "confidence": "A-",
+    "group": "spectators"
+  },
+  {
+    "persona": "attention_marketer",
+    "persona_cn": "营销号",
+    "file": "attention_marketer/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "attention_marketer",
+    "persona_cn": "营销号",
+    "file": "attention_marketer/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "attention_marketer",
+    "persona_cn": "营销号",
+    "file": "attention_marketer/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": false,
+    "confidence": "B+",
+    "group": "spectators"
+  },
+  {
+    "persona": "attention_marketer",
+    "persona_cn": "营销号",
+    "file": "attention_marketer/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": true,
+    "confidence": "A-",
+    "group": "spectators"
+  },
+  {
+    "persona": "stoic_pragmatist",
+    "persona_cn": "斯多葛现实派",
+    "file": "stoic_pragmatist/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "defenders"
+  },
+  {
+    "persona": "stoic_pragmatist",
+    "persona_cn": "斯多葛现实派",
+    "file": "stoic_pragmatist/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "defenders"
+  },
+  {
+    "persona": "stoic_pragmatist",
+    "persona_cn": "斯多葛现实派",
+    "file": "stoic_pragmatist/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "defenders"
+  },
+  {
+    "persona": "stoic_pragmatist",
+    "persona_cn": "斯多葛现实派",
+    "file": "stoic_pragmatist/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "stoic_pragmatist",
+    "persona_cn": "斯多葛现实派",
+    "file": "stoic_pragmatist/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "stoic_pragmatist",
+    "persona_cn": "斯多葛现实派",
+    "file": "stoic_pragmatist/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": true,
+    "confidence": "A-",
+    "group": "defenders"
+  },
+  {
+    "persona": "stoic_pragmatist",
+    "persona_cn": "斯多葛现实派",
+    "file": "stoic_pragmatist/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "stoic_pragmatist",
+    "persona_cn": "斯多葛现实派",
+    "file": "stoic_pragmatist/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": true,
+    "confidence": "A-",
+    "group": "defenders"
+  },
+  {
+    "persona": "stoic_pragmatist",
+    "persona_cn": "斯多葛现实派",
+    "file": "stoic_pragmatist/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "risk_manager",
+    "persona_cn": "风险经理派",
+    "file": "risk_manager/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "defenders"
+  },
+  {
+    "persona": "risk_manager",
+    "persona_cn": "风险经理派",
+    "file": "risk_manager/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "defenders"
+  },
+  {
+    "persona": "risk_manager",
+    "persona_cn": "风险经理派",
+    "file": "risk_manager/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "defenders"
+  },
+  {
+    "persona": "risk_manager",
+    "persona_cn": "风险经理派",
+    "file": "risk_manager/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "defenders"
+  },
+  {
+    "persona": "risk_manager",
+    "persona_cn": "风险经理派",
+    "file": "risk_manager/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "risk_manager",
+    "persona_cn": "风险经理派",
+    "file": "risk_manager/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": true,
+    "confidence": "A-",
+    "group": "defenders"
+  },
+  {
+    "persona": "risk_manager",
+    "persona_cn": "风险经理派",
+    "file": "risk_manager/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "risk_manager",
+    "persona_cn": "风险经理派",
+    "file": "risk_manager/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "risk_manager",
+    "persona_cn": "风险经理派",
+    "file": "risk_manager/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "antiwork_minimalist",
+    "persona_cn": "低欲望最小化派",
+    "file": "antiwork_minimalist/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "defenders"
+  },
+  {
+    "persona": "antiwork_minimalist",
+    "persona_cn": "低欲望最小化派",
+    "file": "antiwork_minimalist/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "defenders"
+  },
+  {
+    "persona": "antiwork_minimalist",
+    "persona_cn": "低欲望最小化派",
+    "file": "antiwork_minimalist/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "defenders"
+  },
+  {
+    "persona": "antiwork_minimalist",
+    "persona_cn": "低欲望最小化派",
+    "file": "antiwork_minimalist/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "antiwork_minimalist",
+    "persona_cn": "低欲望最小化派",
+    "file": "antiwork_minimalist/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "antiwork_minimalist",
+    "persona_cn": "低欲望最小化派",
+    "file": "antiwork_minimalist/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": true,
+    "confidence": "A-",
+    "group": "defenders"
+  },
+  {
+    "persona": "antiwork_minimalist",
+    "persona_cn": "低欲望最小化派",
+    "file": "antiwork_minimalist/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "antiwork_minimalist",
+    "persona_cn": "低欲望最小化派",
+    "file": "antiwork_minimalist/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": true,
+    "confidence": "A-",
+    "group": "defenders"
+  },
+  {
+    "persona": "antiwork_minimalist",
+    "persona_cn": "低欲望最小化派",
+    "file": "antiwork_minimalist/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "optimistic_nihilist",
+    "persona_cn": "积极虚无主义者",
+    "file": "optimistic_nihilist/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "defenders"
+  },
+  {
+    "persona": "optimistic_nihilist",
+    "persona_cn": "积极虚无主义者",
+    "file": "optimistic_nihilist/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "defenders"
+  },
+  {
+    "persona": "optimistic_nihilist",
+    "persona_cn": "积极虚无主义者",
+    "file": "optimistic_nihilist/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "defenders"
+  },
+  {
+    "persona": "optimistic_nihilist",
+    "persona_cn": "积极虚无主义者",
+    "file": "optimistic_nihilist/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "optimistic_nihilist",
+    "persona_cn": "积极虚无主义者",
+    "file": "optimistic_nihilist/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "optimistic_nihilist",
+    "persona_cn": "积极虚无主义者",
+    "file": "optimistic_nihilist/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": true,
+    "confidence": "A-",
+    "group": "defenders"
+  },
+  {
+    "persona": "optimistic_nihilist",
+    "persona_cn": "积极虚无主义者",
+    "file": "optimistic_nihilist/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "optimistic_nihilist",
+    "persona_cn": "积极虚无主义者",
+    "file": "optimistic_nihilist/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": true,
+    "confidence": "A-",
+    "group": "defenders"
+  },
+  {
+    "persona": "optimistic_nihilist",
+    "persona_cn": "积极虚无主义者",
+    "file": "optimistic_nihilist/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "depressive_nihilist",
+    "persona_cn": "消极虚无主义者",
+    "file": "depressive_nihilist/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "defenders"
+  },
+  {
+    "persona": "depressive_nihilist",
+    "persona_cn": "消极虚无主义者",
+    "file": "depressive_nihilist/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "defenders"
+  },
+  {
+    "persona": "depressive_nihilist",
+    "persona_cn": "消极虚无主义者",
+    "file": "depressive_nihilist/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "defenders"
+  },
+  {
+    "persona": "depressive_nihilist",
+    "persona_cn": "消极虚无主义者",
+    "file": "depressive_nihilist/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "depressive_nihilist",
+    "persona_cn": "消极虚无主义者",
+    "file": "depressive_nihilist/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "depressive_nihilist",
+    "persona_cn": "消极虚无主义者",
+    "file": "depressive_nihilist/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": true,
+    "confidence": "A-",
+    "group": "defenders"
+  },
+  {
+    "persona": "depressive_nihilist",
+    "persona_cn": "消极虚无主义者",
+    "file": "depressive_nihilist/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "depressive_nihilist",
+    "persona_cn": "消极虚无主义者",
+    "file": "depressive_nihilist/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": true,
+    "confidence": "A-",
+    "group": "defenders"
+  },
+  {
+    "persona": "depressive_nihilist",
+    "persona_cn": "消极虚无主义者",
+    "file": "depressive_nihilist/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": false,
+    "confidence": "B+",
+    "group": "defenders"
+  },
+  {
+    "persona": "humanist_therapist",
+    "persona_cn": "人本关怀派",
+    "file": "humanist_therapist/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "experientials"
+  },
+  {
+    "persona": "humanist_therapist",
+    "persona_cn": "人本关怀派",
+    "file": "humanist_therapist/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "experientials"
+  },
+  {
+    "persona": "humanist_therapist",
+    "persona_cn": "人本关怀派",
+    "file": "humanist_therapist/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "experientials"
+  },
+  {
+    "persona": "humanist_therapist",
+    "persona_cn": "人本关怀派",
+    "file": "humanist_therapist/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "humanist_therapist",
+    "persona_cn": "人本关怀派",
+    "file": "humanist_therapist/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "humanist_therapist",
+    "persona_cn": "人本关怀派",
+    "file": "humanist_therapist/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": true,
+    "confidence": "A-",
+    "group": "experientials"
+  },
+  {
+    "persona": "humanist_therapist",
+    "persona_cn": "人本关怀派",
+    "file": "humanist_therapist/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "humanist_therapist",
+    "persona_cn": "人本关怀派",
+    "file": "humanist_therapist/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": true,
+    "confidence": "A-",
+    "group": "experientials"
+  },
+  {
+    "persona": "humanist_therapist",
+    "persona_cn": "人本关怀派",
+    "file": "humanist_therapist/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "modern_mystic",
+    "persona_cn": "现代神人",
+    "file": "modern_mystic/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "experientials"
+  },
+  {
+    "persona": "modern_mystic",
+    "persona_cn": "现代神人",
+    "file": "modern_mystic/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "experientials"
+  },
+  {
+    "persona": "modern_mystic",
+    "persona_cn": "现代神人",
+    "file": "modern_mystic/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "experientials"
+  },
+  {
+    "persona": "modern_mystic",
+    "persona_cn": "现代神人",
+    "file": "modern_mystic/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "modern_mystic",
+    "persona_cn": "现代神人",
+    "file": "modern_mystic/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "modern_mystic",
+    "persona_cn": "现代神人",
+    "file": "modern_mystic/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": true,
+    "confidence": "A-",
+    "group": "experientials"
+  },
+  {
+    "persona": "modern_mystic",
+    "persona_cn": "现代神人",
+    "file": "modern_mystic/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "modern_mystic",
+    "persona_cn": "现代神人",
+    "file": "modern_mystic/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": true,
+    "confidence": "A-",
+    "group": "experientials"
+  },
+  {
+    "persona": "modern_mystic",
+    "persona_cn": "现代神人",
+    "file": "modern_mystic/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "absurdist_player",
+    "persona_cn": "荒诞游戏派",
+    "file": "absurdist_player/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "experientials"
+  },
+  {
+    "persona": "absurdist_player",
+    "persona_cn": "荒诞游戏派",
+    "file": "absurdist_player/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "experientials"
+  },
+  {
+    "persona": "absurdist_player",
+    "persona_cn": "荒诞游戏派",
+    "file": "absurdist_player/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "absurdist_player",
+    "persona_cn": "荒诞游戏派",
+    "file": "absurdist_player/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "absurdist_player",
+    "persona_cn": "荒诞游戏派",
+    "file": "absurdist_player/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "absurdist_player",
+    "persona_cn": "荒诞游戏派",
+    "file": "absurdist_player/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": true,
+    "confidence": "A-",
+    "group": "experientials"
+  },
+  {
+    "persona": "absurdist_player",
+    "persona_cn": "荒诞游戏派",
+    "file": "absurdist_player/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "absurdist_player",
+    "persona_cn": "荒诞游戏派",
+    "file": "absurdist_player/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": true,
+    "confidence": "A-",
+    "group": "experientials"
+  },
+  {
+    "persona": "absurdist_player",
+    "persona_cn": "荒诞游戏派",
+    "file": "absurdist_player/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": true,
+    "confidence": "A-",
+    "group": "experientials"
+  },
+  {
+    "persona": "baseline_conformist",
+    "persona_cn": "基本盘",
+    "file": "baseline_conformist/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "experientials"
+  },
+  {
+    "persona": "baseline_conformist",
+    "persona_cn": "基本盘",
+    "file": "baseline_conformist/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "experientials"
+  },
+  {
+    "persona": "baseline_conformist",
+    "persona_cn": "基本盘",
+    "file": "baseline_conformist/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "experientials"
+  },
+  {
+    "persona": "baseline_conformist",
+    "persona_cn": "基本盘",
+    "file": "baseline_conformist/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "baseline_conformist",
+    "persona_cn": "基本盘",
+    "file": "baseline_conformist/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "baseline_conformist",
+    "persona_cn": "基本盘",
+    "file": "baseline_conformist/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": true,
+    "confidence": "A-",
+    "group": "experientials"
+  },
+  {
+    "persona": "baseline_conformist",
+    "persona_cn": "基本盘",
+    "file": "baseline_conformist/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "baseline_conformist",
+    "persona_cn": "基本盘",
+    "file": "baseline_conformist/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "baseline_conformist",
+    "persona_cn": "基本盘",
+    "file": "baseline_conformist/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": true,
+    "confidence": "A-",
+    "group": "experientials"
+  },
+  {
+    "persona": "external_reference",
+    "persona_cn": "外部参照派",
+    "file": "external_reference/profile_2_0.md",
+    "domain": "profile_2_0",
+    "domain_cn": "人格增强卡",
+    "priority": true,
+    "confidence": "A",
+    "group": "experientials"
+  },
+  {
+    "persona": "external_reference",
+    "persona_cn": "外部参照派",
+    "file": "external_reference/psychology.md",
+    "domain": "psychology",
+    "domain_cn": "心理学理论映射",
+    "priority": true,
+    "confidence": "A",
+    "group": "experientials"
+  },
+  {
+    "persona": "external_reference",
+    "persona_cn": "外部参照派",
+    "file": "external_reference/career.md",
+    "domain": "career",
+    "domain_cn": "职业",
+    "priority": true,
+    "confidence": "A-",
+    "group": "experientials"
+  },
+  {
+    "persona": "external_reference",
+    "persona_cn": "外部参照派",
+    "file": "external_reference/startup.md",
+    "domain": "startup",
+    "domain_cn": "创业",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "external_reference",
+    "persona_cn": "外部参照派",
+    "file": "external_reference/product.md",
+    "domain": "product",
+    "domain_cn": "产品",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "external_reference",
+    "persona_cn": "外部参照派",
+    "file": "external_reference/relationship.md",
+    "domain": "relationship",
+    "domain_cn": "关系",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "external_reference",
+    "persona_cn": "外部参照派",
+    "file": "external_reference/politics.md",
+    "domain": "politics",
+    "domain_cn": "政治",
+    "priority": true,
+    "confidence": "A-",
+    "group": "experientials"
+  },
+  {
+    "persona": "external_reference",
+    "persona_cn": "外部参照派",
+    "file": "external_reference/philosophy.md",
+    "domain": "philosophy",
+    "domain_cn": "哲学",
+    "priority": false,
+    "confidence": "B+",
+    "group": "experientials"
+  },
+  {
+    "persona": "external_reference",
+    "persona_cn": "外部参照派",
+    "file": "external_reference/public_discourse.md",
+    "domain": "public_discourse",
+    "domain_cn": "公共话语",
+    "priority": true,
+    "confidence": "A-",
+    "group": "experientials"
+  }
+]

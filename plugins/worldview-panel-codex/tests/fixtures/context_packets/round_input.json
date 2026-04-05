@@ -1,0 +1,20 @@
+{
+  "question": "请判断“先完整准备每个 subagent 的上下文，再统一分发”这套流程是否足够稳健。",
+  "answer_goal": "decide",
+  "domain": "career",
+  "hard_constraints": [
+    "只用中文",
+    "不要替主线程做摘要"
+  ],
+  "selected_personas": [
+    "risk_manager",
+    "existentialist"
+  ],
+  "external_materials": [
+    {
+      "title": "用户粘贴内容",
+      "source": "用户粘贴内容",
+      "content": "这里是一段需要原文保留的完整外部材料。"
+    }
+  ]
+}

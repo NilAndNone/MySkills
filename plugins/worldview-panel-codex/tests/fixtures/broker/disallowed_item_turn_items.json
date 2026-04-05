@@ -1,0 +1,34 @@
+{
+  "turn_id": "turn_fixture_bad",
+  "items": [
+    {
+      "type": "userMessage"
+    },
+    {
+      "type": "webSearch"
+    },
+    {
+      "type": "agentMessage"
+    }
+  ],
+  "result": {
+    "schema_version": "worldview_worker_result_v1",
+    "persona": "risk_manager",
+    "judgment": {
+      "factual": "f",
+      "value": "v",
+      "strategy": "s"
+    },
+    "diagnosis": [
+      "d"
+    ],
+    "recommended_actions": [
+      "a"
+    ],
+    "voice_style": "plain",
+    "blind_spot": "b",
+    "overuse_risk": "r",
+    "signature_line": "sig",
+    "confidence": 0.7
+  }
+}
