@@ -13,6 +13,40 @@ JUDGMENT_PROPERTIES = {
 }
 
 
+def _json_schema_type_for_const(value: Any) -> str | None:
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, str):
+        return "string"
+    if isinstance(value, int):
+        return "integer"
+    if isinstance(value, float):
+        return "number"
+    if isinstance(value, list):
+        return "array"
+    if isinstance(value, dict):
+        return "object"
+    return None
+
+
+def _tighten_const_nodes(schema: dict[str, Any]) -> None:
+    const_value = schema.get("const")
+    if const_value is not None and "type" not in schema:
+        inferred_type = _json_schema_type_for_const(const_value)
+        if inferred_type is not None:
+            schema["type"] = inferred_type
+
+    properties = schema.get("properties")
+    if isinstance(properties, dict):
+        for child_schema in properties.values():
+            if isinstance(child_schema, dict):
+                _tighten_const_nodes(child_schema)
+
+    items = schema.get("items")
+    if isinstance(items, dict):
+        _tighten_const_nodes(items)
+
+
 def _tighten_worldview_worker_result_v1(schema: dict[str, Any]) -> dict[str, Any]:
     effective = deepcopy(schema)
     effective["additionalProperties"] = False
@@ -23,6 +57,7 @@ def _tighten_worldview_worker_result_v1(schema: dict[str, Any]) -> dict[str, Any
         "required": ["factual", "value", "strategy"],
         "additionalProperties": False,
     }
+    _tighten_const_nodes(effective)
     return effective
 
 
@@ -36,6 +71,7 @@ def prepare_output_schema(raw_schema: dict[str, Any], *, schema_version: str) ->
             "repair_notes": [
                 "set root additionalProperties to false",
                 "expanded judgment object to explicit strict properties",
+                "added explicit types for const-only schema nodes",
             ],
             "schema_fingerprint": contracts.sha256_prefixed(contracts.canonical_json_bytes(effective_schema)),
         }
