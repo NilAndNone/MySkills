@@ -7,20 +7,24 @@ from typing import Any
 
 def build_round_payload(round_root: Path) -> dict[str, Any]:
     round_input = _read_json_if_exists(round_root / "round_input.json")
-    content_brief = _read_json_if_exists(round_root / "content_brief.json")
-    studio_surface = _read_json_if_exists(round_root / "studio_surface.json")
-    audit_surface = _read_json_if_exists(round_root / "audit_surface.json")
     run_summary = _read_json_if_exists(round_root / "runtime_adapter" / "run_summary.json")
     failure_summary = _read_json_if_exists(round_root / "runtime_adapter" / "failure_summary.json")
+    run_summary_result_grade = str(run_summary.get("result_grade") or "")
+    execution = {}
+    if run_summary_result_grade == "blocked":
+        current_result_grade = "blocked"
+        content_brief = {}
+    else:
+        content_brief = _read_json_if_exists(round_root / "content_brief.json")
+        execution = content_brief.get("meta", {}).get("execution_summary", {})
+        current_result_grade = str(execution.get("result_grade") or run_summary_result_grade or "blocked")
     issue = content_brief.get("issue", {})
-    execution = content_brief.get("meta", {}).get("execution_summary", {})
     if isinstance(issue, dict):
         question = str(issue.get("question") or issue.get("title") or round_input.get("issue") or "")
     else:
         question = str(issue or round_input.get("issue") or "")
-    result_grade = str(execution.get("result_grade") or run_summary.get("result_grade") or "blocked")
     execution_policy = str(execution.get("execution_policy") or run_summary.get("execution_policy") or "adaptive")
-    panel_emitted = bool(run_summary.get("panel_emitted", result_grade != "blocked"))
+    panel_emitted = bool(run_summary.get("panel_emitted", current_result_grade != "blocked"))
     blocked_audit = {
         "status": {"label": _blocked_status_label(execution_policy), "result_grade": "blocked"},
         "execution": {
@@ -31,6 +35,12 @@ def build_round_payload(round_root: Path) -> dict[str, Any]:
         },
         "failure_summary": failure_summary or None,
     }
+    if current_result_grade != "blocked":
+        studio_surface = _read_json_if_exists(round_root / "studio_surface.json")
+        audit_surface = _read_json_if_exists(round_root / "audit_surface.json")
+    else:
+        studio_surface = {}
+        audit_surface = {}
 
     return {
         "round_id": str(execution.get("run_id") or run_summary.get("run_id") or round_root.name),
