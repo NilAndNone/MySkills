@@ -27,27 +27,20 @@ def build_round_payload(round_root: Path) -> dict[str, Any]:
         question = str(issue or round_input.get("issue") or "")
     execution_policy = str(execution.get("execution_policy") or run_summary.get("execution_policy") or "adaptive")
     panel_emitted = bool(run_summary_panel_emitted if run_summary_panel_emitted is not None else current_result_grade != "blocked")
-    blocked_audit = {
-        "status": {"label": _blocked_status_label(execution_policy), "result_grade": "blocked"},
-        "execution": {
-            "run_status": str(execution.get("run_status") or run_summary.get("run_status") or ""),
-            "execution_policy": execution_policy,
-            "successful_personas": list(execution.get("successful_personas", [])),
-            "failed_personas": _normalize_failed_personas(failure_summary.get("failed_personas", [])),
-        },
-        "failure_summary": failure_summary or None,
-    }
+    blocked_audit = _build_blocked_audit(execution, run_summary, failure_summary, execution_policy)
     if current_result_grade != "blocked":
         studio_surface = _read_json_if_exists(round_root / "studio_surface.json")
         audit_surface = _read_json_if_exists(round_root / "audit_surface.json")
     else:
         studio_surface = {}
         audit_surface = {}
+    view_state = _build_view_state(studio_surface=studio_surface, audit_surface=audit_surface or blocked_audit)
 
     return {
         "round_id": str(execution.get("run_id") or run_summary.get("run_id") or round_root.name),
         "question": question,
-        "default_surface": "studio" if studio_surface else "audit",
+        "default_surface": view_state["default_surface"],
+        "view_state": view_state,
         "studio": studio_surface or None,
         "audit": audit_surface or blocked_audit,
         "run_status": str(execution.get("run_status") or run_summary.get("run_status") or ""),
@@ -71,6 +64,38 @@ def _read_json_if_exists(path: Path) -> dict[str, Any]:
     if not path.is_file():
         return {}
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _build_blocked_audit(
+    execution: dict[str, Any],
+    run_summary: dict[str, Any],
+    failure_summary: dict[str, Any],
+    execution_policy: str,
+) -> dict[str, Any]:
+    return {
+        "status": {"label": _blocked_status_label(execution_policy), "result_grade": "blocked"},
+        "execution": {
+            "run_status": str(execution.get("run_status") or run_summary.get("run_status") or ""),
+            "execution_policy": execution_policy,
+            "successful_personas": list(execution.get("successful_personas", [])),
+            "failed_personas": _normalize_failed_personas(failure_summary.get("failed_personas", [])),
+        },
+        "failure_summary": failure_summary or None,
+    }
+
+
+def _build_view_state(
+    *,
+    studio_surface: dict[str, Any],
+    audit_surface: dict[str, Any],
+) -> dict[str, Any]:
+    studio_available = bool(studio_surface)
+    audit_available = bool(audit_surface)
+    return {
+        "default_surface": "studio" if studio_available else "audit",
+        "studio_available": studio_available,
+        "audit_available": audit_available,
+    }
 
 
 def _blocked_status_label(execution_policy: str) -> str:
@@ -739,6 +764,7 @@ def _render_html_shell() -> str:
       resetNode(root);
       const groups = [
         ["Recommended Angle", [safeText(creationLayer.recommended_angle, "")]],
+        ["Writing Moves", creationLayer.writing_moves || []],
         ["Article Outline", creationLayer.article_outline || []],
         ["Video Outline", creationLayer.video_outline || []],
         ["Thread Outline", creationLayer.thread_outline || []],
@@ -792,6 +818,22 @@ def _render_html_shell() -> str:
       ]);
     }
 
+    function resolveViewState(payload, studio, audit) {
+      const payloadViewState = payload.view_state || {};
+      const studioAvailable = Boolean(
+        payloadViewState.studio_available !== undefined ? payloadViewState.studio_available : studio
+      );
+      const auditAvailable = Boolean(
+        payloadViewState.audit_available !== undefined ? payloadViewState.audit_available : audit
+      );
+      const defaultSurface = payloadViewState.default_surface === "studio" && studioAvailable ? "studio" : "audit";
+      return {
+        default_surface: defaultSurface,
+        studio_available: studioAvailable,
+        audit_available: auditAvailable,
+      };
+    }
+
     function activateSurface(surface) {
       const target = surface === "studio" ? "studio" : "audit";
       document.querySelectorAll("[data-surface-panel]").forEach((panel) => {
@@ -806,83 +848,83 @@ def _render_html_shell() -> str:
       });
     }
 
-    fetch("./data.json")
-      .then((response) => response.json())
-      .then((payload) => {
-        const studio = payload.studio || null;
-        const audit = payload.audit || {};
-        const hasStudio = Boolean(studio);
-        const defaultSurface = payload.default_surface === "audit" || !hasStudio ? "audit" : "studio";
+    function renderViewer(payload) {
+      const studio = payload.studio || null;
+      const audit = payload.audit || {};
+      const viewState = resolveViewState(payload, studio, audit);
+      const hasStudio = viewState.studio_available;
 
-        document.getElementById("question-title").textContent = safeText(payload.question, "未找到议题");
-        document.getElementById("header-summary").textContent = hasStudio
-          ? "Studio keeps the round readable first. Audit stays available for evidence, execution, and reviewer checks."
-          : "Studio is unavailable for this round, so the viewer defaults to the audit surface and keeps the failure summary readable.";
-        document.getElementById("run-status").textContent = safeText(payload.run_status, "unknown");
-        document.getElementById("result-grade").textContent = safeText(
-          (studio && studio.status && studio.status.result_grade) || (audit.status && audit.status.result_grade),
-          "unknown"
-        );
+      document.getElementById("question-title").textContent = safeText(payload.question, "未找到议题");
+      document.getElementById("header-summary").textContent = hasStudio
+        ? "Studio keeps the round readable first. Audit stays available for evidence, execution, and reviewer checks."
+        : "Studio is unavailable for this round, so the viewer defaults to the audit surface and keeps the failure summary readable.";
+      document.getElementById("run-status").textContent = safeText(payload.run_status, "unknown");
+      document.getElementById("result-grade").textContent = safeText(
+        (studio && studio.status && studio.status.result_grade) || (audit.status && audit.status.result_grade),
+        "unknown"
+      );
 
-        const studioButton = document.getElementById("surface-toggle-studio");
-        studioButton.disabled = !hasStudio;
-        document.getElementById("surface-toggle-audit").disabled = false;
+      const studioButton = document.getElementById("surface-toggle-studio");
+      const auditButton = document.getElementById("surface-toggle-audit");
+      studioButton.disabled = !viewState.studio_available;
+      auditButton.disabled = !viewState.audit_available;
 
-        document.getElementById("studio-status").textContent = safeText(
-          studio && studio.status && studio.status.label,
-          hasStudio ? "Studio ready" : "Studio unavailable"
-        );
-        document.getElementById("studio-caption").textContent = hasStudio
-          ? "Product-first briefing surface for judgment, tension, and creation direction."
-          : "This round did not produce a usable Studio surface. Review the Audit surface for the failure summary and execution evidence.";
-        document.getElementById("judgment-line").textContent = safeText(
-          studio && studio.executive_judgment && studio.executive_judgment.one_line_judgment,
-          hasStudio ? "No executive judgment recorded." : "Studio output is unavailable for blocked rounds."
-        );
-        appendDetailItems(document.getElementById("judgment-details"), [
-          {
-            label: "Best Use",
-            value: studio && studio.executive_judgment && studio.executive_judgment.best_use,
-          },
-          {
-            label: "Largest Risk",
-            value: studio && studio.executive_judgment && studio.executive_judgment.largest_risk,
-          },
-        ]);
-        const premiseRoot = document.getElementById("judgment-premises");
-        resetNode(premiseRoot);
-        appendList(
-          premiseRoot,
-          (studio && studio.executive_judgment && studio.executive_judgment.premises) || [],
-          "fact-list",
-          hasStudio ? "No premises recorded." : "No premises available because Studio was not emitted."
-        );
-        renderAxisMap(document.getElementById("tension-map"), (studio && studio.tension_map) || {});
-        renderPerspectiveCards(document.getElementById("studio-cards"), (studio && studio.perspective_cards) || []);
-        renderCreationLayer(document.getElementById("creation-layer"), (studio && studio.creation_layer) || {});
-        renderTrace(document.getElementById("trace-grid"), (studio && studio.expandable_trace) || {});
+      document.getElementById("studio-status").textContent = safeText(
+        studio && studio.status && studio.status.label,
+        hasStudio ? "Studio ready" : "Studio unavailable"
+      );
+      document.getElementById("studio-caption").textContent = hasStudio
+        ? "Product-first briefing surface for judgment, tension, and creation direction."
+        : "This round did not produce a usable Studio surface. Review the Audit surface for the failure summary and execution evidence.";
+      document.getElementById("judgment-line").textContent = safeText(
+        studio && studio.executive_judgment && studio.executive_judgment.one_line_judgment,
+        hasStudio ? "No executive judgment recorded." : "Studio output is unavailable for blocked rounds."
+      );
+      appendDetailItems(document.getElementById("judgment-details"), [
+        {
+          label: "Best Use",
+          value: studio && studio.executive_judgment && studio.executive_judgment.best_use,
+        },
+        {
+          label: "Largest Risk",
+          value: studio && studio.executive_judgment && studio.executive_judgment.largest_risk,
+        },
+      ]);
+      const premiseRoot = document.getElementById("judgment-premises");
+      resetNode(premiseRoot);
+      appendList(
+        premiseRoot,
+        (studio && studio.executive_judgment && studio.executive_judgment.premises) || [],
+        "fact-list",
+        hasStudio ? "No premises recorded." : "No premises available because Studio was not emitted."
+      );
+      renderAxisMap(document.getElementById("tension-map"), (studio && studio.tension_map) || {});
+      renderPerspectiveCards(document.getElementById("studio-cards"), (studio && studio.perspective_cards) || []);
+      renderCreationLayer(document.getElementById("creation-layer"), (studio && studio.creation_layer) || {});
+      renderTrace(document.getElementById("trace-grid"), (studio && studio.expandable_trace) || {});
 
-        document.getElementById("audit-status").textContent = safeText(
-          audit.status && audit.status.label,
-          "Audit ready"
-        );
-        document.getElementById("audit-caption").textContent = hasStudio
-          ? "Execution evidence, failure details, and full review payload for checking the round."
-          : "Audit stays primary for blocked rounds so failure details remain readable without stale product surfaces.";
-        renderAuditSummary(document.getElementById("audit-summary"), payload, audit);
-        document.getElementById("audit-json").textContent = JSON.stringify(audit, null, 2);
+      document.getElementById("audit-status").textContent = safeText(
+        audit.status && audit.status.label,
+        "Audit ready"
+      );
+      document.getElementById("audit-caption").textContent = hasStudio
+        ? "Execution evidence, failure details, and full review payload for checking the round."
+        : "Audit stays primary for blocked rounds so failure details remain readable without stale product surfaces.";
+      renderAuditSummary(document.getElementById("audit-summary"), payload, audit);
+      document.getElementById("audit-json").textContent = JSON.stringify(audit, null, 2);
 
-        document.querySelectorAll("[data-surface]").forEach((button) => {
-          button.addEventListener("click", () => {
-            if (button.disabled) {
-              return;
-            }
-            activateSurface(button.getAttribute("data-surface"));
-          });
+      document.querySelectorAll("[data-surface]").forEach((button) => {
+        button.addEventListener("click", () => {
+          if (button.disabled) {
+            return;
+          }
+          activateSurface(button.getAttribute("data-surface"));
         });
-        activateSurface(defaultSurface);
-      })
-      .catch(() => {
+      });
+      activateSurface(viewState.default_surface);
+    }
+
+    function renderLoadError() {
         document.getElementById("question-title").textContent = "无法加载 round 数据";
         document.getElementById("header-summary").textContent = "The viewer could not read data.json. Check the output directory and try again.";
         document.getElementById("run-status").textContent = "error";
@@ -891,6 +933,15 @@ def _render_html_shell() -> str:
         document.getElementById("audit-status").textContent = "Audit unavailable";
         document.getElementById("audit-json").textContent = "{}";
         activateSurface("audit");
+    }
+
+    fetch("./data.json")
+      .then((response) => response.json())
+      .then((payload) => {
+        renderViewer(payload);
+      })
+      .catch(() => {
+        renderLoadError();
       });
   </script>
 </body>

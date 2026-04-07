@@ -301,6 +301,14 @@ class TestReviewViewer(unittest.TestCase):
             self.assertEqual(payload["studio"]["status"]["label"], "可用")
             self.assertEqual(payload["studio"]["executive_judgment"]["one_line_judgment"], "签名")
             self.assertEqual(payload["audit"]["execution"]["successful_personas"], ["external_reference"])
+            self.assertEqual(
+                payload["view_state"],
+                {
+                    "default_surface": "studio",
+                    "studio_available": True,
+                    "audit_available": True,
+                },
+            )
 
     def test_build_round_payload_keeps_studio_as_default_surface_for_degraded_round(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -311,6 +319,8 @@ class TestReviewViewer(unittest.TestCase):
             self.assertEqual(payload["default_surface"], "studio")
             self.assertIsNotNone(payload["studio"])
             self.assertEqual(payload["studio"]["status"]["result_grade"], "degraded")
+            self.assertEqual(payload["view_state"]["default_surface"], "studio")
+            self.assertTrue(payload["view_state"]["studio_available"])
 
     def test_build_round_payload_defaults_blocked_rounds_to_audit_with_no_studio_surface(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -321,6 +331,14 @@ class TestReviewViewer(unittest.TestCase):
             self.assertEqual(payload["default_surface"], "audit")
             self.assertIsNone(payload["studio"])
             self.assertEqual(payload["audit"]["status"]["result_grade"], "blocked")
+            self.assertEqual(
+                payload["view_state"],
+                {
+                    "default_surface": "audit",
+                    "studio_available": False,
+                    "audit_available": True,
+                },
+            )
 
     def test_write_static_viewer_outputs_html_and_data(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -341,11 +359,16 @@ class TestReviewViewer(unittest.TestCase):
             self.assertIn("audit-panel", html)
             self.assertIn("title.textContent", html)
             self.assertIn("body.textContent", html)
-            self.assertNotIn("innerHTML = cards.map", html)
+            self.assertNotIn("innerHTML", html)
+            self.assertIn("payload.view_state", html)
+            self.assertIn("viewState.default_surface", html)
+            self.assertIn("viewState.studio_available", html)
 
             data = json.loads(data_path.read_text(encoding="utf-8"))
             self.assertEqual(data["question"], "这是测试问题")
             self.assertEqual(data["studio"]["status"]["label"], "可用")
+            self.assertEqual(data["view_state"]["default_surface"], "studio")
+            self.assertTrue(data["view_state"]["studio_available"])
 
     def test_write_static_viewer_renders_surface_switcher_and_studio_first_sections(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -362,8 +385,27 @@ class TestReviewViewer(unittest.TestCase):
             self.assertIn("Executive Judgment", html)
             self.assertIn("Tension Map", html)
             self.assertIn("Creation Layer", html)
+            self.assertIn("Writing Moves", html)
             self.assertIn('id="studio-surface"', html)
             self.assertIn('id="audit-surface"', html)
+            self.assertIn('id="surface-toggle-studio"', html)
+            self.assertIn('id="surface-toggle-audit"', html)
+
+    def test_write_static_viewer_wires_blocked_view_state_into_html(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            round_root = self._create_blocked_round_fixture(root / "round")
+            output_dir = root / "viewer"
+
+            review_viewer.write_static_viewer(round_root, output_dir)
+
+            html = (output_dir / "index.html").read_text(encoding="utf-8")
+            data = json.loads((output_dir / "data.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(data["view_state"]["default_surface"], "audit")
+            self.assertFalse(data["view_state"]["studio_available"])
+            self.assertIn("studioButton.disabled = !viewState.studio_available", html)
+            self.assertIn('activateSurface(viewState.default_surface)', html)
 
     def test_build_round_payload_keeps_failed_personas_visible(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -478,6 +520,7 @@ class TestReviewViewer(unittest.TestCase):
                     ],
                     "creation_layer": {
                         "recommended_angle": "签名",
+                        "writing_moves": ["动作 1"],
                         "article_outline": ["一、开场"],
                         "video_outline": ["先说判断"],
                         "thread_outline": ["1/ 先抛问题"],
@@ -654,6 +697,7 @@ class TestReviewViewer(unittest.TestCase):
                     "perspective_cards": [],
                     "creation_layer": {
                         "recommended_angle": "",
+                        "writing_moves": [],
                         "article_outline": [],
                         "video_outline": [],
                         "thread_outline": [],
