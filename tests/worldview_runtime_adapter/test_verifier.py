@@ -67,6 +67,56 @@ class TestVerifier(unittest.TestCase):
                 verdict["errors"],
             )
 
+    def test_verify_round_rejects_invalid_result_grade(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            round_root = self._create_usable_round_fixture(Path(tmpdir) / "round")
+            payload = json.loads((round_root / "content_brief.json").read_text(encoding="utf-8"))
+            payload["meta"]["execution_summary"]["result_grade"] = "nonsense"
+            (round_root / "content_brief.json").write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            studio_payload = json.loads((round_root / "studio_surface.json").read_text(encoding="utf-8"))
+            studio_payload["status"]["result_grade"] = "nonsense"
+            (round_root / "studio_surface.json").write_text(
+                json.dumps(studio_payload, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            audit_payload = json.loads((round_root / "audit_surface.json").read_text(encoding="utf-8"))
+            audit_payload["status"]["result_grade"] = "nonsense"
+            (round_root / "audit_surface.json").write_text(
+                json.dumps(audit_payload, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            run_summary = json.loads((round_root / "runtime_adapter" / "run_summary.json").read_text(encoding="utf-8"))
+            run_summary["result_grade"] = "nonsense"
+            (round_root / "runtime_adapter" / "run_summary.json").write_text(
+                json.dumps(run_summary, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            verdict = verifier.verify_round(round_root)
+
+            self.assertFalse(verdict["ok"])
+            self.assertIn(
+                "runtime_adapter/run_summary.json result_grade must be one of: usable, degraded, blocked",
+                verdict["errors"],
+            )
+
+    def test_verify_round_fails_when_blocked_round_has_stale_product_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            round_root = self._create_blocked_round_fixture(Path(tmpdir) / "round")
+            (round_root / "content_brief.json").write_text("{\"stale\": true}\n", encoding="utf-8")
+            (round_root / "studio_surface.json").write_text("{\"stale\": true}\n", encoding="utf-8")
+            (round_root / "audit_surface.json").write_text("{\"stale\": true}\n", encoding="utf-8")
+
+            verdict = verifier.verify_round(round_root)
+
+            self.assertFalse(verdict["ok"])
+            self.assertIn("blocked rounds must not include stale product artifacts: content_brief.json", verdict["errors"])
+            self.assertIn("blocked rounds must not include stale product artifacts: studio_surface.json", verdict["errors"])
+            self.assertIn("blocked rounds must not include stale product artifacts: audit_surface.json", verdict["errors"])
+
     def _create_usable_round_fixture(self, round_root: Path) -> Path:
         round_root.mkdir(parents=True)
         (round_root / "runtime_adapter").mkdir(parents=True)

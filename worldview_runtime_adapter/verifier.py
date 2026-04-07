@@ -11,6 +11,7 @@ REQUIRED_FILES = (
     "dispatch_job.json",
 )
 PRODUCT_FILES = ("content_brief.json", "studio_surface.json", "audit_surface.json")
+ALLOWED_RESULT_GRADES = {"usable", "degraded", "blocked"}
 
 
 def _read_json(round_root: Path, relative_path: str) -> dict[str, Any]:
@@ -64,6 +65,10 @@ def verify_round(round_root: str | Path) -> dict[str, Any]:
     result_grade = str(run_summary.get("result_grade") or "")
     if not result_grade:
         errors.append("runtime_adapter/run_summary.json must include result_grade")
+    elif result_grade not in ALLOWED_RESULT_GRADES:
+        errors.append(
+            "runtime_adapter/run_summary.json result_grade must be one of: usable, degraded, blocked"
+        )
     panel_emitted = run_summary.get("panel_emitted")
 
     if result_grade == "blocked":
@@ -71,6 +76,9 @@ def verify_round(round_root: str | Path) -> dict[str, Any]:
             errors.append("runtime_adapter/run_summary.json panel_emitted must be false for blocked rounds")
         if not failure_summary_path.is_file():
             errors.append("blocked rounds must include runtime_adapter/failure_summary.json")
+        for relative_path in PRODUCT_FILES:
+            if (root / relative_path).is_file():
+                errors.append(f"blocked rounds must not include stale product artifacts: {relative_path}")
         return {
             "ok": not errors,
             "round_root": str(root),
