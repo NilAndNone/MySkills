@@ -9,6 +9,51 @@ from worldview_runtime_adapter import review_viewer
 
 
 class TestReviewViewer(unittest.TestCase):
+    def test_build_round_payload_reads_strict_blocked_fallback_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            round_root = Path(tmpdir) / "round"
+            round_root.mkdir(parents=True)
+            (round_root / "round_input.json").write_text(
+                json.dumps({"issue": "严格阻断测试"}, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            (round_root / "runtime_adapter").mkdir(parents=True)
+            (round_root / "runtime_adapter" / "run_summary.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "wv-round-strict-blocked",
+                        "run_status": "failed",
+                        "panel_emitted": False,
+                        "result_grade": "blocked",
+                        "execution_policy": "strict",
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (round_root / "runtime_adapter" / "failure_summary.json").write_text(
+                json.dumps(
+                    {
+                        "failed_personas": ["risk_manager"],
+                        "message": "successful roles did not reach the minimum ratio required for content brief generation",
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            payload = review_viewer.build_round_payload(round_root)
+
+            self.assertEqual(payload["default_surface"], "audit")
+            self.assertIsNone(payload["studio"])
+            self.assertEqual(payload["audit"]["status"]["label"], "strict fail closed")
+            self.assertIsInstance(payload["audit"]["execution"]["failed_personas"][0], dict)
+            self.assertEqual(payload["audit"]["execution"]["failed_personas"][0]["persona"], "risk_manager")
+
     def test_build_round_payload_reads_blocked_run_without_product_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             round_root = Path(tmpdir) / "round"
@@ -81,6 +126,9 @@ class TestReviewViewer(unittest.TestCase):
             self.assertIn("Worldview Round Viewer", html)
             self.assertIn("studio-summary", html)
             self.assertIn("audit-panel", html)
+            self.assertIn("title.textContent", html)
+            self.assertIn("body.textContent", html)
+            self.assertNotIn("innerHTML = cards.map", html)
 
             data = json.loads(data_path.read_text(encoding="utf-8"))
             self.assertEqual(data["question"], "这是测试问题")

@@ -55,6 +55,26 @@ class _FakeAppServerClient:
         return None
 
 
+class _FailingAppServerClient:
+    def start_thread(self) -> str:
+        return "thr-failed"
+
+    def start_turn(
+        self,
+        *,
+        thread_id: str,
+        input_items: list[dict[str, object]],
+        output_schema: dict[str, object],
+        sandbox_policy: str,
+        approval_policy: str,
+    ) -> dict[str, object]:
+        del thread_id, input_items, output_schema, sandbox_policy, approval_policy
+        raise RuntimeError("forced failure")
+
+    def close(self) -> None:
+        return None
+
+
 class TestPanelRuntime(unittest.TestCase):
     def test_partial_success_above_threshold_is_degraded(self) -> None:
         results = [
@@ -210,6 +230,52 @@ class TestPanelRuntime(unittest.TestCase):
             [card["persona"] for card in content_brief["meta"]["execution_summary"]["perspective_cards"]],
             ["external_reference", "humanist_therapist", "risk_manager"],
         )
+
+    def test_rerun_clears_stale_artifacts_in_both_directions(self) -> None:
+        tmpdir = Path(tempfile.mkdtemp())
+        brief = intake.normalize_product_input(
+            {
+                "issue": "平台是否应该更严格标注 AI 生成的政治广告？",
+                "output_intent": "briefing",
+                "stance_mode": "lean_support",
+            }
+        )
+        round_root = round_artifacts.build_round(brief, output_root=tmpdir)
+        dispatch_job_path = round_root / "dispatch_job.json"
+        runtime_root = round_root / "runtime_adapter"
+
+        run_panel_for_dispatch_job(
+            dispatch_job_path,
+            app_server_client=_FakeAppServerClient(),
+            minimum_success_ratio=0.67,
+            max_retries=0,
+        )
+        self.assertTrue((round_root / "content_brief.json").is_file())
+        self.assertTrue((round_root / "studio_surface.json").is_file())
+        self.assertTrue((round_root / "audit_surface.json").is_file())
+        self.assertFalse((runtime_root / "failure_summary.json").exists())
+
+        run_panel_for_dispatch_job(
+            dispatch_job_path,
+            app_server_client=_FailingAppServerClient(),
+            minimum_success_ratio=0.67,
+            max_retries=0,
+        )
+        self.assertFalse((round_root / "content_brief.json").exists())
+        self.assertFalse((round_root / "studio_surface.json").exists())
+        self.assertFalse((round_root / "audit_surface.json").exists())
+        self.assertTrue((runtime_root / "failure_summary.json").is_file())
+
+        run_panel_for_dispatch_job(
+            dispatch_job_path,
+            app_server_client=_FakeAppServerClient(),
+            minimum_success_ratio=0.67,
+            max_retries=0,
+        )
+        self.assertTrue((round_root / "content_brief.json").is_file())
+        self.assertTrue((round_root / "studio_surface.json").is_file())
+        self.assertTrue((round_root / "audit_surface.json").is_file())
+        self.assertFalse((runtime_root / "failure_summary.json").exists())
 
     def test_degraded_panel_keeps_failed_personas_metadata_in_content_brief(self) -> None:
         results = [

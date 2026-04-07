@@ -306,6 +306,23 @@ def _write_product_artifacts(round_root: Path, outcome: Mapping[str, Any]) -> No
     plugin_bridge.write_json(round_root / "audit_surface.json", dict(outcome["audit_surface"]))
 
 
+def _delete_if_exists(path: Path) -> None:
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        pass
+
+
+def _clear_stale_product_artifacts(round_root: Path) -> None:
+    _delete_if_exists(round_root / "content_brief.json")
+    _delete_if_exists(round_root / "studio_surface.json")
+    _delete_if_exists(round_root / "audit_surface.json")
+
+
+def _clear_stale_failure_summary(round_root: Path) -> None:
+    _delete_if_exists(round_root / "runtime_adapter" / "failure_summary.json")
+
+
 def run_panel_for_dispatch_job(
     dispatch_job_path: str | Path,
     *,
@@ -377,10 +394,14 @@ def run_panel_for_dispatch_job(
             "successful_persona_count": outcome["successful_persona_count"],
             "failed_persona_count": outcome["failed_persona_count"],
             "result_grade": outcome["result_grade"],
+            "execution_policy": _execution_policy(minimum_success_ratio),
         },
     )
-    _write_product_artifacts(round_root, outcome)
     if not outcome["panel_emitted"]:
+        _clear_stale_product_artifacts(round_root)
         plugin_bridge.write_json(round_root / "runtime_adapter" / "failure_summary.json", outcome["failure_summary"])
+    else:
+        _clear_stale_failure_summary(round_root)
+        _write_product_artifacts(round_root, outcome)
 
     return outcome

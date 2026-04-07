@@ -78,6 +78,31 @@ def _technical_result(
 
 
 class TestComposer(unittest.TestCase):
+    def test_axis_claim_source_refs_use_real_result_field_paths(self) -> None:
+        certified_results = {
+            "external_reference": _technical_result("external_reference", "same", "value one", "strategy one", "angle a", 0.91),
+            "humanist_therapist": _technical_result("humanist_therapist", "same", "value one", "strategy one", "angle a", 0.86),
+            "risk_manager": _technical_result("risk_manager", "different", "value two", "strategy two", "angle b", 0.72),
+        }
+
+        content_brief = composer.build_content_brief(
+            _brief(),
+            _role_plan(),
+            certified_results,
+            execution_policy="adaptive",
+            result_grade="usable",
+            run_status="completed_with_failures",
+            failed_personas=[],
+        )
+
+        fact_claim = next(claim for claim in content_brief["claims"] if claim["claim_id"].startswith("fact_axis"))
+        value_claim = next(claim for claim in content_brief["claims"] if claim["claim_id"].startswith("value_axis"))
+        strategy_claim = next(claim for claim in content_brief["claims"] if claim["claim_id"].startswith("strategy_axis"))
+
+        self.assertTrue(all(ref.endswith("#result.judgment.factual") for ref in fact_claim["source_refs"]))
+        self.assertTrue(all(ref.endswith("#result.judgment.value") for ref in value_claim["source_refs"]))
+        self.assertTrue(all(ref.endswith("#result.judgment.strategy") for ref in strategy_claim["source_refs"]))
+
     def test_majority_bucket_stays_in_consensus(self) -> None:
         certified_results = {
             "external_reference": _technical_result("external_reference", "same", "v1", "s1", "angle a", 0.91),

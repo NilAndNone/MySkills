@@ -19,14 +19,15 @@ def build_round_payload(round_root: Path) -> dict[str, Any]:
     else:
         question = str(issue or round_input.get("issue") or "")
     result_grade = str(execution.get("result_grade") or run_summary.get("result_grade") or "blocked")
+    execution_policy = str(execution.get("execution_policy") or run_summary.get("execution_policy") or "adaptive")
     panel_emitted = bool(run_summary.get("panel_emitted", result_grade != "blocked"))
     blocked_audit = {
-        "status": {"label": "quorum failed", "result_grade": "blocked"},
+        "status": {"label": _blocked_status_label(execution_policy), "result_grade": "blocked"},
         "execution": {
             "run_status": str(execution.get("run_status") or run_summary.get("run_status") or ""),
-            "execution_policy": str(execution.get("execution_policy") or "adaptive"),
-            "successful_personas": [],
-            "failed_personas": list(failure_summary.get("failed_personas", [])),
+            "execution_policy": execution_policy,
+            "successful_personas": list(execution.get("successful_personas", [])),
+            "failed_personas": _normalize_failed_personas(failure_summary.get("failed_personas", [])),
         },
         "failure_summary": failure_summary or None,
     }
@@ -58,6 +59,33 @@ def _read_json_if_exists(path: Path) -> dict[str, Any]:
     if not path.is_file():
         return {}
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _blocked_status_label(execution_policy: str) -> str:
+    return "strict fail closed" if execution_policy == "strict" else "quorum failed"
+
+
+def _normalize_failed_personas(raw_failed_personas: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw_failed_personas, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    for item in raw_failed_personas:
+        if isinstance(item, dict):
+            persona = str(item.get("persona", "")).strip()
+            if not persona:
+                continue
+            normalized.append(
+                {
+                    "persona": persona,
+                    "failure_reason": str(item.get("failure_reason", "")).strip(),
+                    "failure_class": str(item.get("failure_class", "")).strip(),
+                }
+            )
+            continue
+        persona = str(item).strip()
+        if persona:
+            normalized.append({"persona": persona, "failure_reason": "", "failure_class": ""})
+    return normalized
 
 
 def _render_html_shell() -> str:
@@ -140,9 +168,18 @@ def _render_html_shell() -> str:
         document.getElementById("studio-status").textContent = payload.studio?.status?.label || "";
         document.getElementById("studio-headline").textContent = payload.studio?.executive_judgment?.one_line_judgment || "";
         const cards = payload.studio?.perspective_cards || [];
-        document.getElementById("studio-cards").innerHTML = cards.map((card) => (
-          `<section><h3>${card.persona || ""}</h3><p>${card.signature_line || ""}</p></section>`
-        )).join("");
+        const cardRoot = document.getElementById("studio-cards");
+        cardRoot.textContent = "";
+        cards.forEach((card) => {
+          const section = document.createElement("section");
+          const title = document.createElement("h3");
+          title.textContent = card.persona || "";
+          const body = document.createElement("p");
+          body.textContent = card.signature_line || "";
+          section.appendChild(title);
+          section.appendChild(body);
+          cardRoot.appendChild(section);
+        });
         document.getElementById("audit-json").textContent = JSON.stringify(payload.audit || {}, null, 2);
       });
   </script>

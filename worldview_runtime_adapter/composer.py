@@ -65,6 +65,7 @@ def _confidence(entries: list[dict[str, Any]]) -> float:
 def _build_axis_claim(
     *,
     axis_name: str,
+    field_name: str,
     claim_type: str,
     claim_index: int,
     entries: list[dict[str, Any]],
@@ -72,7 +73,7 @@ def _build_axis_claim(
 ) -> dict[str, Any]:
     supporting_roles = [entry["persona"] for entry in entries]
     counter_roles = [persona for persona in all_personas if persona not in supporting_roles]
-    source_refs = [_source_ref(entry["persona"], f"result.judgment.{axis_name}") for entry in entries]
+    source_refs = [_source_ref(entry["persona"], f"result.judgment.{field_name}") for entry in entries]
     return claim_model.build_claim(
         claim_id=f"{axis_name}-{claim_type}-{claim_index}",
         text=entries[0]["text"],
@@ -115,27 +116,71 @@ def _build_axis_analysis(axis_name: str, field_name: str, ordered_results: list[
     minority_alerts: list[dict[str, Any]] = []
 
     if len(groups) == 1:
-        consensus = [_build_axis_claim(axis_name=axis_name, claim_type="consensus", claim_index=1, entries=groups[0], all_personas=all_personas)]
+        consensus = [
+            _build_axis_claim(
+                axis_name=axis_name,
+                field_name=field_name,
+                claim_type="consensus",
+                claim_index=1,
+                entries=groups[0],
+                all_personas=all_personas,
+            )
+        ]
     elif top_count == 1:
         conflicts = [
-            _build_axis_claim(axis_name=axis_name, claim_type="conflict", claim_index=index, entries=group, all_personas=all_personas)
+            _build_axis_claim(
+                axis_name=axis_name,
+                field_name=field_name,
+                claim_type="conflict",
+                claim_index=index,
+                entries=group,
+                all_personas=all_personas,
+            )
             for index, group in enumerate(groups, start=1)
         ]
     elif len(top_groups) > 1:
         conflicts = [
-            _build_axis_claim(axis_name=axis_name, claim_type="conflict", claim_index=index, entries=group, all_personas=all_personas)
+            _build_axis_claim(
+                axis_name=axis_name,
+                field_name=field_name,
+                claim_type="conflict",
+                claim_index=index,
+                entries=group,
+                all_personas=all_personas,
+            )
             for index, group in enumerate(top_groups, start=1)
         ]
         minority_alerts = [
-            _build_axis_claim(axis_name=axis_name, claim_type="minority_alert", claim_index=index, entries=group, all_personas=all_personas)
+            _build_axis_claim(
+                axis_name=axis_name,
+                field_name=field_name,
+                claim_type="minority_alert",
+                claim_index=index,
+                entries=group,
+                all_personas=all_personas,
+            )
             for index, group in enumerate(lower_groups, start=1)
         ]
     else:
         consensus = [
-            _build_axis_claim(axis_name=axis_name, claim_type="consensus", claim_index=1, entries=top_groups[0], all_personas=all_personas)
+            _build_axis_claim(
+                axis_name=axis_name,
+                field_name=field_name,
+                claim_type="consensus",
+                claim_index=1,
+                entries=top_groups[0],
+                all_personas=all_personas,
+            )
         ]
         minority_alerts = [
-            _build_axis_claim(axis_name=axis_name, claim_type="minority_alert", claim_index=index, entries=group, all_personas=all_personas)
+            _build_axis_claim(
+                axis_name=axis_name,
+                field_name=field_name,
+                claim_type="minority_alert",
+                claim_index=index,
+                entries=group,
+                all_personas=all_personas,
+            )
             for index, group in enumerate(lower_groups, start=1)
         ]
 
