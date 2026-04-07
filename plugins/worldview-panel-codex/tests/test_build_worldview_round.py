@@ -513,6 +513,19 @@ class WorldviewRoundBuilderTests(unittest.TestCase):
         dispatch_job = json.loads((round_root / "dispatch_job.json").read_text(encoding="utf-8"))
         self.assertEqual(dispatch_job["batch_size"], 6)
 
+    def test_build_round_packet_text_keeps_legacy_round_sections(self) -> None:
+        with FIXTURE_PATH.open(encoding="utf-8") as handle:
+            payload = json.load(handle)
+
+        round_root = self._build_round(payload)
+        packet_text = (round_root / "packets" / "risk_manager" / "packet.txt").read_text(encoding="utf-8")
+
+        self.assertIn("[round_input]", packet_text)
+        self.assertIn("[hard_constraints]", packet_text)
+        self.assertIn("[external_materials]", packet_text)
+        self.assertNotIn("[content_task_brief]", packet_text)
+        self.assertNotIn("[role_assignment]", packet_text)
+
     def _write_round_input(self, payload: dict[str, object]) -> Path:
         tmpdir = Path(tempfile.mkdtemp())
         input_path = tmpdir / "round_input.json"

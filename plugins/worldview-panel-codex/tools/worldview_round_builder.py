@@ -368,7 +368,7 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 def _resolve_round_parent(output_root: Path | str | None) -> Path:
     if output_root is not None:
-        return Path(output_root).expanduser().resolve()
+        return Path(output_root).expanduser()
     return Path(tempfile.mkdtemp(prefix="worldview-rounds-"))
 
 
