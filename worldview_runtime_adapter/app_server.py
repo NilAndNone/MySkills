@@ -220,6 +220,19 @@ class JsonRpcAppServerClient:
             raise RuntimeError(f"app-server {method} response missing result object")
         return result
 
+    def _read_turn(self, thread_id: str, turn_id: str) -> dict[str, Any] | None:
+        thread_read = self._request("thread/read", {"threadId": thread_id, "includeTurns": True})
+        thread_payload = thread_read.get("thread")
+        if not isinstance(thread_payload, dict):
+            raise RuntimeError("thread/read response missing thread object")
+        turns = thread_payload.get("turns")
+        if not isinstance(turns, list):
+            raise RuntimeError("thread/read response missing thread.turns")
+        observed_turn = next((item for item in turns if isinstance(item, dict) and item.get("id") == turn_id), None)
+        if not isinstance(observed_turn, dict):
+            return None
+        return observed_turn
+
     def _ensure_initialized(self) -> None:
         if self._initialized:
             return
@@ -275,31 +288,30 @@ class JsonRpcAppServerClient:
         if not isinstance(turn_id, str) or not turn_id:
             raise RuntimeError("turn/start response missing turn.id")
 
-        completed = self._recv_until(
-            lambda payload: payload.get("method") == "turn/completed"
-            and payload.get("params", {}).get("threadId") == thread_id
-            and payload.get("params", {}).get("turn", {}).get("id") == turn_id
-        )
-        turn_params = completed.get("params")
-        if not isinstance(turn_params, dict):
-            raise RuntimeError("turn/completed notification missing params")
-        completed_turn = turn_params.get("turn")
-        if not isinstance(completed_turn, dict):
-            raise RuntimeError("turn/completed notification missing turn")
-        if completed_turn.get("status") != "completed":
-            error = completed_turn.get("error")
-            raise RuntimeError(f"turn did not complete successfully: {json.dumps(error, ensure_ascii=False)}")
+        observed_turn = self._read_turn(thread_id, turn_id)
+        if not isinstance(observed_turn, dict) or observed_turn.get("status") != "completed":
+            completed = self._recv_until(
+                lambda payload: payload.get("method") == "turn/completed"
+                and payload.get("params", {}).get("threadId") == thread_id
+                and payload.get("params", {}).get("turn", {}).get("id") == turn_id
+            )
+            turn_params = completed.get("params")
+            if not isinstance(turn_params, dict):
+                raise RuntimeError("turn/completed notification missing params")
+            completed_turn = turn_params.get("turn")
+            if not isinstance(completed_turn, dict):
+                raise RuntimeError("turn/completed notification missing turn")
+            if completed_turn.get("status") != "completed":
+                error = completed_turn.get("error")
+                raise RuntimeError(f"turn did not complete successfully: {json.dumps(error, ensure_ascii=False)}")
 
-        thread_read = self._request("thread/read", {"threadId": thread_id, "includeTurns": True})
-        thread_payload = thread_read.get("thread")
-        if not isinstance(thread_payload, dict):
-            raise RuntimeError("thread/read response missing thread object")
-        turns = thread_payload.get("turns")
-        if not isinstance(turns, list):
-            raise RuntimeError("thread/read response missing thread.turns")
-        observed_turn = next((item for item in turns if isinstance(item, dict) and item.get("id") == turn_id), None)
-        if not isinstance(observed_turn, dict):
-            raise RuntimeError("thread/read response missing completed turn items")
+            observed_turn = self._read_turn(thread_id, turn_id)
+            if not isinstance(observed_turn, dict):
+                raise RuntimeError("thread/read response missing completed turn items")
+
+        if observed_turn.get("status") != "completed":
+            raise RuntimeError(f"turn did not complete successfully: {json.dumps(observed_turn.get('error'), ensure_ascii=False)}")
+
         observed_items = observed_turn.get("items")
         if not isinstance(observed_items, list):
             raise RuntimeError("thread/read response missing turn items")

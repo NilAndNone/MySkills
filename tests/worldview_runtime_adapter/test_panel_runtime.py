@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from worldview_runtime_adapter import intake, round_artifacts
+from worldview_runtime_adapter import contracts
 from worldview_runtime_adapter.panel_runtime import build_panel_outcome, run_panel_for_dispatch_job
 
 
@@ -212,6 +213,8 @@ class TestPanelRuntime(unittest.TestCase):
         self.assertTrue(outcome["panel_emitted"])
         runtime_root = round_root / "runtime_adapter"
         result_root = round_root / "results" / "external_reference"
+        profile = json.loads((round_root / "identities" / "external_reference" / "profile.json").read_text(encoding="utf-8"))
+        ticket = json.loads((round_root / "tickets" / "external_reference.json").read_text(encoding="utf-8"))
         self.assertTrue((runtime_root / "run_summary.json").is_file())
         self.assertTrue((result_root / "raw_result.json").is_file())
         self.assertTrue((result_root / "attestation.json").is_file())
@@ -221,8 +224,19 @@ class TestPanelRuntime(unittest.TestCase):
         self.assertTrue((round_root / "audit_surface.json").is_file())
         self.assertTrue((runtime_root / "personas" / "external_reference.json").is_file())
         certified = json.loads((result_root / "technical_certified_result.json").read_text(encoding="utf-8"))
+        attestation = json.loads((result_root / "attestation.json").read_text(encoding="utf-8"))
         self.assertEqual(certified["schema_version"], "technical_certified_result_v1")
+        self.assertEqual(attestation["run_id"], round_root.name)
+        self.assertEqual(attestation["persona"], "external_reference")
+        self.assertEqual(attestation["profile_id"], profile["profile_id"])
+        self.assertEqual(attestation["profile_hash"], profile["profile_hash"])
+        self.assertEqual(attestation["policy_hash"], ticket["policy_hash"])
+        self.assertEqual(certified["attestation_fingerprint"], contracts.sha256_prefixed(contracts.canonical_json_bytes(attestation)))
+        self.assertEqual(certified["packet_fingerprint"], ticket["packet_fingerprint"])
         self.assertEqual(certified["technical_status"], "TECHNICAL_CERTIFIED")
+        raw_result = json.loads((result_root / "raw_result.json").read_text(encoding="utf-8"))
+        self.assertEqual(raw_result["persona"], result_root.name)
+        self.assertEqual(profile["persona"], result_root.name)
         content_brief = json.loads((round_root / "content_brief.json").read_text(encoding="utf-8"))
         self.assertEqual(content_brief["schema_version"], "content_brief_v1")
         self.assertEqual(content_brief["meta"]["execution_summary"]["run_id"], round_root.name)
