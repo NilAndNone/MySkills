@@ -50,6 +50,30 @@ The current repository state is not fully aligned with that direction:
 
 This design closes that gap by making the adapter the product path and reducing the plugin to a read-only runtime dependency.
 
+## Product Positioning
+
+### External Positioning
+
+The external product positioning is fixed as:
+
+`多视角内容工作台`
+
+The external promise is fixed as:
+
+`把复杂争议议题拆成可判断、可表达、可继续创作的高质量内容 briefing。`
+
+The product is not positioned externally as a multi-persona runner, persona chat tool, or roleplay system.
+
+### Internal Method
+
+Internally, the system still uses worldview panel as the method.
+
+This means:
+
+- internally, the method can still be described as worldview panel
+- externally, the product is sold as multi-perspective compression and content generation
+- personas and roles remain an internal means, not the user-facing value proposition
+
 ## Alignment Requirements
 
 These requirements are direct consequences of the product reframe and are non-negotiable in this design.
@@ -104,6 +128,35 @@ The adapter must freeze and carry forward:
 - product guardrails
 
 These are not passive documentation. They are part of the adapter-owned product contract and testing baseline.
+
+## First Wedge
+
+The first wedge is fixed as:
+
+`争议议题评论 briefing 生成器`
+
+The first target users are fixed as:
+
+- self-media authors
+- knowledge-oriented writers
+- research-oriented content creators
+- people who need a comment frame quickly before writing or recording
+
+The first release default output includes:
+
+- one-line judgment
+- fact / value / strategy axis consensus and disagreement
+- strongest opposing point and minority reminder
+- longform writing structure
+- video or spoken-script entry angle
+- next materials to gather
+
+The first release explicitly does not prioritize:
+
+- general chat product behavior
+- high-risk decision advice products
+- team alignment tools
+- broad support for every real-time or high-compliance topic
 
 ## Approaches Considered
 
@@ -172,6 +225,8 @@ Decision: recommended.
 - No attempt to keep `final_panel.*` as the primary product artifact.
 - No attempt to generalize beyond the initial controversy-comment briefing wedge.
 - No attempt to solve unrelated plugin historical compatibility issues in this spec.
+- No attempt to make “24 personas” the main product story.
+- No attempt to prioritize medical, legal, financial, or strong real-time political verification use cases in this wedge.
 
 ## Product Contract
 
@@ -193,7 +248,16 @@ Optional fields:
 
 The adapter normalizes these into a product-owned brief object with frozen benchmark, rubric, and guardrail metadata.
 
-Legacy `question` and `answer_goal` inputs may be accepted only as a compatibility intake shim at the adapter boundary. They must be normalized immediately into the product contract and must not remain the main semantic path.
+The normalized brief is the product entry object, not a runtime ticket.
+
+Its responsibilities are:
+
+- represent the user task in product language
+- freeze benchmark, rubric, and guardrail context
+- give the planner and composer a stable content task object
+
+Legacy `question` and `answer_goal` inputs are a repository migration concern only.
+If supported during migration, they must be normalized immediately into the product contract and must not remain the main semantic path.
 
 ## Proposed Workspace Layout
 
@@ -245,6 +309,32 @@ Responsibilities:
 Forbidden:
 
 - no fixed roster as the default product behavior
+
+### Role Planning Principles
+
+The planner follows two fixed principles from the product reframe.
+
+#### Minimum Sufficient Coverage
+
+This is the repository expression of `最小充分覆盖`.
+
+The planner must first cover the minimal set of roles needed to represent the issue well enough for the first wedge.
+
+It should not optimize for persona count.
+It should optimize for viewpoint coverage.
+
+#### Disagreement-Driven Expansion
+
+This is the repository expression of `分歧驱动扩展`.
+
+The planner may expand the role set only when:
+
+- disagreement is still unclear
+- a blind spot is obvious
+- user materials introduce unresolved tension
+- scope or timeframe requires another structural lens
+
+Expansion is driven by disagreement and coverage gaps, not by a default desire to fill a roster.
 
 ### `round_artifacts.py`
 
@@ -307,6 +397,34 @@ Audit labels stay runtime-facing, for example:
 - `quorum passed`
 - `quorum failed`
 - `certification incomplete`
+
+### Studio Default Structure
+
+Studio is organized in this order:
+
+1. Executive Judgment
+2. Tension Map
+3. Perspective Cards
+4. Creation Layer
+5. Expandable Trace
+
+Each section carries the same meaning as the product reframe:
+
+- Executive Judgment gives the quick answer, premises, largest risk, and best use
+- Tension Map shows fact, value, and strategy consensus / disagreement / minority signal
+- Perspective Cards are support material, not the main stage
+- Creation Layer gives writing and recording assets
+- Expandable Trace exposes claim-level evidence and role contribution on demand
+
+### Audit Focus
+
+Audit is responsible for:
+
+- showing what happened in the run
+- showing which roles succeeded and failed
+- showing failure types
+- showing which claims are weak
+- helping decide whether the result should be reused or rerun
 
 ### `verification.py`
 
@@ -443,15 +561,60 @@ They must not pretend to be successful Studio outputs.
 
 The adapter freezes the initial benchmark and quality rubric from the product reframe.
 
-At minimum it carries:
+### Benchmark Set
 
-- supported issue types
-- unsupported issue types
-- supported material forms
-- default freshness requirement
-- insufficient-evidence downgrade rule
-- benchmark topic set
-- quality rubric dimensions
+The initial benchmark set is constrained to representative controversy topics in these categories:
+
+- technology and platform issues
+- business model and industry judgment
+- social and cultural controversy
+- media and public-opinion controversy
+
+It is intentionally narrow rather than broad.
+
+### Quality Rubric
+
+The fixed rubric dimensions are:
+
+- Coverage
+- Compression
+- Conflict Clarity
+- Minority Signal
+- Traceability
+- Creatability
+- Usefulness
+
+### Guardrails
+
+The adapter carries these concrete product guardrails:
+
+- `支持的问题类型` / supported issue types
+- `不支持的问题类型` / unsupported issue types
+- `支持的材料形式` / supported material forms
+- `默认时效要求` / default freshness requirement
+- `证据不足时如何降级表达` / insufficient-evidence downgrade rule
+
+The initial values are fixed as:
+
+- supported issue types:
+  - technology and platform issues
+  - business model and industry judgment
+  - social and cultural controversy
+  - media and public-opinion controversy
+- unsupported issue types:
+  - medical advice
+  - legal advice
+  - financial investment advice
+  - strongly real-time sensitive political verification
+- supported material forms:
+  - article excerpts
+  - screenshot text
+  - user notes
+  - quote bundles
+- default freshness requirement:
+  - non-realtime
+- insufficient-evidence downgrade rule:
+  - explicitly downgrade the framing and preserve research gaps
 
 These values must be available in the adapter-owned content task brief and must be test-visible.
 
@@ -476,7 +639,7 @@ The review viewer changes from a persona-debug shell into a product result viewe
 Default behavior:
 
 - open Studio first
-- show executive judgment, tension map, perspective cards, creation layer, and expandable trace
+- show Executive Judgment, Tension Map, Perspective Cards, Creation Layer, and Expandable Trace
 
 Audit behavior:
 
@@ -487,6 +650,20 @@ Audit behavior:
 - allow drill-down into role evidence and raw runtime records
 
 Persona-by-persona packet inspection becomes an Audit drill-down, not the top-level page structure.
+
+## Recommended Delivery Order
+
+The repository implementation order follows the product reframe:
+
+1. freeze benchmark, rubric, and guardrails
+2. freeze product positioning and user promise
+3. freeze the product input contract
+4. implement `content_brief_v1` and claim model
+5. implement role planning and composer
+6. implement Studio and Audit surfaces
+7. only then clean up remaining internal naming and compatibility leftovers
+
+This sequence matters because the product model must constrain the implementation, not the other way around.
 
 ## Testing Strategy
 
@@ -523,3 +700,12 @@ The worldview panel product path is owned by the workspace adapter end to end.
 
 The plugin remains a read-only runtime dependency.
 It is not the home of future product semantics.
+
+## Repository Migration Decisions
+
+The following are repository migration choices, not product-level promises from the reframe document:
+
+- whether legacy `question` / `answer_goal` intake is temporarily accepted at the adapter boundary
+- whether any legacy compatibility artifacts are emitted outside the adapter-owned main path
+
+These decisions exist only to help repository migration and must not redefine the product contract.
