@@ -5,51 +5,138 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from worldview_runtime_adapter import plugin_bridge
+from worldview_runtime_adapter import intake, plugin_bridge, round_artifacts
 from worldview_runtime_adapter.panel_runtime import build_panel_outcome, run_panel_for_dispatch_job
 
 
-ROUND_INPUT_FIXTURE = plugin_bridge.plugin_root() / "tests" / "fixtures" / "context_packets" / "round_input.json"
-ALLOWED_FIXTURE = plugin_bridge.plugin_root() / "tests" / "fixtures" / "broker" / "worker_turn_items.json"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+ALLOWED_FIXTURE = (
+    REPO_ROOT
+    / "plugins"
+    / "worldview-panel-codex"
+    / "tests"
+    / "fixtures"
+    / "broker"
+    / "worker_turn_items.json"
+)
+
+
+def _success_result(persona: str, signature_line: str = "sig-a", confidence: float = 0.8) -> dict[str, object]:
+    return {
+        "schema_version": "worldview_worker_result_v1",
+        "persona": persona,
+        "judgment": {"factual": "f1", "value": "v1", "strategy": "s1"},
+        "diagnosis": ["d1"],
+        "recommended_actions": ["a1"],
+        "voice_style": "plain",
+        "blind_spot": "b1",
+        "overuse_risk": "r1",
+        "signature_line": signature_line,
+        "confidence": confidence,
+    }
 
 
 class TestPanelRuntime(unittest.TestCase):
-    def test_failed_personas_remain_visible_but_do_not_join_synthesis(self) -> None:
+    def test_partial_success_above_threshold_is_degraded(self) -> None:
         results = [
             {
-                "persona": "risk_manager",
+                "persona": "external_reference",
                 "status": "certified_success",
-                "result": {"signature_line": "sig-a", "confidence": 0.8},
+                "result": _success_result("external_reference"),
             },
             {
-                "persona": "modern_mystic",
+                "persona": "humanist_therapist",
+                "status": "certified_success",
+                "result": _success_result("humanist_therapist"),
+            },
+            {
+                "persona": "risk_manager",
+                "status": "failed_after_retries",
+                "failure_reason": "invalid_json_schema",
+                "failure_class": "protocol_schema_error",
+            },
+        ]
+
+        outcome = build_panel_outcome(
+            results,
+            minimum_success_ratio=0.67,
+            run_id="wv-round-test",
+            personas=["external_reference", "humanist_therapist", "risk_manager"],
+        )
+
+        self.assertTrue(outcome["panel_emitted"])
+        self.assertEqual(outcome["result_grade"], "degraded")
+        self.assertEqual(outcome["content_brief"]["meta"]["execution_summary"]["result_grade"], "degraded")
+
+    def test_blocked_round_omits_product_artifacts(self) -> None:
+        results = [
+            {
+                "persona": "external_reference",
+                "status": "certified_success",
+                "result": _success_result("external_reference"),
+            },
+            {
+                "persona": "humanist_therapist",
+                "status": "failed_after_retries",
+                "failure_reason": "invalid_json_schema",
+            },
+            {
+                "persona": "risk_manager",
+                "status": "failed_after_retries",
+                "failure_reason": "missing field",
+            },
+        ]
+
+        outcome = build_panel_outcome(results, minimum_success_ratio=0.67)
+
+        self.assertFalse(outcome["panel_emitted"])
+        self.assertEqual(outcome["result_grade"], "blocked")
+        self.assertNotIn("content_brief", outcome)
+        self.assertNotIn("studio_surface", outcome)
+        self.assertNotIn("audit_surface", outcome)
+        self.assertIn("failure_summary", outcome)
+
+    def test_failed_personas_remain_visible_in_content_brief(self) -> None:
+        results = [
+            {
+                "persona": "external_reference",
+                "status": "certified_success",
+                "result": _success_result("external_reference"),
+            },
+            {
+                "persona": "risk_manager",
                 "status": "failed_after_retries",
                 "failure_reason": "invalid_json_schema",
             },
         ]
 
-        outcome = build_panel_outcome(results, minimum_success_ratio=0.5)
+        outcome = build_panel_outcome(
+            results,
+            minimum_success_ratio=0.5,
+            run_id="wv-round-test",
+            personas=["external_reference", "risk_manager"],
+        )
 
         self.assertEqual(outcome["run_status"], "completed_with_failures")
         self.assertTrue(outcome["panel_emitted"])
         self.assertEqual(len(outcome["successful_personas"]), 1)
         self.assertEqual(len(outcome["failed_personas"]), 1)
-        self.assertEqual(outcome["panel"]["failed_personas"][0]["persona"], "modern_mystic")
+        self.assertEqual(outcome["content_brief"]["meta"]["execution_summary"]["failed_personas"][0]["persona"], "risk_manager")
 
     def test_panel_is_not_emitted_below_threshold(self) -> None:
         results = [
             {
-                "persona": "risk_manager",
+                "persona": "external_reference",
                 "status": "certified_success",
-                "result": {"signature_line": "sig-a", "confidence": 0.8},
+                "result": _success_result("external_reference"),
             },
             {
-                "persona": "modern_mystic",
+                "persona": "humanist_therapist",
                 "status": "failed_after_retries",
                 "failure_reason": "invalid_json_schema",
             },
             {
-                "persona": "systems_operator",
+                "persona": "risk_manager",
                 "status": "failed_after_retries",
                 "failure_reason": "missing field",
             },
@@ -59,16 +146,20 @@ class TestPanelRuntime(unittest.TestCase):
 
         self.assertEqual(outcome["run_status"], "completed_with_failures")
         self.assertFalse(outcome["panel_emitted"])
+        self.assertEqual(outcome["result_grade"], "blocked")
         self.assertIn("failure_summary", outcome)
-        self.assertEqual(outcome["failure_summary"]["failed_personas"], ["modern_mystic", "systems_operator"])
+        self.assertEqual(outcome["failure_summary"]["failed_personas"], ["humanist_therapist", "risk_manager"])
 
-    def test_run_panel_for_dispatch_job_writes_runtime_artifacts(self) -> None:
+    def test_run_panel_for_dispatch_job_writes_product_artifacts(self) -> None:
         tmpdir = Path(tempfile.mkdtemp())
-        payload = json.loads(ROUND_INPUT_FIXTURE.read_text(encoding="utf-8"))
-        payload["selected_personas"] = ["risk_manager"]
-        round_input_path = tmpdir / "round_input.json"
-        round_input_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-        round_root = plugin_bridge.build_round_from_input(round_input_path, output_root=tmpdir)
+        brief = intake.normalize_product_input(
+            {
+                "issue": "平台是否应该更严格标注 AI 生成的政治广告？",
+                "output_intent": "briefing",
+                "stance_mode": "lean_support",
+            }
+        )
+        round_root = round_artifacts.build_round(brief, output_root=tmpdir)
         dispatch_job_path = round_root / "dispatch_job.json"
 
         app_server = plugin_bridge.load_plugin_module("worldview_app_server")
@@ -82,55 +173,53 @@ class TestPanelRuntime(unittest.TestCase):
         self.assertEqual(outcome["run_status"], "completed")
         self.assertTrue(outcome["panel_emitted"])
         runtime_root = round_root / "runtime_adapter"
-        result_root = round_root / "results" / "risk_manager"
-        synthesis_root = round_root / "synthesis"
+        result_root = round_root / "results" / "external_reference"
         self.assertTrue((runtime_root / "run_summary.json").is_file())
         self.assertTrue((result_root / "raw_result.json").is_file())
         self.assertTrue((result_root / "attestation.json").is_file())
         self.assertTrue((result_root / "technical_certified_result.json").is_file())
-        self.assertTrue((synthesis_root / "synthesis_input.json").is_file())
-        self.assertTrue((synthesis_root / "synthesis_raw_result.json").is_file())
-        self.assertTrue((synthesis_root / "synthesis_attestation.json").is_file())
-        self.assertTrue((synthesis_root / "final_panel.json").is_file())
-        self.assertTrue((synthesis_root / "final_panel.md").is_file())
-        self.assertTrue((runtime_root / "personas" / "risk_manager.json").is_file())
+        self.assertTrue((round_root / "content_brief.json").is_file())
+        self.assertTrue((round_root / "studio_surface.json").is_file())
+        self.assertTrue((round_root / "audit_surface.json").is_file())
+        self.assertTrue((runtime_root / "personas" / "external_reference.json").is_file())
         certified = json.loads((result_root / "technical_certified_result.json").read_text(encoding="utf-8"))
         self.assertEqual(certified["schema_version"], "technical_certified_result_v1")
         self.assertEqual(certified["technical_status"], "TECHNICAL_CERTIFIED")
-        final_panel = json.loads((synthesis_root / "final_panel.json").read_text(encoding="utf-8"))
-        self.assertEqual(final_panel["schema_version"], "final_panel_v1")
-        self.assertEqual(final_panel["run_id"], round_root.name)
-        self.assertEqual(final_panel["personas"], ["risk_manager"])
-        self.assertEqual(set(final_panel["technical_results"]), {"risk_manager"})
+        content_brief = json.loads((round_root / "content_brief.json").read_text(encoding="utf-8"))
+        self.assertEqual(content_brief["schema_version"], "content_brief_v1")
+        self.assertEqual(content_brief["meta"]["execution_summary"]["run_id"], round_root.name)
+        self.assertEqual(
+            [card["persona"] for card in content_brief["meta"]["execution_summary"]["perspective_cards"]],
+            ["external_reference", "humanist_therapist", "risk_manager"],
+        )
 
-    def test_degraded_panel_keeps_final_panel_shape_and_failed_personas_metadata(self) -> None:
+    def test_degraded_panel_keeps_failed_personas_metadata_in_content_brief(self) -> None:
         results = [
             {
-                "persona": "risk_manager",
+                "persona": "external_reference",
                 "status": "certified_success",
-                "result": {
-                    "signature_line": "sig-a",
-                    "confidence": 0.8,
-                    "schema_version": "worldview_worker_result_v1",
-                    "persona": "risk_manager",
-                },
+                "result": _success_result("external_reference"),
             },
             {
-                "persona": "modern_mystic",
+                "persona": "risk_manager",
                 "status": "failed_after_retries",
                 "failure_reason": "invalid_json_schema",
                 "failure_class": "protocol_schema_error",
             },
         ]
 
-        outcome = build_panel_outcome(results, minimum_success_ratio=0.5)
+        outcome = build_panel_outcome(
+            results,
+            minimum_success_ratio=0.5,
+            run_id="wv-round-test",
+            personas=["external_reference", "risk_manager"],
+        )
 
         self.assertTrue(outcome["panel_emitted"])
-        final_panel = outcome["panel"]
-        self.assertEqual(final_panel["schema_version"], "final_panel_v1")
-        self.assertEqual(final_panel["personas"], ["risk_manager", "modern_mystic"])
-        self.assertEqual(set(final_panel["technical_results"]), {"risk_manager"})
-        self.assertEqual(final_panel["failed_personas"][0]["persona"], "modern_mystic")
+        content_brief = outcome["content_brief"]
+        self.assertEqual(content_brief["schema_version"], "content_brief_v1")
+        self.assertEqual(content_brief["meta"]["execution_summary"]["result_grade"], "degraded")
+        self.assertEqual(content_brief["meta"]["execution_summary"]["failed_personas"][0]["persona"], "risk_manager")
 
 
 if __name__ == "__main__":

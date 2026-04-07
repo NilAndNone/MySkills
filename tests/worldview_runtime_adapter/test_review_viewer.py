@@ -8,60 +8,61 @@ from pathlib import Path
 from worldview_runtime_adapter import review_viewer
 
 
-PACKET_TEXT = """[round_input]
-question: 这是测试问题
-answer_goal: evaluate
-domain: public_discourse
-persona: risk_manager
-profile_id: risk_manager_worker_v3
-
-[hard_constraints]
-- 只用中文
-- 明确区分事实和判断
-
-[external_materials]
-### 1. 事实
-source: test
-这里是外部材料
-
-[persona_material]
-### 风险经理派 / risk_manager
-这里是人格材料
-"""
-
-
-RAW_RESULT = {
-    "schema_version": "worldview_worker_result_v1",
-    "persona": "risk_manager",
-    "judgment": {
-        "factual": "事实段落",
-        "value": "价值判断",
-        "strategy": "策略判断",
-    },
-    "diagnosis": ["诊断 1", "诊断 2"],
-    "recommended_actions": ["动作 1", "动作 2"],
-    "signature_line": "签名",
-    "confidence": 0.82,
-}
-
-
 class TestReviewViewer(unittest.TestCase):
-    def test_build_round_payload_collects_persona_files(self) -> None:
+    def test_build_round_payload_reads_blocked_run_without_product_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
-            round_root = self._create_round_fixture(Path(tmpdir))
+            round_root = Path(tmpdir) / "round"
+            round_root.mkdir(parents=True)
+            (round_root / "round_input.json").write_text(
+                json.dumps({"issue": "这是 blocked 测试问题"}, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            (round_root / "runtime_adapter").mkdir(parents=True)
+            (round_root / "runtime_adapter" / "run_summary.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "wv-round-blocked",
+                        "run_status": "completed_with_failures",
+                        "panel_emitted": False,
+                        "result_grade": "blocked",
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (round_root / "runtime_adapter" / "failure_summary.json").write_text(
+                json.dumps(
+                    {
+                        "failed_personas": ["risk_manager"],
+                        "message": "successful roles did not reach the minimum ratio required for content brief generation",
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            payload = review_viewer.build_round_payload(round_root)
+
+            self.assertEqual(payload["question"], "这是 blocked 测试问题")
+            self.assertEqual(payload["default_surface"], "audit")
+            self.assertIsNone(payload["studio"])
+            self.assertEqual(payload["audit"]["status"]["result_grade"], "blocked")
+
+    def test_build_round_payload_collects_product_surfaces(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            round_root = self._create_round_fixture(Path(tmpdir) / "round")
 
             payload = review_viewer.build_round_payload(round_root)
 
             self.assertEqual(payload["question"], "这是测试问题")
-            self.assertEqual(payload["persona_count"], 1)
-            persona = payload["personas"][0]
-            self.assertEqual(persona["persona"], "risk_manager")
-            self.assertEqual(persona["profile_id"], "risk_manager_worker_v3")
-            self.assertEqual(persona["hard_constraints"], ["只用中文", "明确区分事实和判断"])
-            self.assertEqual(persona["raw_result"]["judgment"]["factual"], "事实段落")
-            self.assertIn("ticket", persona["evidence"])
-            self.assertIn("attestation", persona["evidence"])
-            self.assertIn("certified", persona["evidence"])
+            self.assertEqual(payload["default_surface"], "studio")
+            self.assertEqual(payload["studio"]["status"]["label"], "可用")
+            self.assertEqual(payload["studio"]["executive_judgment"]["one_line_judgment"], "签名")
+            self.assertEqual(payload["audit"]["execution"]["successful_personas"], ["external_reference"])
 
     def test_write_static_viewer_outputs_html_and_data(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -78,70 +79,89 @@ class TestReviewViewer(unittest.TestCase):
 
             html = html_path.read_text(encoding="utf-8")
             self.assertIn("Worldview Round Viewer", html)
-            self.assertIn("question-body", html)
-            self.assertIn("persona-list", html)
-            self.assertIn("evidence-panel", html)
+            self.assertIn("studio-summary", html)
+            self.assertIn("audit-panel", html)
 
             data = json.loads(data_path.read_text(encoding="utf-8"))
             self.assertEqual(data["question"], "这是测试问题")
-            self.assertEqual(data["personas"][0]["persona"], "risk_manager")
+            self.assertEqual(data["studio"]["status"]["label"], "可用")
+
+    def test_build_round_payload_keeps_failed_personas_visible(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            round_root = self._create_degraded_round_fixture(Path(tmpdir) / "round")
+
+            payload = review_viewer.build_round_payload(round_root)
+
+            self.assertEqual(payload["run_status"], "completed_with_failures")
+            self.assertTrue(payload["panel_emitted"])
+            self.assertEqual(payload["audit"]["execution"]["failed_personas"][0]["persona"], "risk_manager")
+            self.assertEqual(payload["audit"]["status"]["label"], "adaptive degraded")
+
+    def test_build_round_payload_reads_blocked_run_from_runtime_adapter_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            round_root = self._create_blocked_round_fixture(Path(tmpdir) / "round")
+
+            payload = review_viewer.build_round_payload(round_root)
+
+            self.assertEqual(payload["question"], "这是 blocked 测试问题")
+            self.assertEqual(payload["run_status"], "completed_with_failures")
+            self.assertFalse(payload["panel_emitted"])
+            self.assertEqual(payload["failure_summary"]["failed_personas"], ["risk_manager"])
+            self.assertEqual(payload["audit"]["execution"]["failed_personas"][0]["persona"], "risk_manager")
+            self.assertEqual(payload["audit"]["status"]["label"], "quorum failed")
 
     def _create_round_fixture(self, round_root: Path) -> Path:
-        (round_root / "packets" / "risk_manager").mkdir(parents=True)
-        (round_root / "tickets").mkdir(parents=True)
-        (round_root / "results" / "risk_manager").mkdir(parents=True)
-        (round_root / "synthesis").mkdir(parents=True)
-
-        (round_root / "packets" / "risk_manager" / "packet.txt").write_text(
-            PACKET_TEXT,
-            encoding="utf-8",
-        )
-        (round_root / "tickets" / "risk_manager.json").write_text(
+        round_root.mkdir(parents=True)
+        (round_root / "content_brief.json").write_text(
             json.dumps(
                 {
-                    "persona": "risk_manager",
-                    "profile_id": "risk_manager_worker_v3",
-                    "packet_fingerprint": "sha256:test-packet",
-                    "packet_length": len(PACKET_TEXT),
-                },
-                ensure_ascii=False,
-                indent=2,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-        (round_root / "results" / "risk_manager" / "raw_result.json").write_text(
-            json.dumps(RAW_RESULT, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
-        (round_root / "results" / "risk_manager" / "attestation.json").write_text(
-            json.dumps({"packet_fingerprint": "sha256:test-packet", "technical_status": "TECHNICAL_CERTIFIED"}, ensure_ascii=False, indent=2)
-            + "\n",
-            encoding="utf-8",
-        )
-        (round_root / "results" / "risk_manager" / "technical_certified_result.json").write_text(
-            json.dumps(
-                {
-                    "persona": "risk_manager",
-                    "technical_status": "TECHNICAL_CERTIFIED",
-                    "result": RAW_RESULT,
-                },
-                ensure_ascii=False,
-                indent=2,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-        (round_root / "synthesis" / "final_panel.json").write_text(
-            json.dumps(
-                {
-                    "schema_version": "final_panel_v1",
-                    "run_id": "wv-round-test",
-                    "personas": ["risk_manager"],
-                    "technical_results": {
-                        "risk_manager": {
-                            "technical_status": "TECHNICAL_CERTIFIED",
-                            "result": RAW_RESULT,
+                    "schema_version": "content_brief_v1",
+                    "issue": {
+                        "title": "这是测试问题",
+                        "question": "这是测试问题",
+                        "scope": "",
+                        "timeframe": "",
+                    },
+                    "summary": {
+                        "one_line_judgment": "签名",
+                        "premises": ["事实段落"],
+                        "best_use": "先做 briefing",
+                        "largest_risk": "r",
+                    },
+                    "analysis": {
+                        "fact_axis": {"consensus": [], "conflicts": [], "minority_alerts": []},
+                        "value_axis": {"consensus": [], "conflicts": [], "minority_alerts": []},
+                        "strategy_axis": {"consensus": [], "conflicts": [], "minority_alerts": []},
+                    },
+                    "recommendations": {
+                        "recommended_angle": "签名",
+                        "writing_moves": ["动作 1"],
+                        "research_gaps": ["补材料"],
+                    },
+                    "writing_assets": {
+                        "article_outline": ["一、开场"],
+                        "video_outline": ["先说判断"],
+                        "thread_outline": ["1/ 先抛问题"],
+                    },
+                    "claims": [],
+                    "meta": {
+                        "execution_summary": {
+                            "run_id": "wv-round-test",
+                            "run_status": "completed",
+                            "execution_policy": "adaptive",
+                            "result_grade": "usable",
+                            "successful_personas": ["external_reference"],
+                            "failed_personas": [],
+                            "perspective_cards": [
+                                {
+                                    "persona": "external_reference",
+                                    "role_id": "fact_extractor",
+                                    "signature_line": "签名",
+                                    "strongest_insight": "诊断 1",
+                                    "largest_blind_spot": "b",
+                                    "fit_condition": "动作 1",
+                                }
+                            ],
                         }
                     },
                 },
@@ -151,7 +171,244 @@ class TestReviewViewer(unittest.TestCase):
             + "\n",
             encoding="utf-8",
         )
+        (round_root / "studio_surface.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": "studio_surface_v1",
+                    "status": {"label": "可用", "result_grade": "usable"},
+                    "executive_judgment": {
+                        "one_line_judgment": "签名",
+                        "premises": ["事实段落"],
+                        "best_use": "先做 briefing",
+                        "largest_risk": "r",
+                    },
+                    "tension_map": {
+                        "fact_axis": {"consensus": [], "conflicts": [], "minority_alerts": []},
+                        "value_axis": {"consensus": [], "conflicts": [], "minority_alerts": []},
+                        "strategy_axis": {"consensus": [], "conflicts": [], "minority_alerts": []},
+                    },
+                    "perspective_cards": [
+                        {
+                            "persona": "external_reference",
+                            "signature_line": "签名",
+                            "strongest_insight": "诊断 1",
+                            "largest_blind_spot": "b",
+                            "fit_condition": "动作 1",
+                        }
+                    ],
+                    "creation_layer": {
+                        "recommended_angle": "签名",
+                        "article_outline": ["一、开场"],
+                        "video_outline": ["先说判断"],
+                        "thread_outline": ["1/ 先抛问题"],
+                        "research_gaps": ["补材料"],
+                    },
+                    "expandable_trace": {"claims": [], "materials": []},
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        (round_root / "audit_surface.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": "audit_surface_v1",
+                    "status": {"label": "adaptive usable", "result_grade": "usable"},
+                    "execution": {
+                        "run_status": "completed",
+                        "execution_policy": "adaptive",
+                        "successful_personas": ["external_reference"],
+                        "failed_personas": [],
+                    },
+                    "claims_with_weak_evidence": [],
+                    "round_root": str(round_root),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return round_root
 
+    def _create_degraded_round_fixture(self, round_root: Path) -> Path:
+        self._create_round_fixture(round_root)
+        payload = json.loads((round_root / "content_brief.json").read_text(encoding="utf-8"))
+        payload["meta"]["execution_summary"]["run_status"] = "completed_with_failures"
+        payload["meta"]["execution_summary"]["result_grade"] = "degraded"
+        payload["meta"]["execution_summary"]["failed_personas"] = [
+            {
+                "persona": "risk_manager",
+                "failure_reason": "invalid_json_schema",
+                "failure_class": "protocol_schema_error",
+            }
+        ]
+        (round_root / "content_brief.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+        studio = json.loads((round_root / "studio_surface.json").read_text(encoding="utf-8"))
+        studio["status"] = {"label": "可用但降级", "result_grade": "degraded"}
+        (round_root / "studio_surface.json").write_text(json.dumps(studio, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+        audit = json.loads((round_root / "audit_surface.json").read_text(encoding="utf-8"))
+        audit["status"] = {"label": "adaptive degraded", "result_grade": "degraded"}
+        audit["execution"]["run_status"] = "completed_with_failures"
+        audit["execution"]["failed_personas"] = [
+            {
+                "persona": "risk_manager",
+                "failure_reason": "invalid_json_schema",
+                "failure_class": "protocol_schema_error",
+            }
+        ]
+        (round_root / "audit_surface.json").write_text(json.dumps(audit, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return round_root
+
+    def _create_blocked_round_fixture(self, round_root: Path) -> Path:
+        round_root.mkdir(parents=True)
+        (round_root / "runtime_adapter").mkdir(parents=True)
+        (round_root / "runtime_adapter" / "run_summary.json").write_text(
+            json.dumps(
+                {
+                    "run_id": "wv-round-blocked",
+                    "round_root": str(round_root),
+                    "run_status": "completed_with_failures",
+                    "panel_emitted": False,
+                    "persona_total": 1,
+                    "successful_persona_count": 0,
+                    "failed_persona_count": 1,
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        (round_root / "runtime_adapter" / "failure_summary.json").write_text(
+            json.dumps(
+                {
+                    "success_ratio": 0.0,
+                    "minimum_success_ratio": 0.67,
+                    "successful_persona_count": 0,
+                    "failed_personas": ["risk_manager"],
+                    "message": "successful roles did not reach the minimum ratio required for content brief generation",
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        (round_root / "content_brief.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": "content_brief_v1",
+                    "issue": {
+                        "title": "这是 blocked 测试问题",
+                        "question": "这是 blocked 测试问题",
+                        "scope": "",
+                        "timeframe": "",
+                    },
+                    "summary": {
+                        "one_line_judgment": "",
+                        "premises": [],
+                        "best_use": "",
+                        "largest_risk": "结果不足，不建议直接使用。",
+                    },
+                    "analysis": {
+                        "fact_axis": {"consensus": [], "conflicts": [], "minority_alerts": []},
+                        "value_axis": {"consensus": [], "conflicts": [], "minority_alerts": []},
+                        "strategy_axis": {"consensus": [], "conflicts": [], "minority_alerts": []},
+                    },
+                    "recommendations": {
+                        "recommended_angle": "",
+                        "writing_moves": [],
+                        "research_gaps": ["先补关键材料"],
+                    },
+                    "writing_assets": {"article_outline": [], "video_outline": [], "thread_outline": []},
+                    "claims": [],
+                    "meta": {
+                        "execution_summary": {
+                            "run_id": "wv-round-blocked",
+                            "run_status": "completed_with_failures",
+                            "execution_policy": "adaptive",
+                            "result_grade": "blocked",
+                            "successful_personas": [],
+                            "failed_personas": [
+                                {
+                                    "persona": "risk_manager",
+                                    "failure_reason": "invalid_json_schema",
+                                    "failure_class": "protocol_schema_error",
+                                }
+                            ],
+                            "perspective_cards": [],
+                        }
+                    },
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        (round_root / "studio_surface.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": "studio_surface_v1",
+                    "status": {"label": "本轮不建议使用", "result_grade": "blocked"},
+                    "executive_judgment": {
+                        "one_line_judgment": "",
+                        "premises": [],
+                        "best_use": "",
+                        "largest_risk": "结果不足，不建议直接使用。",
+                    },
+                    "tension_map": {
+                        "fact_axis": {"consensus": [], "conflicts": [], "minority_alerts": []},
+                        "value_axis": {"consensus": [], "conflicts": [], "minority_alerts": []},
+                        "strategy_axis": {"consensus": [], "conflicts": [], "minority_alerts": []},
+                    },
+                    "perspective_cards": [],
+                    "creation_layer": {
+                        "recommended_angle": "",
+                        "article_outline": [],
+                        "video_outline": [],
+                        "thread_outline": [],
+                        "research_gaps": ["先补关键材料"],
+                    },
+                    "expandable_trace": {"claims": [], "materials": []},
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        (round_root / "audit_surface.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": "audit_surface_v1",
+                    "status": {"label": "quorum failed", "result_grade": "blocked"},
+                    "execution": {
+                        "run_status": "completed_with_failures",
+                        "execution_policy": "adaptive",
+                        "successful_personas": [],
+                        "failed_personas": [
+                            {
+                                "persona": "risk_manager",
+                                "failure_reason": "invalid_json_schema",
+                                "failure_class": "protocol_schema_error",
+                            }
+                        ],
+                    },
+                    "claims_with_weak_evidence": [],
+                    "round_root": str(round_root),
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
         return round_root
 
 

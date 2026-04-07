@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
-from worldview_runtime_adapter import plugin_bridge
+from worldview_runtime_adapter import composer, intake, plugin_bridge, role_planner, surfaces
 from worldview_runtime_adapter.failure_summary import build_failure_summary
 from worldview_runtime_adapter.persona_runtime import run_persona
 
@@ -44,24 +44,95 @@ def _build_minimal_technical_result(item: dict[str, Any], *, run_id: str) -> dic
     }
 
 
-def _build_panel(
-    *,
-    run_id: str,
-    personas: list[str],
-    technical_results: dict[str, dict[str, Any]],
-    failed: list[dict[str, Any]],
-    run_status: str,
-    success_ratio: float,
-) -> dict[str, Any]:
+def _default_brief() -> dict[str, Any]:
     return {
-        "schema_version": "final_panel_v1",
-        "run_id": run_id,
-        "personas": personas,
-        "technical_results": technical_results,
-        "failed_personas": _build_failed_personas(failed),
-        "run_status": run_status,
-        "success_ratio": success_ratio,
+        "issue": "",
+        "output_intent": "briefing",
+        "stance_mode": "neutral_compare",
+        "audience": "",
+        "scope": "",
+        "timeframe": "",
+        "constraints": [],
+        "materials": [],
+        "meta": {
+            "benchmark_topics": list(intake.BENCHMARK_TOPICS),
+            "quality_rubric": list(intake.QUALITY_RUBRIC),
+            "guardrails": dict(intake.PRODUCT_GUARDRAILS),
+        },
     }
+
+
+def _brief_from_round_input(round_input: Mapping[str, Any] | None) -> dict[str, Any]:
+    if not round_input:
+        return _default_brief()
+    content_task_brief = round_input.get("content_task_brief")
+    if isinstance(content_task_brief, Mapping):
+        return {
+            "issue": str(content_task_brief.get("issue", round_input.get("issue", ""))),
+            "output_intent": str(content_task_brief.get("output_intent", round_input.get("output_intent", "briefing"))),
+            "stance_mode": str(content_task_brief.get("stance_mode", round_input.get("stance_mode", "neutral_compare"))),
+            "audience": str(content_task_brief.get("audience", round_input.get("audience", ""))),
+            "scope": str(content_task_brief.get("scope", round_input.get("scope", ""))),
+            "timeframe": str(content_task_brief.get("timeframe", round_input.get("timeframe", ""))),
+            "constraints": list(content_task_brief.get("constraints", round_input.get("constraints", []))),
+            "materials": list(content_task_brief.get("materials", round_input.get("materials", []))),
+            "meta": {
+                "benchmark_topics": list(content_task_brief.get("benchmark_topics", intake.BENCHMARK_TOPICS)),
+                "quality_rubric": list(content_task_brief.get("quality_rubric", intake.QUALITY_RUBRIC)),
+                "guardrails": dict(content_task_brief.get("guardrails", intake.PRODUCT_GUARDRAILS)),
+            },
+        }
+    return {
+        "issue": str(round_input.get("issue", "")),
+        "output_intent": str(round_input.get("output_intent", "briefing")),
+        "stance_mode": str(round_input.get("stance_mode", "neutral_compare")),
+        "audience": str(round_input.get("audience", "")),
+        "scope": str(round_input.get("scope", "")),
+        "timeframe": str(round_input.get("timeframe", "")),
+        "constraints": list(round_input.get("constraints", [])),
+        "materials": list(round_input.get("materials", [])),
+        "meta": {
+            "benchmark_topics": list(intake.BENCHMARK_TOPICS),
+            "quality_rubric": list(intake.QUALITY_RUBRIC),
+            "guardrails": dict(intake.PRODUCT_GUARDRAILS),
+        },
+    }
+
+
+def _derive_role_plan(personas: list[str]) -> list[dict[str, str]]:
+    role_index = {entry["persona"]: entry for entry in role_planner.ROLE_LIBRARY}
+    return [
+        dict(
+            role_index.get(
+                persona,
+                {
+                    "role_id": persona,
+                    "role_name": persona.replace("_", " ").title(),
+                    "persona": persona,
+                    "reason": "",
+                },
+            )
+        )
+        for persona in personas
+    ]
+
+
+def _execution_policy(minimum_success_ratio: float) -> str:
+    return "strict" if minimum_success_ratio >= 1.0 else "adaptive"
+
+
+def _result_grade(
+    *,
+    success_ratio: float,
+    minimum_success_ratio: float,
+    successful_count: int,
+    failed_count: int,
+) -> str:
+    if successful_count == 0 or round(success_ratio, 2) < minimum_success_ratio:
+        return "blocked"
+    if failed_count > 0:
+        return "degraded"
+    return "usable"
 
 
 def build_panel_outcome(
@@ -71,6 +142,9 @@ def build_panel_outcome(
     run_id: str = "",
     personas: list[str] | None = None,
     technical_results: dict[str, dict[str, Any]] | None = None,
+    round_input: Mapping[str, Any] | None = None,
+    role_plan: list[dict[str, str]] | None = None,
+    round_root: str = "",
 ) -> dict[str, Any]:
     successful = [item for item in results if item.get("status") == "certified_success"]
     failed = [item for item in results if item.get("status") != "certified_success"]
@@ -89,33 +163,57 @@ def build_panel_outcome(
         for item in successful:
             effective_technical_results[item["persona"]] = _build_minimal_technical_result(item, run_id=run_id)
 
-    if success_ratio < minimum_success_ratio:
-        return {
-            "run_status": run_status,
-            "panel_emitted": False,
-            "successful_personas": successful,
-            "failed_personas": failed,
-            "failure_summary": build_failure_summary(
-                results,
-                success_ratio=success_ratio,
-                minimum_success_ratio=minimum_success_ratio,
-            ),
-        }
+    execution_policy = _execution_policy(minimum_success_ratio)
+    result_grade = _result_grade(
+        success_ratio=success_ratio,
+        minimum_success_ratio=minimum_success_ratio,
+        successful_count=len(successful),
+        failed_count=len(failed),
+    )
+    brief = _brief_from_round_input(round_input)
+    effective_role_plan = list(role_plan or _derive_role_plan(selected_personas))
+    failed_personas = _build_failed_personas(failed)
 
-    return {
+    outcome = {
         "run_status": run_status,
-        "panel_emitted": True,
+        "panel_emitted": result_grade != "blocked",
+        "result_grade": result_grade,
         "successful_personas": successful,
         "failed_personas": failed,
-        "panel": _build_panel(
-            run_id=run_id,
-            personas=selected_personas,
-            technical_results=effective_technical_results,
-            failed=failed,
-            run_status=run_status,
-            success_ratio=success_ratio,
-        ),
     }
+    if result_grade == "blocked":
+        outcome["failure_summary"] = build_failure_summary(
+            results,
+            success_ratio=success_ratio,
+            minimum_success_ratio=minimum_success_ratio,
+        )
+        return outcome
+
+    content_brief = composer.build_content_brief(
+        brief,
+        effective_role_plan,
+        effective_technical_results,
+        execution_policy=execution_policy,
+        result_grade=result_grade,
+        run_status=run_status,
+        failed_personas=failed_personas,
+        run_id=run_id,
+    )
+    studio_surface = surfaces.build_studio_surface(content_brief)
+    audit_surface = surfaces.build_audit_surface(
+        content_brief,
+        successful_personas=[item["persona"] for item in successful],
+        failed_personas=failed_personas,
+        round_root=round_root,
+    )
+    outcome.update(
+        {
+            "content_brief": content_brief,
+            "studio_surface": studio_surface,
+            "audit_surface": audit_surface,
+        }
+    )
+    return outcome
 
 
 def _build_attestation(
@@ -200,91 +298,12 @@ def _write_success_artifacts(
     return technical_certified_result
 
 
-def _build_synthesis_input(panel: dict[str, Any]) -> dict[str, Any]:
-    payload = {
-        "schema_version": "synthesis_input_v1",
-        "run_id": panel["run_id"],
-        "personas": panel["personas"],
-        "technical_results": panel["technical_results"],
-    }
-    if panel["failed_personas"]:
-        payload["failed_personas"] = panel["failed_personas"]
-    return payload
-
-
-def _build_synthesis_raw_result(panel: dict[str, Any]) -> dict[str, Any]:
-    panel_summary = []
-    for persona in panel["personas"]:
-        technical_result = panel["technical_results"].get(persona)
-        if technical_result is None:
-            continue
-        result = technical_result["result"]
-        panel_summary.append(
-            {
-                "persona": persona,
-                "signature_line": result.get("signature_line", ""),
-                "confidence": result.get("confidence", 0),
-            }
-        )
-
-    payload = {
-        "schema_version": "synthesis_raw_result_v1",
-        "run_id": panel["run_id"],
-        "personas": panel["personas"],
-        "panel_summary": panel_summary,
-    }
-    if panel["failed_personas"]:
-        payload["failed_personas"] = panel["failed_personas"]
-    return payload
-
-
-def _build_synthesis_attestation(panel: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "schema_version": "synthesis_attestation_v1",
-        "run_id": panel["run_id"],
-        "technical_gate_passed": True,
-        "input_personas": panel["personas"],
-        "input_count": len(panel["personas"]),
-        "successful_persona_count": len(panel["technical_results"]),
-        "failed_persona_count": len(panel["failed_personas"]),
-        "run_status": panel["run_status"],
-        "success_ratio": panel["success_ratio"],
-    }
-
-
-def _build_final_panel_markdown(panel: dict[str, Any]) -> str:
-    lines = ["# Worldview Panel", ""]
-    for persona in panel["personas"]:
-        technical_result = panel["technical_results"].get(persona)
-        if technical_result is None:
-            continue
-        result = technical_result["result"]
-        lines.extend(
-            [
-                f"## {persona}",
-                result.get("signature_line", ""),
-                f"Confidence: {result.get('confidence', 0)}",
-                "",
-            ]
-        )
-
-    if panel["failed_personas"]:
-        lines.extend(["## Failed Personas", ""])
-        for item in panel["failed_personas"]:
-            lines.append(f"- {item['persona']}: {item.get('failure_reason', '')}")
-        lines.append("")
-
-    return "\n".join(lines).rstrip() + "\n"
-
-
-def _write_synthesis_artifacts(round_root: Path, panel: dict[str, Any]) -> None:
-    synthesis_root = round_root / "synthesis"
-    synthesis_root.mkdir(parents=True, exist_ok=True)
-    plugin_bridge.write_json(synthesis_root / "synthesis_input.json", _build_synthesis_input(panel))
-    plugin_bridge.write_json(synthesis_root / "synthesis_raw_result.json", _build_synthesis_raw_result(panel))
-    plugin_bridge.write_json(synthesis_root / "synthesis_attestation.json", _build_synthesis_attestation(panel))
-    plugin_bridge.write_json(synthesis_root / "final_panel.json", panel)
-    (synthesis_root / "final_panel.md").write_text(_build_final_panel_markdown(panel), encoding="utf-8")
+def _write_product_artifacts(round_root: Path, outcome: Mapping[str, Any]) -> None:
+    if "content_brief" not in outcome:
+        return
+    plugin_bridge.write_json(round_root / "content_brief.json", dict(outcome["content_brief"]))
+    plugin_bridge.write_json(round_root / "studio_surface.json", dict(outcome["studio_surface"]))
+    plugin_bridge.write_json(round_root / "audit_surface.json", dict(outcome["audit_surface"]))
 
 
 def run_panel_for_dispatch_job(
@@ -297,6 +316,8 @@ def run_panel_for_dispatch_job(
     dispatch_job = plugin_bridge.load_dispatch_job(dispatch_job_path)
     round_root = Path(dispatch_job["round_root"]).resolve()
     run_id = dispatch_job["run_id"]
+    round_input = plugin_bridge.load_json(round_root / "round_input.json")
+    role_plan = list(round_input.get("role_plan", _derive_role_plan(list(dispatch_job["selected_personas"]))))
     persona_results: list[dict[str, Any]] = []
     certified_results: dict[str, dict[str, Any]] = {}
 
@@ -333,8 +354,11 @@ def run_panel_for_dispatch_job(
         persona_results,
         minimum_success_ratio=minimum_success_ratio,
         run_id=run_id,
-        personas=dispatch_job["selected_personas"],
+        personas=list(dispatch_job["selected_personas"]),
         technical_results=certified_results,
+        round_input=round_input,
+        role_plan=role_plan,
+        round_root=str(round_root),
     )
     outcome["run_id"] = run_id
     outcome["round_root"] = str(round_root)
@@ -352,11 +376,11 @@ def run_panel_for_dispatch_job(
             "persona_total": outcome["persona_total"],
             "successful_persona_count": outcome["successful_persona_count"],
             "failed_persona_count": outcome["failed_persona_count"],
+            "result_grade": outcome["result_grade"],
         },
     )
-    if outcome["panel_emitted"]:
-        _write_synthesis_artifacts(round_root, outcome["panel"])
-    else:
+    _write_product_artifacts(round_root, outcome)
+    if not outcome["panel_emitted"]:
         plugin_bridge.write_json(round_root / "runtime_adapter" / "failure_summary.json", outcome["failure_summary"])
 
     return outcome
