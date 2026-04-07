@@ -35,7 +35,7 @@ def _validate_claim_trace_refs(root: Path, content_brief: dict[str, Any], errors
             try:
                 target_path.relative_to(root)
             except ValueError:
-                errors.append(f"claim trace target escapes round root: {target}")
+                errors.append(f"missing claim trace target: {target}")
                 continue
             if not target_path.is_file():
                 errors.append(f"missing claim trace target: {target}")

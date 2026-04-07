@@ -63,7 +63,7 @@ class TestVerifier(unittest.TestCase):
 
             self.assertFalse(verdict["ok"])
             self.assertIn(
-                "claim trace target escapes round root: ../escape.json",
+                "missing claim trace target: ../escape.json",
                 verdict["errors"],
             )
 
