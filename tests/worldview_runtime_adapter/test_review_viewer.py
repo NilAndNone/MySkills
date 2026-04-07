@@ -108,6 +108,101 @@ class TestReviewViewer(unittest.TestCase):
             self.assertEqual(payload["audit"]["status"]["result_grade"], "blocked")
             self.assertEqual(payload["audit"]["execution"]["failed_personas"][0]["persona"], "risk_manager")
 
+    def test_build_round_payload_ignores_stale_product_surfaces_for_old_format_blocked_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            round_root = Path(tmpdir) / "round"
+            round_root.mkdir(parents=True)
+            (round_root / "round_input.json").write_text(
+                json.dumps({"issue": "旧格式 blocked 测试"}, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            (round_root / "runtime_adapter").mkdir(parents=True)
+            (round_root / "runtime_adapter" / "run_summary.json").write_text(
+                json.dumps(
+                    {
+                        "run_id": "wv-round-old-blocked",
+                        "run_status": "completed_with_failures",
+                        "panel_emitted": False,
+                        "execution_policy": "adaptive",
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (round_root / "runtime_adapter" / "failure_summary.json").write_text(
+                json.dumps(
+                    {
+                        "failed_personas": [{"persona": "risk_manager", "failure_reason": "schema", "failure_class": "protocol_schema_error"}],
+                        "message": "successful roles did not reach the minimum ratio required for content brief generation",
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (round_root / "content_brief.json").write_text(
+                json.dumps(
+                    {
+                        "issue": {"title": "stale title", "question": "stale question"},
+                        "meta": {
+                            "execution_summary": {
+                                "run_id": "stale-run",
+                                "run_status": "completed",
+                                "execution_policy": "adaptive",
+                                "result_grade": "usable",
+                            }
+                        },
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (round_root / "studio_surface.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": "studio_surface_v1",
+                        "status": {"label": "可用", "result_grade": "usable"},
+                        "executive_judgment": {"one_line_judgment": "stale"},
+                        "perspective_cards": [{"persona": "external_reference", "signature_line": "stale"}],
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (round_root / "audit_surface.json").write_text(
+                json.dumps(
+                    {
+                        "schema_version": "audit_surface_v1",
+                        "status": {"label": "adaptive usable", "result_grade": "usable"},
+                        "execution": {
+                            "run_status": "completed",
+                            "execution_policy": "adaptive",
+                            "successful_personas": ["external_reference"],
+                            "failed_personas": [],
+                        },
+                        "round_root": str(round_root),
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            payload = review_viewer.build_round_payload(round_root)
+
+            self.assertEqual(payload["default_surface"], "audit")
+            self.assertIsNone(payload["studio"])
+            self.assertEqual(payload["audit"]["status"]["label"], "quorum failed")
+            self.assertEqual(payload["audit"]["execution"]["failed_personas"][0]["persona"], "risk_manager")
+
     def test_build_round_payload_reads_strict_blocked_fallback_shape(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             round_root = Path(tmpdir) / "round"
@@ -168,7 +263,6 @@ class TestReviewViewer(unittest.TestCase):
                         "run_id": "wv-round-blocked",
                         "run_status": "completed_with_failures",
                         "panel_emitted": False,
-                        "result_grade": "blocked",
                     },
                     ensure_ascii=False,
                     indent=2,
@@ -413,6 +507,10 @@ class TestReviewViewer(unittest.TestCase):
 
     def _create_blocked_round_fixture(self, round_root: Path) -> Path:
         round_root.mkdir(parents=True)
+        (round_root / "round_input.json").write_text(
+            json.dumps({"issue": "这是 blocked 测试问题"}, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
         (round_root / "runtime_adapter").mkdir(parents=True)
         (round_root / "runtime_adapter" / "run_summary.json").write_text(
             json.dumps(

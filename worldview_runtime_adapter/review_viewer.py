@@ -10,8 +10,10 @@ def build_round_payload(round_root: Path) -> dict[str, Any]:
     run_summary = _read_json_if_exists(round_root / "runtime_adapter" / "run_summary.json")
     failure_summary = _read_json_if_exists(round_root / "runtime_adapter" / "failure_summary.json")
     run_summary_result_grade = str(run_summary.get("result_grade") or "")
+    run_summary_panel_emitted = run_summary.get("panel_emitted")
+    is_blocked_run = run_summary_result_grade == "blocked" or run_summary_panel_emitted is False
     execution = {}
-    if run_summary_result_grade == "blocked":
+    if is_blocked_run:
         current_result_grade = "blocked"
         content_brief = {}
     else:
@@ -24,7 +26,7 @@ def build_round_payload(round_root: Path) -> dict[str, Any]:
     else:
         question = str(issue or round_input.get("issue") or "")
     execution_policy = str(execution.get("execution_policy") or run_summary.get("execution_policy") or "adaptive")
-    panel_emitted = bool(run_summary.get("panel_emitted", current_result_grade != "blocked"))
+    panel_emitted = bool(run_summary_panel_emitted if run_summary_panel_emitted is not None else current_result_grade != "blocked")
     blocked_audit = {
         "status": {"label": _blocked_status_label(execution_policy), "result_grade": "blocked"},
         "execution": {
