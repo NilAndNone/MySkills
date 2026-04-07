@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any, Mapping
 
 from worldview_runtime_adapter import app_server, contracts, intake, round_artifacts
 from worldview_runtime_adapter.panel_runtime import run_panel_for_dispatch_job
@@ -10,7 +11,10 @@ from worldview_runtime_adapter.panel_runtime import run_panel_for_dispatch_job
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run worldview panel through the workspace runtime adapter.")
-    parser.add_argument("--round-input", help="Path to round input JSON to build before runtime execution.")
+    parser.add_argument(
+        "--round-input",
+        help="Path to product input JSON to build a fresh round. Do not pass adapter-owned round_input.json.",
+    )
     parser.add_argument("--dispatch-job", help="Path to an existing dispatch_job.json.")
     parser.add_argument("--output-root", help="Optional output root when building from --round-input.")
     parser.add_argument("--fixture-turn-items", help="Optional fixture JSON for deterministic local testing.")
@@ -27,10 +31,23 @@ def resolve_dispatch_job_path(args: argparse.Namespace) -> Path:
     if not args.round_input:
         raise SystemExit("one of --round-input or --dispatch-job is required")
     payload = contracts.load_json(args.round_input)
+    if not isinstance(payload, Mapping):
+        raise SystemExit("round input must be a JSON object")
+    if _looks_like_round_input(payload):
+        raise SystemExit(
+            "round_input JSON looks like adapter-owned round_input data; pass product input JSON to --round-input or --dispatch-job with an existing round."
+        )
     brief = intake.normalize_product_input(payload)
     output_root = Path(args.output_root) if args.output_root else None
     round_root = round_artifacts.build_round(brief, output_root=output_root)
     return (round_root / "dispatch_job.json").resolve()
+
+
+def _looks_like_round_input(payload: Mapping[str, Any]) -> bool:
+    return (
+        payload.get("schema_version") == "worldview_round_input_v3"
+        or ("selected_personas" in payload and "role_plan" in payload and "content_task_brief" in payload)
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
