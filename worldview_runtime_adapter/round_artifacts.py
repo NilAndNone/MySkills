@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Mapping
 from uuid import uuid4
 
-from worldview_runtime_adapter import contracts, identity, plugin_bridge, role_planner
+from worldview_runtime_adapter import contracts, identity, persona_materials, plugin_bridge, role_planner
 
 
 ROUND_INPUT_VERSION = "worldview_round_input_v3"
@@ -111,11 +111,9 @@ def _policy_record() -> dict[str, Any]:
 
 
 def _packet_identity(round_root: Path, persona: str, persona_material: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
-    materials = plugin_bridge.load_plugin_module("persona_materials")
-
     profile_id = f"{persona}_{PROFILE_SUFFIX}"
     skill_path = round_root / "identities" / persona / "worker.skill.md"
-    identity_seed = materials.build_persona_instruction_seed(persona)
+    identity_seed = persona_materials.build_persona_instruction_seed(persona)
     skill = identity.write_worker_skill(skill_path, profile_id, identity_seed["instruction_seed"])
     policy_hash = contracts.sha256_prefixed(contracts.canonical_json_bytes(_policy_record()))
     profile_payload = {
@@ -142,9 +140,8 @@ def _packet_identity(round_root: Path, persona: str, persona_material: Mapping[s
 
 
 def _write_packet_and_ticket(round_root: Path, round_input: Mapping[str, Any], role_entry: Mapping[str, str]) -> None:
-    materials = plugin_bridge.load_plugin_module("persona_materials")
     persona = str(role_entry["persona"])
-    persona_material = materials.build_persona_material_packet(persona, "public_discourse")
+    persona_material = persona_materials.build_persona_material_packet(persona, "public_discourse")
     profile_id = f"{persona}_{PROFILE_SUFFIX}"
     packet_text = _render_packet_text(round_input, role_entry, persona_material, profile_id=profile_id)
     packet_root = round_root / "packets" / persona
