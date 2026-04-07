@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Mapping
 
-from worldview_runtime_adapter import plugin_bridge, schema_preflight
+from worldview_runtime_adapter import schema_preflight
+from worldview_runtime_adapter import schema_store
 
 
 SCHEMA_TYPE_CHECKS = {
@@ -120,7 +121,7 @@ def run_persona(
     sandbox_policy: str = "read-only",
     approval_policy: str = "never",
 ) -> dict[str, Any]:
-    raw_schema = plugin_bridge.load_worker_schema(schema_version)
+    raw_schema = schema_store.load_worker_schema(schema_version)
     retry_count = 0
     attempt_count = 0
     last_error = ""

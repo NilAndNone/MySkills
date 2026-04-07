@@ -2,17 +2,21 @@ from __future__ import annotations
 
 import unittest
 
-from worldview_runtime_adapter import plugin_bridge, schema_preflight
+from worldview_runtime_adapter import schema_preflight, schema_store
 
 
 class TestSchemaPreflight(unittest.TestCase):
-    def test_plugin_bridge_loads_worldview_worker_schema(self) -> None:
-        schema = plugin_bridge.load_worker_schema("worldview_worker_result_v1")
+    def test_schema_store_loads_worldview_worker_schema(self) -> None:
+        schema = schema_store.load_worker_schema("worldview_worker_result_v1")
 
         self.assertEqual(schema["$id"], "worldview_worker_result_v1")
 
+    def test_schema_store_loads_missing_schema_fails(self) -> None:
+        with self.assertRaises(FileNotFoundError):
+            schema_store.load_worker_schema("missing_schema_name")
+
     def test_preflight_repairs_root_and_nested_object_contract(self) -> None:
-        raw_schema = plugin_bridge.load_worker_schema("worldview_worker_result_v1")
+        raw_schema = schema_store.load_worker_schema("worldview_worker_result_v1")
 
         outcome = schema_preflight.prepare_output_schema(
             raw_schema,
@@ -28,7 +32,7 @@ class TestSchemaPreflight(unittest.TestCase):
         )
 
     def test_preflight_adds_explicit_type_for_const_only_schema_version(self) -> None:
-        raw_schema = plugin_bridge.load_worker_schema("worldview_worker_result_v1")
+        raw_schema = schema_store.load_worker_schema("worldview_worker_result_v1")
 
         outcome = schema_preflight.prepare_output_schema(
             raw_schema,

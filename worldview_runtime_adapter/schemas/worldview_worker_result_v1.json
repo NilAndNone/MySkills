@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "worldview_worker_result_v1",
+  "title": "worldview_worker_result_v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "worldview_worker_result_v1"
+    },
+    "persona": {
+      "type": "string"
+    },
+    "judgment": {
+      "type": "object"
+    },
+    "diagnosis": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recommended_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "voice_style": {
+      "type": "string"
+    },
+    "blind_spot": {
+      "type": "string"
+    },
+    "overuse_risk": {
+      "type": "string"
+    },
+    "signature_line": {
+      "type": "string"
+    },
+    "confidence": {
+      "type": "number"
+    }
+  },
+  "required": ["schema_version", "persona", "judgment", "diagnosis", "recommended_actions", "voice_style", "blind_spot", "overuse_risk", "signature_line", "confidence"],
+  "additionalProperties": true
+}
