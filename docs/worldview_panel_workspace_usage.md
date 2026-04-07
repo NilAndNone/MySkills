@@ -8,7 +8,7 @@
 2. 运行 `scripts/run_worldview_panel.py`
 3. 运行 `scripts/verify_worldview_panel_round.py`
 
-不要直接调用 plugin 里的旧工具链。
+不要使用旧工具链，统一走本工作区主线入口。
 
 ## 当前支持的入口
 
@@ -182,11 +182,6 @@ python3 scripts/verify_worldview_panel_round.py \
 
 ## 不要这样用
 
-下面这些现在都不应该作为工作区主线入口：
+工作区仅支持以下正式入口：
 
-- `plugins/worldview-panel-codex/tools/run_worldview_broker.py`
-- `plugins/worldview-panel-codex/tools/build_worldview_round.py`
-- `plugins/worldview-panel-codex/tools/synthesize_worldview_panel.py`
-- `plugins/worldview-panel-codex/tools/verify_worldview_round.py`
-
-这些属于 plugin 自己的工具链，不是这个工作区现在推荐的启动方式。
+`scripts/run_worldview_panel.py` 作为运行入口，`scripts/verify_worldview_panel_round.py` 作为校验入口。其余路径不应作为主线入口。

@@ -8,6 +8,6 @@
 
 原因：
 
-- plugin 保持只读
+- 运行链路为 workspace-owned runtime adapter，支持路径只在本仓库内维护
 - 协议兼容修复放在 workspace-owned runtime adapter 里
 - per-persona retry、67% 门槛和 degraded 输出都在 adapter 调用链里

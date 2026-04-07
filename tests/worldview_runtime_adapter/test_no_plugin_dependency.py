@@ -9,6 +9,10 @@ class TestNoPluginDependency(unittest.TestCase):
         root = Path(__file__).resolve().parents[2]
         self.assertFalse((root / "worldview_runtime_adapter" / "plugin_bridge.py").exists())
 
+    def test_plugin_tree_is_removed(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+        self.assertFalse((root / "plugins" / "worldview-panel-codex").exists())
+
     def test_supported_runtime_files_do_not_reference_plugin_paths(self) -> None:
         root = Path(__file__).resolve().parents[2] / "worldview_runtime_adapter"
         forbidden_terms = (

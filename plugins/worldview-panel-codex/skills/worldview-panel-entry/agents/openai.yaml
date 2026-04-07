@@ -1,6 +1,0 @@
-interface:
-  display_name: "Worldview Panel (Broker v1)"
-  short_description: "Build a sealed worldview round, dispatch through the broker, and synthesize only certified results."
-  default_prompt: "Analyze this with worldview broker v1. Generate one run_id, keep a concise top-level log with ../../tools/write_run_log.py, build the sealed round with ../../tools/build_worldview_round.py, dispatch only through ../../tools/run_worldview_broker.py, synthesize only through ../../tools/synthesize_worldview_panel.py, and verify through ../../tools/verify_worldview_round.py. Do not use any legacy prompt-side dispatch tools or collaboration-call dispatch shortcuts. If the broker reports hash mismatch, schema invalid, or uncertified results, fail the run with `这次请求已作废，请重新发准备好的上下文。`."
-policy:
-  allow_implicit_invocation: true
