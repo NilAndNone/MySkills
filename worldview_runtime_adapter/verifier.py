@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from worldview_runtime_adapter import plugin_bridge
+from worldview_runtime_adapter import contracts
 
 
 REQUIRED_FILES = (
@@ -15,7 +15,7 @@ ALLOWED_RESULT_GRADES = {"usable", "degraded", "blocked"}
 
 
 def _read_json(round_root: Path, relative_path: str) -> dict[str, Any]:
-    return plugin_bridge.load_json(round_root / relative_path)
+    return contracts.load_json(round_root / relative_path)
 
 
 def _validate_claim_trace_refs(root: Path, content_brief: dict[str, Any], errors: list[str]) -> None:
@@ -61,7 +61,7 @@ def verify_round(round_root: str | Path) -> dict[str, Any]:
             "errors": errors,
         }
 
-    run_summary = plugin_bridge.load_json(run_summary_path)
+    run_summary = contracts.load_json(run_summary_path)
     result_grade = str(run_summary.get("result_grade") or "")
     if not result_grade:
         errors.append("runtime_adapter/run_summary.json must include result_grade")

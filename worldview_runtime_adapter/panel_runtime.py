@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-from worldview_runtime_adapter import attestation, composer, contracts, intake, plugin_bridge, role_planner, surfaces
+from worldview_runtime_adapter import attestation, composer, contracts, intake, role_planner, surfaces
 from worldview_runtime_adapter.failure_summary import build_failure_summary
 from worldview_runtime_adapter.persona_runtime import run_persona
 
@@ -268,7 +268,7 @@ def _write_success_artifacts(
     result_root.mkdir(parents=True, exist_ok=True)
 
     result = dict(persona_outcome["result"])
-    plugin_bridge.write_json(result_root / "raw_result.json", result)
+    contracts.write_json(result_root / "raw_result.json", result)
 
     attestation = _build_attestation(
         run_id=run_id,
@@ -279,7 +279,7 @@ def _write_success_artifacts(
         packet_text=packet_text,
         input_items=input_items,
     )
-    plugin_bridge.write_json(result_root / "attestation.json", attestation)
+    contracts.write_json(result_root / "attestation.json", attestation)
 
     technical_certified_result = {
         "schema_version": "technical_certified_result_v1",
@@ -292,16 +292,16 @@ def _write_success_artifacts(
         "certified_at": persona_outcome.get("dispatch_completed_at", "") or _utc_timestamp(),
         "result": result,
     }
-    plugin_bridge.write_json(result_root / "technical_certified_result.json", technical_certified_result)
+    contracts.write_json(result_root / "technical_certified_result.json", technical_certified_result)
     return technical_certified_result
 
 
 def _write_product_artifacts(round_root: Path, outcome: Mapping[str, Any]) -> None:
     if "content_brief" not in outcome:
         return
-    plugin_bridge.write_json(round_root / "content_brief.json", dict(outcome["content_brief"]))
-    plugin_bridge.write_json(round_root / "studio_surface.json", dict(outcome["studio_surface"]))
-    plugin_bridge.write_json(round_root / "audit_surface.json", dict(outcome["audit_surface"]))
+    contracts.write_json(round_root / "content_brief.json", dict(outcome["content_brief"]))
+    contracts.write_json(round_root / "studio_surface.json", dict(outcome["studio_surface"]))
+    contracts.write_json(round_root / "audit_surface.json", dict(outcome["audit_surface"]))
 
 
 def _delete_if_exists(path: Path) -> None:
@@ -321,6 +321,30 @@ def _clear_stale_failure_summary(round_root: Path) -> None:
     _delete_if_exists(round_root / "runtime_adapter" / "failure_summary.json")
 
 
+def _load_dispatch_job(path: str | Path) -> dict[str, Any]:
+    return contracts.validate_dispatch_job(contracts.load_json(path))
+
+
+def _load_round_file(round_root: Path, relative_path: str) -> dict[str, Any]:
+    return contracts.load_json(round_root / relative_path)
+
+
+def _load_ticket(round_root: Path, persona: str) -> dict[str, Any]:
+    return contracts.load_json(round_root / "tickets" / f"{persona}.json")
+
+
+def _load_profile(round_root: Path, persona: str) -> dict[str, Any]:
+    return contracts.load_json(round_root / "identities" / persona / "profile.json")
+
+
+def _load_packet_text(ticket: Mapping[str, Any]) -> str:
+    return Path(ticket["packet_path"]).read_text(encoding="utf-8")
+
+
+def _resolve_skill_path(round_root: Path, profile: Mapping[str, Any]) -> Path:
+    return (round_root / profile["skill_path"]).resolve()
+
+
 def run_panel_for_dispatch_job(
     dispatch_job_path: str | Path,
     *,
@@ -328,29 +352,29 @@ def run_panel_for_dispatch_job(
     minimum_success_ratio: float,
     max_retries: int,
 ) -> dict[str, Any]:
-    dispatch_job = plugin_bridge.load_dispatch_job(dispatch_job_path)
+    dispatch_job = _load_dispatch_job(dispatch_job_path)
     round_root = Path(dispatch_job["round_root"]).resolve()
     run_id = dispatch_job["run_id"]
-    round_input = plugin_bridge.load_json(round_root / "round_input.json")
+    round_input = _load_round_file(round_root, "round_input.json")
     role_plan = list(round_input.get("role_plan", _derive_role_plan(list(dispatch_job["selected_personas"]))))
     persona_results: list[dict[str, Any]] = []
     certified_results: dict[str, dict[str, Any]] = {}
 
     for persona in dispatch_job["selected_personas"]:
-        ticket = plugin_bridge.load_ticket(round_root, persona)
-        profile = plugin_bridge.load_profile(round_root, persona)
-        packet_text = plugin_bridge.load_packet_text(ticket)
+        ticket = _load_ticket(round_root, persona)
+        profile = _load_profile(round_root, persona)
+        packet_text = _load_packet_text(ticket)
         persona_outcome = run_persona(
             persona=persona,
             packet_text=packet_text,
-            skill_path=str(plugin_bridge.resolve_skill_path(round_root, profile)),
+            skill_path=str(_resolve_skill_path(round_root, profile)),
             schema_version=ticket["worker_schema_version"],
             app_server_client=app_server_client,
             max_retries=max_retries,
         )
         input_items = list(persona_outcome.pop("input_items", []))
         persona_results.append(persona_outcome)
-        plugin_bridge.write_json(
+        contracts.write_json(
             round_root / "runtime_adapter" / "personas" / f"{persona}.json",
             persona_outcome,
         )
@@ -381,7 +405,7 @@ def run_panel_for_dispatch_job(
     outcome["successful_persona_count"] = len(outcome["successful_personas"])
     outcome["failed_persona_count"] = len(outcome["failed_personas"])
 
-    plugin_bridge.write_json(
+    contracts.write_json(
         round_root / "runtime_adapter" / "run_summary.json",
         {
             "run_id": outcome["run_id"],
@@ -397,7 +421,7 @@ def run_panel_for_dispatch_job(
     )
     if not outcome["panel_emitted"]:
         _clear_stale_product_artifacts(round_root)
-        plugin_bridge.write_json(round_root / "runtime_adapter" / "failure_summary.json", outcome["failure_summary"])
+        contracts.write_json(round_root / "runtime_adapter" / "failure_summary.json", outcome["failure_summary"])
     else:
         _clear_stale_failure_summary(round_root)
         _write_product_artifacts(round_root, outcome)

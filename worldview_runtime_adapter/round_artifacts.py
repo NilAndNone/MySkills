@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Mapping
 from uuid import uuid4
 
-from worldview_runtime_adapter import contracts, identity, persona_materials, plugin_bridge, role_planner
+from worldview_runtime_adapter import contracts, identity, persona_materials, role_planner
 
 
 ROUND_INPUT_VERSION = "worldview_round_input_v3"
@@ -135,7 +135,7 @@ def _packet_identity(round_root: Path, persona: str, persona_material: Mapping[s
     }
     profile = dict(profile_payload)
     profile["profile_hash"] = contracts.sha256_prefixed(contracts.canonical_json_bytes(profile_payload))
-    plugin_bridge.write_json(round_root / "identities" / persona / "profile.json", profile)
+    contracts.write_json(round_root / "identities" / persona / "profile.json", profile)
     return skill, profile
 
 
@@ -171,7 +171,7 @@ def _write_packet_and_ticket(round_root: Path, round_input: Mapping[str, Any], r
         "worker_schema_version": profile["worker_schema_version"],
         "state": ROUND_STATE_SEALED,
     }
-    plugin_bridge.write_json(round_root / "tickets" / f"{persona}.json", ticket)
+    contracts.write_json(round_root / "tickets" / f"{persona}.json", ticket)
 
 
 def build_round(brief: Mapping[str, Any], *, output_root: Path | None = None) -> Path:
@@ -182,7 +182,7 @@ def build_round(brief: Mapping[str, Any], *, output_root: Path | None = None) ->
 
     role_plan = role_planner.plan_roles(brief)
     round_input = _round_input_payload(brief, role_plan)
-    plugin_bridge.write_json(round_root / "round_input.json", round_input)
+    contracts.write_json(round_root / "round_input.json", round_input)
 
     for role_entry in role_plan:
         _write_packet_and_ticket(round_root, round_input, role_entry)
@@ -195,7 +195,7 @@ def build_round(brief: Mapping[str, Any], *, output_root: Path | None = None) ->
         "role_plan": role_plan,
         "state": ROUND_STATE_SEALED,
     }
-    plugin_bridge.write_json(round_root / "round_manifest.json", round_manifest)
+    contracts.write_json(round_root / "round_manifest.json", round_manifest)
 
     dispatch_job = {
         "schema_version": "dispatch_job_v1",
@@ -205,5 +205,5 @@ def build_round(brief: Mapping[str, Any], *, output_root: Path | None = None) ->
         "batch_size": min(6, len(round_input["selected_personas"])),
         "dispatch_mode": "strict_all_required",
     }
-    plugin_bridge.write_json(round_root / "dispatch_job.json", dispatch_job)
+    contracts.write_json(round_root / "dispatch_job.json", dispatch_job)
     return round_root

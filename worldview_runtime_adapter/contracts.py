@@ -34,6 +34,16 @@ def load_json(path: str | Path) -> Any:
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
+def write_json(path: str | Path, payload: Any) -> Path:
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return output_path
+
+
 def _find_disallowed_prompt_fields(value: Any, path: str = "") -> list[str]:
     hits: list[str] = []
 

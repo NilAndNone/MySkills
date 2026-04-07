@@ -70,7 +70,7 @@ class TestRuntimeCli(unittest.TestCase):
         text = agents_path.read_text(encoding="utf-8")
 
         self.assertIn("scripts/run_worldview_panel.py", text)
-        self.assertIn("不要直接调用 plugins/worldview-panel-codex/tools/run_worldview_broker.py", text)
+        self.assertIn("scripts/verify_worldview_panel_round.py", text)
 
 
 if __name__ == "__main__":

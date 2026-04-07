@@ -82,6 +82,21 @@ class TestContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "dispatch_mode must be strict_all_required"):
             contracts.validate_dispatch_job(payload)
 
+    def test_write_json_creates_directory_and_writes_pretty(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            payload = {"b": 2, "a": 1}
+            path = Path(tmpdir) / "nested" / "payload.json"
+
+            returned = contracts.write_json(path, payload)
+
+            self.assertEqual(returned, path)
+            self.assertTrue(path.is_file())
+            self.assertTrue((Path(tmpdir) / "nested").is_dir())
+            self.assertEqual(
+                path.read_text(encoding="utf-8"),
+                '{\n  "b": 2,\n  "a": 1\n}\n',
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
