@@ -29,7 +29,15 @@ def _validate_claim_trace_refs(root: Path, content_brief: dict[str, Any], errors
             continue
         for ref in refs:
             target = str(ref).split("#", 1)[0]
-            if target and not (root / target).is_file():
+            if not target:
+                continue
+            target_path = (root / target).resolve(strict=False)
+            try:
+                target_path.relative_to(root)
+            except ValueError:
+                errors.append(f"claim trace target escapes round root: {target}")
+                continue
+            if not target_path.is_file():
                 errors.append(f"missing claim trace target: {target}")
 
 

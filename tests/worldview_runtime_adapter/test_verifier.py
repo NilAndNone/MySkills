@@ -42,6 +42,31 @@ class TestVerifier(unittest.TestCase):
                 verdict["errors"],
             )
 
+    def test_verify_round_fails_when_claim_trace_target_escapes_round_root(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            base = Path(tmpdir)
+            round_root = self._create_usable_round_fixture(base / "round")
+            escaped_target = base / "escape.json"
+            escaped_target.write_text("{\"result\": {\"judgment\": {\"factual\": true}}}\n", encoding="utf-8")
+            payload = json.loads((round_root / "content_brief.json").read_text(encoding="utf-8"))
+            payload["meta"]["trace_refs"] = {
+                "claims": {
+                    "fact_axis-consensus-1": ["../escape.json#result.judgment.factual"]
+                }
+            }
+            (round_root / "content_brief.json").write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+
+            verdict = verifier.verify_round(round_root)
+
+            self.assertFalse(verdict["ok"])
+            self.assertIn(
+                "claim trace target escapes round root: ../escape.json",
+                verdict["errors"],
+            )
+
     def _create_usable_round_fixture(self, round_root: Path) -> Path:
         round_root.mkdir(parents=True)
         (round_root / "runtime_adapter").mkdir(parents=True)
