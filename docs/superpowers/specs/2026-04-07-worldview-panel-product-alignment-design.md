@@ -64,6 +64,14 @@ The external promise is fixed as:
 
 The product is not positioned externally as a multi-persona runner, persona chat tool, or roleplay system.
 
+The external value expression is fixed around:
+
+- one-line judgment
+- consensus and disagreement
+- minority reminder
+- risk and applicability conditions
+- a structure the user can continue writing or recording from
+
 ### Internal Method
 
 Internally, the system still uses worldview panel as the method.
@@ -336,6 +344,20 @@ The planner may expand the role set only when:
 
 Expansion is driven by disagreement and coverage gaps, not by a default desire to fill a roster.
 
+### Initial Preferred Role Library
+
+The first release prioritizes this role library from the product reframe:
+
+- fact extractor
+- systems thinker
+- moral critic
+- strategist
+- practitioner
+- contrarian
+
+This is the initial planning pool.
+The planner may select the minimum sufficient subset from it, then expand only when justified by disagreement or coverage gaps.
+
 ### `round_artifacts.py`
 
 Responsibilities:
@@ -451,6 +473,86 @@ The viewer is no longer a persona-debug-first screen.
 
 ## Artifact Model
 
+### Canonical Content Object
+
+The adapter-owned canonical content object is fixed as `content_brief_v1`.
+
+Its structure follows the product reframe:
+
+```json
+{
+  "issue": {
+    "title": "",
+    "question": "",
+    "scope": "",
+    "timeframe": ""
+  },
+  "summary": {
+    "one_line_judgment": "",
+    "premises": [],
+    "best_use": "",
+    "largest_risk": ""
+  },
+  "analysis": {
+    "fact_axis": {
+      "consensus": [],
+      "conflicts": [],
+      "minority_alerts": []
+    },
+    "value_axis": {
+      "consensus": [],
+      "conflicts": [],
+      "minority_alerts": []
+    },
+    "strategy_axis": {
+      "consensus": [],
+      "conflicts": [],
+      "minority_alerts": []
+    }
+  },
+  "recommendations": {
+    "recommended_angle": "",
+    "writing_moves": [],
+    "research_gaps": []
+  },
+  "writing_assets": {
+    "article_outline": [],
+    "video_outline": [],
+    "thread_outline": []
+  },
+  "claims": [],
+  "meta": {
+    "surface_defaults": {},
+    "execution_summary": {},
+    "trace_refs": {}
+  }
+}
+```
+
+This object is the source of truth for Studio, Audit, and later exports.
+
+### Claim Object
+
+Each key judgment is modeled as a claim with the structure fixed by the product reframe:
+
+```json
+{
+  "claim_id": "",
+  "text": "",
+  "claim_type": "consensus | conflict | minority_alert | recommendation",
+  "confidence": 0.0,
+  "supporting_roles": [],
+  "counter_roles": [],
+  "source_refs": [],
+  "evidence_strength": "low | medium | high",
+  "scope_notes": [],
+  "freshness_notes": [],
+  "caveats": []
+}
+```
+
+The adapter composer may extend internal derivation logic, but the outward claim contract must stay compatible with this shape.
+
 ### Primary Artifacts
 
 The primary artifacts for a usable or degraded run are:
@@ -564,6 +666,8 @@ The adapter freezes the initial benchmark and quality rubric from the product re
 ### Benchmark Set
 
 The initial benchmark set is constrained to representative controversy topics in these categories:
+
+- 15-20 representative topics total
 
 - technology and platform issues
 - business model and industry judgment
