@@ -117,6 +117,22 @@ class TestVerifier(unittest.TestCase):
             self.assertIn("blocked rounds must not include stale product artifacts: studio_surface.json", verdict["errors"])
             self.assertIn("blocked rounds must not include stale product artifacts: audit_surface.json", verdict["errors"])
 
+    def test_verify_round_fails_when_usable_round_has_stale_failure_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            round_root = self._create_usable_round_fixture(Path(tmpdir) / "round")
+            (round_root / "runtime_adapter" / "failure_summary.json").write_text(
+                "{\"stale\": true}\n",
+                encoding="utf-8",
+            )
+
+            verdict = verifier.verify_round(round_root)
+
+            self.assertFalse(verdict["ok"])
+            self.assertIn(
+                "non-blocked rounds must not include stale runtime_adapter/failure_summary.json",
+                verdict["errors"],
+            )
+
     def _create_usable_round_fixture(self, round_root: Path) -> Path:
         round_root.mkdir(parents=True)
         (round_root / "runtime_adapter").mkdir(parents=True)

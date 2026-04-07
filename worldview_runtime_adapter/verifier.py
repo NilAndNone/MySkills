@@ -88,6 +88,8 @@ def verify_round(round_root: str | Path) -> dict[str, Any]:
     for relative_path in PRODUCT_FILES:
         if not (root / relative_path).is_file():
             errors.append(f"missing required file: {relative_path}")
+    if failure_summary_path.is_file():
+        errors.append("non-blocked rounds must not include stale runtime_adapter/failure_summary.json")
 
     if errors:
         return {
