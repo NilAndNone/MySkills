@@ -94,6 +94,20 @@ class TestSynthesizeWorldviewPanel(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "round is INVALID"):
             synthesis.synthesize_round(round_root)
 
+    def test_synthesis_keeps_plugin_output_limited_to_final_panel_artifacts(self) -> None:
+        synthesis = load_tools_module(self, "worldview_synthesis")
+
+        dispatch_job_path, round_root = self._build_round(["risk_manager", "existentialist"])
+        self._dispatch_round(dispatch_job_path)
+
+        synthesis_root = synthesis.synthesize_round(round_root)
+
+        self.assertTrue((synthesis_root / "final_panel.json").is_file())
+        self.assertTrue((synthesis_root / "final_panel.md").is_file())
+        self.assertFalse((synthesis_root / "content_brief.json").exists())
+        self.assertFalse((synthesis_root / "studio_surface.json").exists())
+        self.assertFalse((synthesis_root / "audit_surface.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
