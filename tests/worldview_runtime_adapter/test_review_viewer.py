@@ -302,6 +302,26 @@ class TestReviewViewer(unittest.TestCase):
             self.assertEqual(payload["studio"]["executive_judgment"]["one_line_judgment"], "签名")
             self.assertEqual(payload["audit"]["execution"]["successful_personas"], ["external_reference"])
 
+    def test_build_round_payload_keeps_studio_as_default_surface_for_degraded_round(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            round_root = self._create_degraded_round_fixture(Path(tmpdir) / "round")
+
+            payload = review_viewer.build_round_payload(round_root)
+
+            self.assertEqual(payload["default_surface"], "studio")
+            self.assertIsNotNone(payload["studio"])
+            self.assertEqual(payload["studio"]["status"]["result_grade"], "degraded")
+
+    def test_build_round_payload_defaults_blocked_rounds_to_audit_with_no_studio_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            round_root = self._create_blocked_round_fixture(Path(tmpdir) / "round")
+
+            payload = review_viewer.build_round_payload(round_root)
+
+            self.assertEqual(payload["default_surface"], "audit")
+            self.assertIsNone(payload["studio"])
+            self.assertEqual(payload["audit"]["status"]["result_grade"], "blocked")
+
     def test_write_static_viewer_outputs_html_and_data(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -327,6 +347,24 @@ class TestReviewViewer(unittest.TestCase):
             self.assertEqual(data["question"], "这是测试问题")
             self.assertEqual(data["studio"]["status"]["label"], "可用")
 
+    def test_write_static_viewer_renders_surface_switcher_and_studio_first_sections(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            round_root = self._create_round_fixture(root / "round")
+            output_dir = root / "viewer"
+
+            review_viewer.write_static_viewer(round_root, output_dir)
+
+            html = (output_dir / "index.html").read_text(encoding="utf-8")
+            self.assertIn('data-surface="studio"', html)
+            self.assertIn('data-surface="audit"', html)
+            self.assertIn('id="surface-switcher"', html)
+            self.assertIn("Executive Judgment", html)
+            self.assertIn("Tension Map", html)
+            self.assertIn("Creation Layer", html)
+            self.assertIn('id="studio-surface"', html)
+            self.assertIn('id="audit-surface"', html)
+
     def test_build_round_payload_keeps_failed_personas_visible(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             round_root = self._create_degraded_round_fixture(Path(tmpdir) / "round")
@@ -335,6 +373,7 @@ class TestReviewViewer(unittest.TestCase):
 
             self.assertEqual(payload["run_status"], "completed_with_failures")
             self.assertTrue(payload["panel_emitted"])
+            self.assertEqual(payload["default_surface"], "studio")
             self.assertEqual(payload["audit"]["execution"]["failed_personas"][0]["persona"], "risk_manager")
             self.assertEqual(payload["audit"]["status"]["label"], "adaptive degraded")
 
