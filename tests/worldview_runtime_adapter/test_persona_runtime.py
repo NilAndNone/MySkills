@@ -37,6 +37,21 @@ class FakeClient:
         return outcome
 
 
+class ThreadFailingClient:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+        self.calls: list[dict] = []
+        self.thread_count = 0
+
+    def start_thread(self) -> str:
+        self.thread_count += 1
+        raise self.error
+
+    def start_turn(self, **kwargs):
+        self.calls.append(kwargs)
+        raise AssertionError("start_turn should not be called if start_thread fails")
+
+
 class TestPersonaRuntime(unittest.TestCase):
     def test_protocol_schema_error_triggers_retry(self) -> None:
         client = FakeClient(
@@ -78,6 +93,24 @@ class TestPersonaRuntime(unittest.TestCase):
         self.assertEqual(outcome["retry_count"], 3)
         self.assertEqual(outcome["attempt_count"], 4)
         self.assertIn("missing required fields", outcome["failure_reason"])
+
+    def test_start_thread_failure_retries_and_fails_as_transport_error(self) -> None:
+        client = ThreadFailingClient(RuntimeError("thread start failed"))
+
+        outcome = run_persona(
+            persona="risk_manager",
+            packet_text="packet text",
+            skill_path="/tmp/risk_manager.skill.md",
+            schema_version="worldview_worker_result_v1",
+            app_server_client=client,
+            max_retries=1,
+        )
+
+        self.assertEqual(outcome["status"], "failed_after_retries")
+        self.assertEqual(outcome["retry_count"], 1)
+        self.assertEqual(outcome["attempt_count"], 2)
+        self.assertEqual(outcome["failure_class"], "transport_error")
+        self.assertIn("thread start failed", outcome["failure_reason"])
 
 
 if __name__ == "__main__":

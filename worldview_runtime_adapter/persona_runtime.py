@@ -131,7 +131,6 @@ def run_persona(
 
     while True:
         attempt_count += 1
-        thread_id = app_server_client.start_thread()
         input_items = [
             {"type": "skill", "name": persona, "path": skill_path},
             {"type": "text", "text": packet_text},
@@ -139,8 +138,10 @@ def run_persona(
         if last_repair_instruction:
             input_items.append({"type": "text", "text": last_repair_instruction})
         dispatch_started_at = _utc_timestamp()
+        thread_id = ""
 
         try:
+            thread_id = app_server_client.start_thread()
             turn = app_server_client.start_turn(
                 thread_id=thread_id,
                 input_items=input_items,
