@@ -5,20 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from worldview_runtime_adapter import intake, plugin_bridge, round_artifacts
+from worldview_runtime_adapter import intake, round_artifacts
 from worldview_runtime_adapter.panel_runtime import build_panel_outcome, run_panel_for_dispatch_job
-
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-ALLOWED_FIXTURE = (
-    REPO_ROOT
-    / "plugins"
-    / "worldview-panel-codex"
-    / "tests"
-    / "fixtures"
-    / "broker"
-    / "worker_turn_items.json"
-)
 
 
 def _success_result(persona: str, signature_line: str = "sig-a", confidence: float = 0.8) -> dict[str, object]:
@@ -34,6 +22,37 @@ def _success_result(persona: str, signature_line: str = "sig-a", confidence: flo
         "signature_line": signature_line,
         "confidence": confidence,
     }
+
+
+class _FakeAppServerClient:
+    def __init__(self) -> None:
+        self._thread_counter = 0
+        self._turn_counter = 0
+
+    def start_thread(self) -> str:
+        self._thread_counter += 1
+        return f"thr-{self._thread_counter}"
+
+    def start_turn(
+        self,
+        *,
+        thread_id: str,
+        input_items: list[dict[str, object]],
+        output_schema: dict[str, object],
+        sandbox_policy: str,
+        approval_policy: str,
+    ) -> dict[str, object]:
+        del thread_id, output_schema, sandbox_policy, approval_policy
+        self._turn_counter += 1
+        persona = str(input_items[0].get("name", ""))
+        return {
+            "thread_id": f"thr-{self._thread_counter}",
+            "turn_id": f"turn-{self._turn_counter}",
+            "result": _success_result(persona, signature_line=f"sig-{persona}"),
+        }
+
+    def close(self) -> None:
+        return None
 
 
 class TestPanelRuntime(unittest.TestCase):
@@ -162,10 +181,9 @@ class TestPanelRuntime(unittest.TestCase):
         round_root = round_artifacts.build_round(brief, output_root=tmpdir)
         dispatch_job_path = round_root / "dispatch_job.json"
 
-        app_server = plugin_bridge.load_plugin_module("worldview_app_server")
         outcome = run_panel_for_dispatch_job(
             dispatch_job_path,
-            app_server_client=app_server.FixtureAppServerClient(ALLOWED_FIXTURE),
+            app_server_client=_FakeAppServerClient(),
             minimum_success_ratio=0.67,
             max_retries=3,
         )
