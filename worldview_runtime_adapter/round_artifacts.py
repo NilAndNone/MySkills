@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Mapping
 from uuid import uuid4
 
-from worldview_runtime_adapter import plugin_bridge, role_planner
+from worldview_runtime_adapter import contracts, identity, plugin_bridge, role_planner
 
 
 ROUND_INPUT_VERSION = "worldview_round_input_v3"
@@ -15,10 +15,6 @@ PROFILE_SUFFIX = "worker_v3"
 POLICY_ID = "readonly_locked_v1"
 POLICY_VERSION = "1"
 ROUND_STATE_SEALED = "SEALED"
-
-
-def _contracts() -> Any:
-    return plugin_bridge.load_contracts_module()
 
 
 def _posix_path_text(path: Path | str) -> str:
@@ -115,8 +111,6 @@ def _policy_record() -> dict[str, Any]:
 
 
 def _packet_identity(round_root: Path, persona: str, persona_material: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
-    contracts = _contracts()
-    identity = plugin_bridge.load_plugin_module("worldview_identity")
     materials = plugin_bridge.load_plugin_module("persona_materials")
 
     profile_id = f"{persona}_{PROFILE_SUFFIX}"
@@ -148,7 +142,6 @@ def _packet_identity(round_root: Path, persona: str, persona_material: Mapping[s
 
 
 def _write_packet_and_ticket(round_root: Path, round_input: Mapping[str, Any], role_entry: Mapping[str, str]) -> None:
-    contracts = _contracts()
     materials = plugin_bridge.load_plugin_module("persona_materials")
     persona = str(role_entry["persona"])
     persona_material = materials.build_persona_material_packet(persona, "public_discourse")

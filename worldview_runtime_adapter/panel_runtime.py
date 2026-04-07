@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-from worldview_runtime_adapter import composer, intake, plugin_bridge, role_planner, surfaces
+from worldview_runtime_adapter import attestation, composer, contracts, intake, plugin_bridge, role_planner, surfaces
 from worldview_runtime_adapter.failure_summary import build_failure_summary
 from worldview_runtime_adapter.persona_runtime import run_persona
 
@@ -14,7 +14,6 @@ def _utc_timestamp() -> str:
 
 
 def _hash_payload(payload: Any) -> str:
-    contracts = plugin_bridge.load_contracts_module()
     return contracts.sha256_prefixed(contracts.canonical_json_bytes(payload))
 
 
@@ -226,7 +225,6 @@ def _build_attestation(
     packet_text: str,
     input_items: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    attestation = plugin_bridge.load_plugin_module("worldview_attestation")
     return attestation.build_attestation(
         packet_fingerprint=ticket["packet_fingerprint"],
         turn_input=input_items,

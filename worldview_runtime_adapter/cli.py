@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from worldview_runtime_adapter import plugin_bridge
+from worldview_runtime_adapter import app_server, contracts, intake, round_artifacts
 from worldview_runtime_adapter.panel_runtime import run_panel_for_dispatch_job
 
 
@@ -26,14 +26,16 @@ def resolve_dispatch_job_path(args: argparse.Namespace) -> Path:
         return Path(args.dispatch_job).resolve()
     if not args.round_input:
         raise SystemExit("one of --round-input or --dispatch-job is required")
-    round_root = plugin_bridge.build_round_from_input(args.round_input, output_root=args.output_root)
+    payload = contracts.load_json(args.round_input)
+    brief = intake.normalize_product_input(payload)
+    output_root = Path(args.output_root) if args.output_root else None
+    round_root = round_artifacts.build_round(brief, output_root=output_root)
     return (round_root / "dispatch_job.json").resolve()
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     dispatch_job_path = resolve_dispatch_job_path(args)
-    app_server = plugin_bridge.load_plugin_module("worldview_app_server")
 
     if args.fixture_turn_items:
         client = app_server.FixtureAppServerClient(args.fixture_turn_items)
