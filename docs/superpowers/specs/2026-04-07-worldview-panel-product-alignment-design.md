@@ -108,6 +108,12 @@ The adapter must not require edits under:
 
 The adapter may read plugin helpers and artifacts, but the product refactor cannot depend on plugin edits.
 
+### Cutover Posture
+
+This repository follows a hard cutover posture for this change.
+
+If an old product path, artifact, viewer structure, or intake shape conflicts with the new model, it should be removed rather than preserved behind a compatibility layer.
+
 ### Canonical Content Object Comes First
 
 Before any page or viewer is considered complete, the run must produce `content_brief_v1`.
@@ -222,7 +228,7 @@ Decision: recommended.
 - Produce `content_brief_v1` as the canonical content object for every usable or degraded run.
 - Make Studio the default consumption surface.
 - Keep Audit focused on evidence, failures, and review.
-- Remove old synthesis artifacts from the definition of completion.
+- Remove old synthesis artifacts and old product entry paths from the supported mainline.
 - Fix the four review findings in the new adapter-owned composer path.
 - Keep the plugin read-only.
 
@@ -230,9 +236,9 @@ Decision: recommended.
 
 - No attempt to rewrite plugin source files.
 - No attempt to preserve the old persona-debug viewer as the primary UI.
-- No attempt to keep `final_panel.*` as the primary product artifact.
+- No attempt to keep `final_panel.*` in the adapter-owned main path.
 - No attempt to generalize beyond the initial controversy-comment briefing wedge.
-- No attempt to solve unrelated plugin historical compatibility issues in this spec.
+- No attempt to preserve unrelated compatibility code that blocks the new product path.
 - No attempt to make “24 personas” the main product story.
 - No attempt to prioritize medical, legal, financial, or strong real-time political verification use cases in this wedge.
 
@@ -264,8 +270,7 @@ Its responsibilities are:
 - freeze benchmark, rubric, and guardrail context
 - give the planner and composer a stable content task object
 
-Legacy `question` and `answer_goal` inputs are a repository migration concern only.
-If supported during migration, they must be normalized immediately into the product contract and must not remain the main semantic path.
+Only the product contract is accepted on the adapter-owned main path.
 
 ## Proposed Workspace Layout
 
@@ -295,7 +300,6 @@ Existing adapter modules may absorb some of these responsibilities if a smaller 
 Responsibilities:
 
 - parse the product contract
-- normalize legacy compatibility input into product input
 - attach frozen benchmark, rubric, and guardrail metadata
 - reject unsupported issue types and malformed materials
 
@@ -551,7 +555,7 @@ Each key judgment is modeled as a claim with the structure fixed by the product 
 }
 ```
 
-The adapter composer may extend internal derivation logic, but the outward claim contract must stay compatible with this shape.
+The adapter composer may extend internal derivation logic, but the outward claim contract must use this shape.
 
 ### Primary Artifacts
 
@@ -734,7 +738,7 @@ A run is complete only when the adapter can verify:
 - usable or degraded runs have `audit_surface.json`
 - claim trace references resolve to available role evidence
 
-Legacy `final_panel.*` presence is not part of the completion contract.
+`final_panel.*` presence is irrelevant to the completion contract and is not checked by the adapter-owned verifier.
 
 ## Viewer Contract
 
@@ -765,7 +769,7 @@ The repository implementation order follows the product reframe:
 4. implement `content_brief_v1` and claim model
 5. implement role planning and composer
 6. implement Studio and Audit surfaces
-7. only then clean up remaining internal naming and compatibility leftovers
+7. delete remaining old naming, old product paths, and old compatibility leftovers
 
 This sequence matters because the product model must constrain the implementation, not the other way around.
 
@@ -795,6 +799,7 @@ This work is complete only when all of the following are true:
 - verification keys off the new artifact contract
 - the four review findings are fixed and covered by tests
 - old `final_panel.*` artifacts are no longer part of the product completion definition
+- old product-path compatibility code that conflicts with this model is removed
 
 ## Open Decision Resolved By This Spec
 
@@ -804,12 +809,3 @@ The worldview panel product path is owned by the workspace adapter end to end.
 
 The plugin remains a read-only runtime dependency.
 It is not the home of future product semantics.
-
-## Repository Migration Decisions
-
-The following are repository migration choices, not product-level promises from the reframe document:
-
-- whether legacy `question` / `answer_goal` intake is temporarily accepted at the adapter boundary
-- whether any legacy compatibility artifacts are emitted outside the adapter-owned main path
-
-These decisions exist only to help repository migration and must not redefine the product contract.
